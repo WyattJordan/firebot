@@ -9,11 +9,13 @@
 
 #pragma once
 #include "maps.h"
+#include "ros/ros.h"
 
 class Robot{
 
 	private:
 	Maps maps;	
+	ros::Publisher pubArduino;
 
 	public:
 	void lidarCallback(); // runs everytime a new lidar scan comes in
