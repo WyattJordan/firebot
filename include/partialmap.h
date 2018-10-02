@@ -6,11 +6,17 @@
  *
  */
 #pragma once
+#include "endpoint.h"
+#include <vector>
+#include <utility>
 
+using std::vector;
+using std::pair;
 class PartialMap{
 	private:
-
+		vector<EndPoint> mapPoints;
+		vector<int> expectedMarkerIdxs;
+		vector<pair< float,float> > polarPoints;
 	public:
-
 
 };

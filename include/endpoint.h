@@ -6,16 +6,26 @@
  */
 
 #pragma once
+#include <vector>
+using std::vector;
+
 struct polar{
-	float R, thet;
+	float R, theta;
+	polar(float r, float t) : R(r), theta(t) {}
 };
 
-class Endpoint{
+class EndPoint{
 	private:
 		float x,y;
 		// type edge; // edge, edge/outer, inner classification?
+		int id; // unique from csv
+		vector<int> neighborIDs;
 	public:
-		polar getPolarFrom(float Rx, float Ry); 
+		EndPoint();
+		EndPoint(float X, float Y, int ID, vector<int> neighs);
+		polar getPolarFromRobot(float Rx, float Ry); 
+		float getx();
+		float gety();
 	
 };
 

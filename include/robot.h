@@ -8,13 +8,15 @@
  */
 
 #pragma once
-#include "maps.h"
+#include "map.h"
 #include "ros/ros.h"
+#include "nav.h"
 
 class Robot{
 
 	private:
-	Maps maps;	
+	Nav beSmart;
+	Map map;	
 	ros::Publisher pubArduino;
 
 	public:
