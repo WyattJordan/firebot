@@ -8,10 +8,15 @@
 
 #include <iostream> 
 #include "robot.h"
+#include <thread>     // 3 for thread and sharedptr
+#include <functional>
+#include <memory>
 #include "ros/ros.h"
-int main(){
+
+int main(int argc, char **argv){
 //	vector<ros::Publisher> navPub, mapPub;
-	
+	ros::init(argc,argv,"robot");
+
 	std::cout<<"running main launcher, going to create robot\n";
 	Robot rob;
 	rob.sendArduino(3);
@@ -26,6 +31,9 @@ int main(){
 	std::cout<<" R: " << ptemp.R << "\n";	
 
 	rob.loadMap(1); // working dir is the catkin workspace
-	rob.getMapPtr()->publishMap();
+	std::shared_ptr<Map> ptr(rob.getMapPtr());
+	std::thread thread1(bind(&Map::publishMap,ptr));
+
+	ros::spin();
 	return 0;
 }

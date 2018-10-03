@@ -15,12 +15,12 @@ Map::Map(){
 
 void Map::publishMap(){
 	ros::NodeHandle n;
-	ros::Publisher rvizMap;
-	n.advertise<std_msgs::String>("map",1000);	
+	ros::Publisher rvizMap = n.advertise<std_msgs::String>("map",1000);	
 	std_msgs::String msg;
 	std::stringstream ss;
 	ss<<"about to publish map";
 	msg.data = ss.str();
+	//for(int i=0; i<1000000; i++){
 	while(1){
 		rvizMap.publish(msg);	
 	}
