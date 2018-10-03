@@ -1,3 +1,8 @@
+/* Maps.h stores all the potential endpoints that the robot might encounter.
+ * Some points are deleted based on the lidar callback running the robot::determineMap()
+ * which reconfigures some of the points to account for the different maps that can be
+ * encountered. 
+ */
 #pragma once 
 #include "partialmap.h"
 #include <vector>
@@ -5,10 +10,6 @@
 
 using std::vector;
 using std::string;
-/* Maps.h stores all the potential maps that the robot might encounter.
- * From these PartialMap objects the full real map is constructed.
- * 
- */
 struct polarPoint{
 	float theta, R;
 	polarPoint(float t, float r) : theta(t), R(r){ }

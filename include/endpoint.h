@@ -8,7 +8,6 @@
 #pragma once
 #include <vector>
 using std::vector;
-
 struct polar{
 	float R, theta;
 	polar(float r, float t) : R(r), theta(t) {}

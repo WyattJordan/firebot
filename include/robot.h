@@ -11,6 +11,8 @@
 #include "map.h"
 #include "ros/ros.h"
 #include "nav.h"
+#include <string>
+using std::string;
 
 class Robot{
 
@@ -22,5 +24,5 @@ class Robot{
 	public:
 	void lidarCallback(); // runs everytime a new lidar scan comes in
 	void sendArduino(int code); // sends indicator info to arduino1
-
+	void loadMap(string file);
 };
