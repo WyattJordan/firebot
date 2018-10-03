@@ -1,4 +1,6 @@
 #include "map.h"
+#include "ros/ros.h"
+#include "std_msgs/String.h"
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -9,6 +11,19 @@ using std::atof;
 
 Map::Map(){
 
+}
+
+void Map::publishMap(){
+	ros::NodeHandle n;
+	ros::Publisher rvizMap;
+	n.advertise<std_msgs::String>("map",1000);	
+	std_msgs::String msg;
+	std::stringstream ss;
+	ss<<"about to publish map";
+	msg.data = ss.str();
+	while(1){
+		rvizMap.publish(msg);	
+	}
 }
 
 Map::Map(string file){

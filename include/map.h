@@ -27,6 +27,7 @@ class Map{
 		Map();
 		Map(string file);
 		void getExpectedMarkers(float Rx, float Ry, float theta);
+		void publishMap();
 
 };
 

@@ -8,8 +8,9 @@
 
 #include <iostream> 
 #include "robot.h"
-
+#include "ros/ros.h"
 int main(){
+//	vector<ros::Publisher> navPub, mapPub;
 	
 	std::cout<<"running main launcher, going to create robot\n";
 	Robot rob;
@@ -24,7 +25,7 @@ int main(){
 	std::cout<<" theta: "<<ptemp.theta;
 	std::cout<<" R: " << ptemp.R << "\n";	
 
-	rob.loadMap("lvl1_map.txt"); // working dir is the catkin workspace
-
+	rob.loadMap(1); // working dir is the catkin workspace
+	rob.getMapPtr()->publishMap();
 	return 0;
 }
