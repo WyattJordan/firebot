@@ -18,7 +18,6 @@ class Robot{
 
 	private:
 	Nav beSmart;
-	Map map;	
 	ros::Publisher pubArduino;
 
 	public:

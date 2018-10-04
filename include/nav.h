@@ -8,11 +8,10 @@
 
 class Nav{
 	private:
-		Map unversalMap;
+		Map universalMap;
 		EndPoint safeZone, candle1, candle2; // key location markers
 	public:
-
 		void loadMap(string file); // read from file
-		
 		void findExpected(float Rx, float Ry, float theta);
+		Map* getMap();
 };

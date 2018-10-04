@@ -1,3 +1,7 @@
+/* nav.cpp
+ *
+ *
+ */
 #include "nav.h"
 #include <iostream>
 #include <fstream>
@@ -7,5 +11,11 @@ using std::vector;
 
 
 void Nav::loadMap(string file){
-	Map universalMap(file);
+	Map tmp(file);
+	universalMap = tmp;
+}
+
+Map* Nav::getMap(){ 
+	return &universalMap;
+	
 }

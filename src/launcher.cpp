@@ -17,12 +17,12 @@ int main(int argc, char **argv){
 //	vector<ros::Publisher> navPub, mapPub;
 	ros::init(argc,argv,"robot");
 
-	std::cout<<"running main launcher, going to create robot\n";
+	std::cout<<"\nrunning main launcher, going to create robot\n";
 	Robot rob;
 	rob.sendArduino(3);
 
 	vector<int> temp;	
-	EndPoint compilethis(1,1, 342, temp);
+	EndPoint compilethis(1, 1, 342, temp);
 	std::cout<<"made an EndPoint, testing polar conversion: \n";
 	std::cout<<"x: "<<compilethis.getx();
 	std::cout<<" y: "<<compilethis.gety();

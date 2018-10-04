@@ -21,28 +21,28 @@ void Map::publishMap(){
 	ros::Publisher rvizMap = n.advertise<visualization_msgs::MarkerArray>("map",1000);
 	visualization_msgs::Marker mark;
 	visualization_msgs::MarkerArray marks;
+	marks.markers.resize(mapPoints.size());
 	for(int i=0; i<mapPoints.size(); i++){
 		EndPoint tmp = mapPoints[i];
-		mark.header.frame_id = "base_link";
-		mark.ns = "my_namespace";
-		mark.id = tmp.getID();
-		mark.type = visualization_msgs::Marker::ARROW;
-		mark.action = visualization_msgs::Marker::ADD;
-		mark.scale.x = 10; // 10cm tall	
-		mark.scale.y = 1;
-		mark.scale.z = 1;
-		mark.pose.position.x = tmp.getx();
-		mark.pose.position.y = tmp.gety();
-		mark.pose.position.z = 0;
-		mark.pose.orientation.x = 0;
-		mark.pose.orientation.y = 0;
-		mark.pose.orientation.z = 1;
-		mark.pose.orientation.w = 0;
-		mark.color.a = 1.0;	
-		mark.color.r = 0;	
-		mark.color.g = 1.0;	
-		mark.color.b = 0;
-		marks.markers.push_back(mark);	
+		marks.markers[i].header.frame_id = "map2";
+		marks.markers[i].ns = "my_namespace";
+		marks.markers[i].id = tmp.getID();
+		marks.markers[i].type = visualization_msgs::Marker::ARROW;
+		marks.markers[i].action = visualization_msgs::Marker::ADD;
+		marks.markers[i].scale.x = 10; // 10cm tall	
+		marks.markers[i].scale.y = 1;
+		marks.markers[i].scale.z = 1;
+		marks.markers[i].pose.position.x = tmp.getx();
+		marks.markers[i].pose.position.y = tmp.gety();
+		marks.markers[i].pose.position.z = 0;
+		marks.markers[i].pose.orientation.x = 0;
+		marks.markers[i].pose.orientation.y = 0;
+		marks.markers[i].pose.orientation.z = 1;
+		marks.markers[i].pose.orientation.w = 0;
+		marks.markers[i].color.a = 1.0;	
+		marks.markers[i].color.r = 0;	
+		marks.markers[i].color.g = 1.0;	
+		marks.markers[i].color.b = 0;
 	}
 	while(1){
 		rvizMap.publish(marks);	
@@ -70,7 +70,7 @@ Map::Map(string file){
         vector<string> nums;
         if (mapFile.is_open()){
                 while(getline(mapFile, line, ',')){
-                        std::cout<<line<<"\n";
+                        //std::cout<<line<<"\n";
                         nums.push_back(line);
                 }
                 mapFile.close();
@@ -87,12 +87,14 @@ Map::Map(string file){
 		mapPoints.push_back(tmp);
 		for(int i=0; i<7; i++) nums.erase(nums.begin()+0);
 	}
+	std::cout<<"size of mapPoints is: "<<mapPoints.size()<<"\n";
 }
 
 void Map::printCode(int code){
 	std::cout<<"the map code is: "<<code<<" \n";
 }
 
+int Map::getSize(){return mapPoints.size();}
 
 
 

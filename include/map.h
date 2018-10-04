@@ -30,6 +30,7 @@ class Map{
 		void publishMap();
 		EndPoint getPoint(int id);
 		EndPoint getBadPoint();
+		int getSize();
 
 };
 
