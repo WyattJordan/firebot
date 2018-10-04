@@ -6,6 +6,7 @@
  */
 
 #pragma once
+class Map;
 #include <vector>
 using std::vector;
 struct polar{
@@ -15,16 +16,22 @@ struct polar{
 
 class EndPoint{
 	private:
+		Map *parent;
 		float x,y;
 		// type edge; // edge, edge/outer, inner classification?
 		int id; // unique from csv
 		vector<int> neighborIDs;
+
 	public:
 		EndPoint();
 		EndPoint(float X, float Y, int ID, vector<int> neighs);
+		EndPoint(Map *Parent, float X, float Y, int ID, vector<int> neighs);
 		polar getPolarFromRobot(float Rx, float Ry); 
 		float getx();
 		float gety();
+		int getID();
+		int getNumNeighbors();
+		bool getNeighbor(int index, EndPoint &ep);
 	
 };
 

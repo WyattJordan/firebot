@@ -4,7 +4,7 @@
  * encountered. 
  */
 #pragma once 
-#include "partialmap.h"
+#include "endpoint.h"
 #include <vector>
 #include <string>
 
@@ -28,6 +28,8 @@ class Map{
 		Map(string file);
 		void getExpectedMarkers(float Rx, float Ry, float theta);
 		void publishMap();
+		EndPoint getPoint(int id);
+		EndPoint getBadPoint();
 
 };
 
