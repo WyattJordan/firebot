@@ -8,7 +8,6 @@
  */
 
 #pragma once
-#include "map.h"
 #include "ros/ros.h"
 #include "nav.h"
 #include <string>
@@ -18,12 +17,10 @@ class Robot{
 
 	private:
 	Nav beSmart;
-	ros::Publisher pubArduino;
 
 	public:
 	void lidarCallback(); // runs everytime a new lidar scan comes in
 	void sendArduino(int code); // sends indicator info to arduino1
 	void loadMap(int lvl);
-	Map* getMapPtr();
 	Nav* getNavPtr();
 };

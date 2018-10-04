@@ -3,15 +3,32 @@
  *
  */
 #pragma once
-#include "map.h"
 #include "endpoint.h"
+#include <string>
+using std::string;
+
+struct polarPoint{
+	float theta, R;
+	polarPoint(float t, float r) : theta(t), R(r){ }
+};
+
 
 class Nav{
 	private:
-		Map universalMap;
 		EndPoint safeZone, candle1, candle2; // key location markers
+		vector<EndPoint> mapPoints;
+		vector<EndPoint> wayPoints;
+		vector<polarPoint> polarPoints;
+		vector<int> expectedMarkerIdxs;
+		bool room1Conf, room4Conf;
+
+		bool getNeighbor(int startID, int neighNum, EndPoint &neigh);
 	public:
-		void loadMap(string file); // read from file
+		Nav();
+		Nav(string mapfile); // read from file
 		void findExpected(float Rx, float Ry, float theta);
-		Map* getMap();
+		void publishMap();
+		EndPoint getPoint(int id);
+		EndPoint getBadPoint();
+		int getSize();
 };

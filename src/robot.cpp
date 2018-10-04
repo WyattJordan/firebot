@@ -4,18 +4,23 @@
 
 #include "robot.h"
 #include "nav.h"
-/*#include <string>
+#include <string>
 #include <iostream>
 using std::string;
-*/
+
 void Robot::sendArduino(int code){
 	std::cout<<"the given code was: "<<code<<" \n";
 }
 
 void Robot::loadMap(int lvl){
-	if(lvl == 3){ beSmart.loadMap("lvl3_map.txt");}//root is catkin ws
-	else {beSmart.loadMap("lvl1_map.txt");}
+	if(lvl == 3){
+		Nav tmp("lvl3_map.txt");  //root is catkin ws
+		beSmart = tmp;
+	}	
+	else {
+		Nav tmp("lvl1_map.txt");	
+		beSmart = tmp;
+	}
 }
 
-Map* Robot::getMapPtr(){ return beSmart.getMap();}
 Nav* Robot::getNavPtr(){ return &beSmart;}
