@@ -31,4 +31,5 @@ class Nav{
 		EndPoint getPoint(int id);
 		EndPoint getBadPoint();
 		int getSize();
+		void outputMapPoints();
 };

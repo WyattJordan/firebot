@@ -32,6 +32,7 @@ int main(int argc, char **argv){
 
 	rob.loadMap(1); // working dir is the catkin workspace
 	std::shared_ptr<Nav> ptr(rob.getNavPtr());
+	ptr->outputMapPoints();
 	std::thread thread1(bind(&Nav::publishMap,ptr));
 
 	ros::spin();
