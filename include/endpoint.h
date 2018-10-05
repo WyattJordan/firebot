@@ -23,7 +23,6 @@ class EndPoint{
 	public:
 		EndPoint();
 		EndPoint(float X, float Y, int ID, vector<int> neighs);
-		EndPoint getBadPoint();	
 		polar getPolarFromRobot(float Rx, float Ry); 
 		float getx();
 		float gety();
