@@ -18,7 +18,7 @@ void Robot::loadMap(int lvl){
 		beSmart = tmp;
 	}	
 	else {
-		Nav tmp("lvl1_map.txt");	
+		Nav tmp("/home/wyatt/cat_ws/lvl1_map.txt");	
 		beSmart = tmp;
 	}
 }

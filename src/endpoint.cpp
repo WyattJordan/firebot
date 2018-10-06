@@ -3,8 +3,9 @@
 #include <cmath>
 
 EndPoint::EndPoint(){
-
+	
 }
+
 EndPoint::EndPoint(float X, float Y, int ID, vector<int> neighs)
 : x(X), y(Y), id(ID)
 {
@@ -12,14 +13,32 @@ EndPoint::EndPoint(float X, float Y, int ID, vector<int> neighs)
 		neighborIDs.push_back(neighs[i]);
 	}
 }	
+/*
+bool EndPoint::IDLess(const EndPoint &rhs) const {
+	return id<rhs.id;
+}
 
+bool EndPoint::IDGreater(const EndPoint &rhs) const {
+	return id>rhs.id;
+}
+*/
 
-polar EndPoint::getPolarFromRobot(float Rx, float Ry){
+/*static  bool EndPoint::RLess(const EndPoint &lhs,const EndPoint &rhs) const {
+	return lhs.pp.R<rhs.pp.R;
+}*/
+
+float EndPoint::getR() const{
+	return pp.R;
+}
+/*
+bool EndPoint::RGreater(const EndPoint &rhs) const {
+	return pp.R>rhs.pp.R;
+}*/
+void EndPoint::getPolar(float Rx, float Ry){
 	float diffx = x-Rx;
 	float diffy = y-Ry;
-	float R = pow(diffx*diffx + diffy*diffy, 0.5);
-	float theta = atan2(diffy, diffx) * 180 / 3.14159;	
-	return polar(R,theta);
+	pp.R = pow(diffx*diffx + diffy*diffy, 0.5);
+	pp.theta = atan2(diffy, diffx) * 180 / 3.14159;	
 }
 
 float EndPoint::getx(){  return x;}

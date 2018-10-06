@@ -7,21 +7,15 @@
 #include <string>
 using std::string;
 
-struct polarPoint{
-	float theta, R;
-	polarPoint(float t, float r) : theta(t), R(r){ }
-};
-
 
 class Nav{
 	private:
 		EndPoint safeZone, candle1, candle2; // key location markers
 		vector<EndPoint> mapPoints;
 		vector<EndPoint> wayPoints;
-		vector<polarPoint> polarPoints;
-		vector<int> expectedMarkerIdxs;
+		//vector<polarPoint> polarPoints;
 		bool room1Conf, room4Conf;
-
+		vector<int> expectedIDs;
 		bool getNeighbor(int startID, int neighNum, EndPoint &neigh);
 	public:
 		Nav();

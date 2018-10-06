@@ -12,12 +12,13 @@
 #include <functional>
 #include <memory>
 #include "ros/ros.h"
+#include <ros/console.h>
 
 int main(int argc, char **argv){
 //	vector<ros::Publisher> navPub, mapPub;
 	ros::init(argc,argv,"robot");
 
-	std::cout<<"\nrunning main launcher, going to create robot\n";
+	ROS_INFO("running main launcher, going to create robot\n");
 	Robot rob;
 	rob.sendArduino(3);
 
@@ -26,11 +27,9 @@ int main(int argc, char **argv){
 	std::cout<<"made an EndPoint, testing polar conversion: \n";
 	std::cout<<"x: "<<compilethis.getx();
 	std::cout<<" y: "<<compilethis.gety();
-	polar ptemp = compilethis.getPolarFromRobot(0,0);
-	std::cout<<" theta: "<<ptemp.theta;
-	std::cout<<" R: " << ptemp.R << "\n";	
 
 	rob.loadMap(1); // working dir is the catkin workspace
+	
 	std::shared_ptr<Nav> ptr(rob.getNavPtr());
 	ptr->outputMapPoints();
 	std::thread thread1(bind(&Nav::publishMap,ptr));
