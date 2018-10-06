@@ -13,6 +13,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <pthread.h>
 using std::vector;
 using std::atof;
 
@@ -121,8 +122,8 @@ void Nav::publishMap(){
 		marks.markers[i].points[1].y = mapPoints[i].gety();
 		marks.markers[i].points[1].z = 10; // 10cm tall 
 
-		marks.markers[i].scale.x = 2; 
-		marks.markers[i].scale.y = 2;
+		marks.markers[i].scale.x = 3; 
+		marks.markers[i].scale.y = 3;
 		marks.markers[i].scale.z = 3;
 		/*k
 		marks.markers[i].pose.position.x = mapPoints[i].getx();
@@ -155,8 +156,6 @@ void Nav::publishMap(){
 	mark.points[0].z = 0;
 	mark.points[1].z = 0;
 
-	geometry_msgs::Point pt;
-	pt.z = 0;
 	EndPoint ep1, ep2;
 	std::cout<<"should be looping for size = " << mapPoints.size()<<"\n";
 
@@ -164,38 +163,39 @@ void Nav::publishMap(){
 	for(int i=0; i<mapPoints.size(); i++){
 		id = mapPoints[i].getID();
 		if(!accountedForIDs[id]){
-			mark.points.resize(2);
-			bool add = false;
-			bool found1 =  getNeighbor(mapPoints[i].getID(), 1, ep1);
-			bool found2 =  getNeighbor(mapPoints[i].getID(), 2, ep2);
-			if(found1 && !accountedForIDs[ep1.getID()]){
-				mark.points[0].x = ep1.getx();
-				mark.points[0].y = ep1.gety();
-				add = true;
-				std::cout<<"added pt 1\n";		
+			bool add1 = getNeighbor(mapPoints[i].getID(), 1, ep1) && !accountedForIDs[ep1.getID()];
+			bool add2 = getNeighbor(mapPoints[i].getID(), 2, ep2) && !accountedForIDs[ep2.getID()];
+			if( add1 || add2 ){
+				mark.points.resize(2);
+				mark.points[1].x = mapPoints[i].getx();
+				mark.points[1].y = mapPoints[i].gety();
+
+				if(add1){
+					mark.points[0].x = ep1.getx();
+					mark.points[0].y = ep1.gety();
+					std::cout<<"added pt 1\n";		
+				}
+				if(add2){
+					if(add1) mark.points.resize(3);
+					mark.points[add1 ? 2 : 0].x = ep2.getx();
+					mark.points[add1 ? 2 : 0].y = ep2.gety();
+					
+				}
+				accountedForIDs[id] = true;
+				mark.id = id;
+				marks.markers.push_back(mark);	
+				rvizMap.publish(marks);	
+				//sleep(1);
+//				mark.points.clear();
 			}
 
-			mark.points[1].x = mapPoints[i].getx();
-			mark.points[1].y = mapPoints[i].gety();
+		}	
 
-			if(found2 && !accountedForIDs[ep2.getID()]){
-				mark.points.resize(3);
-				mark.points[2].x = ep2.getx();
-				mark.points[2].y = ep2.gety();
-				mark.points[2].z = 0; 
-				add = true;
-				std::cout<<"added a thing\n";		
-	
-			}	
-
-			accountedForIDs[id] = true;
-			mark.id = id;
-			if(add) marks.markers.push_back(mark);	
-			std::cout<<"pt "<<mapPoints[i].getID()<<" is connected to : "<<
+		std::cout<<"pt "<<mapPoints[i].getID()<<" is connected to : "<<
 				ep1.getID()<<" and : "<<
 				ep2.getID()<<"\n";
-		}
-	}	
+	}
+		
 	std::cout<<"size of marker array is: "<<marks.markers.size()<<"\n";
 	while(1){
 		rvizMap.publish(marks);	
