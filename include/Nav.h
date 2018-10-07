@@ -1,9 +1,9 @@
-/* "nav.h" 
+/* "Nav.h" 
  *
  *
  */
 #pragma once
-#include "endpoint.h"
+#include "Endpoint.h"
 #include <string>
 using std::string;
 

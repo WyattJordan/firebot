@@ -1,9 +1,9 @@
-/* robot.cpp
+/* Robot.cpp
  *
  */
 
-#include "robot.h"
-#include "nav.h"
+#include "Robot.h"
+#include "Nav.h"
 #include <string>
 #include <iostream>
 using std::string;

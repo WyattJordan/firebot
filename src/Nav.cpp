@@ -2,8 +2,8 @@
  *
  *
  */
-#include "nav.h"
-#include "endpoint.h"
+#include "Nav.h"
+#include "Endpoint.h"
 #include "ros/ros.h"
 #include <ros/console.h> 
 #include <visualization_msgs/Marker.h>
@@ -55,7 +55,7 @@ Nav::Nav(string file){  // this is the main constructor, initialize variables he
 	std::cout<<"opening file..."<<file<<"\n";
         if (mapFile.is_open()){
                 while(getline(mapFile, line, ',')){
-                        std::cout<<line<<"\n";
+                        //std::cout<<line<<"\n";
                         nums.push_back(line);
                 }
                 mapFile.close();
@@ -87,13 +87,14 @@ struct compareRLess{
 };
 
 void Nav::findExpected(float Rx, float Ry, float theta){
-	for(EndPoint ep : mapPoints) ep.getPolar(Rx, Ry);
-	/*std::sort(mapPoints.begin(), mapPoints.end(), [](const EndPoint& lhs, const EndPoint &rhs){
-			lhs.getR() < rhs.getR();	
-		});*/
+	for(EndPoint &ep : mapPoints) ep.getPolar(Rx, Ry, theta);
+	std::sort(mapPoints.begin(), mapPoints.end(), [](const EndPoint& lhs, const EndPoint &rhs){
+			return	lhs.getR() < rhs.getR();	
+		});
 	//std::sort(mapPoints.begin(), mapPoints.end(), std::bind(&EndPoint::RLess(), this));
-	std::sort(mapPoints.begin(), mapPoints.end(), compareRLess());
+	//std::sort(mapPoints.begin(), mapPoints.end(), compareRLess());
 }
+
 bool Nav::getNeighbor(int startID, int neighNum, EndPoint &neigh){ 
 	EndPoint start = getPoint(startID);
 	if((start.getx() == -1 && start.gety() == -1)
@@ -117,6 +118,7 @@ void Nav::publishMap(){
 	findExpected(200,200,0);
 	for(int i=0; i<mapPoints.size(); i++){
 //		EndPoint tmp = mapPoints[i];
+		//std::cout<<"making point: "<<mapPoints[i].getID();
 		marks.markers[i].header.frame_id = "map2";
 		marks.markers[i].ns = "vertical markers";
 		marks.markers[i].id = mapPoints[i].getID();
@@ -141,14 +143,12 @@ void Nav::publishMap(){
 		marks.markers[i].color.g = visible ? 0 : 1.0;	
 		marks.markers[i].color.b = visible ? 1.0 : 0;
 		rvizMap.publish(marks);
-		sleep(1);
+		//sleep(1);
 	}
 
 	// add horizontal lines on floor
 	vector<bool> accountedForIDs(mapPoints.size()+10, false); // index is ID
 	visualization_msgs::Marker mark;
-	mark.header.frame_id = "map2";
-	mark.action = visualization_msgs::Marker::ADD;
 	mark.type   = visualization_msgs::Marker::LINE_STRIP;
 	mark.ns = "floor lines";
 	mark.color.a = 1;
@@ -179,7 +179,6 @@ void Nav::publishMap(){
 				if(add1){
 					mark.points[0].x = ep1.getx();
 					mark.points[0].y = ep1.gety();
-					std::cout<<"added pt 1\n";		
 				}
 				if(add2){
 					if(add1) mark.points.resize(3);

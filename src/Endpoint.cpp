@@ -1,4 +1,4 @@
-#include "endpoint.h"
+#include "Endpoint.h"
 #include <utility>
 #include <cmath>
 
@@ -34,11 +34,11 @@ float EndPoint::getR() const{
 bool EndPoint::RGreater(const EndPoint &rhs) const {
 	return pp.R>rhs.pp.R;
 }*/
-void EndPoint::getPolar(float Rx, float Ry){
+void EndPoint::getPolar(float Rx, float Ry, float theta){
 	float diffx = x-Rx;
 	float diffy = y-Ry;
 	pp.R = pow(diffx*diffx + diffy*diffy, 0.5);
-	pp.theta = atan2(diffy, diffx) * 180 / 3.14159;	
+	pp.theta = theta - atan2(diffy, diffx) * 180 / 3.14159;	
 }
 
 float EndPoint::getx(){  return x;}

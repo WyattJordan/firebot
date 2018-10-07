@@ -7,7 +7,7 @@
  */
 
 #include <iostream> 
-#include "robot.h"
+#include "Robot.h"
 #include <thread>     // 3 for thread and sharedptr
 #include <functional>
 #include <memory>

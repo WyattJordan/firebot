@@ -146,7 +146,7 @@ include_directories(
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 #Wyatt:
-add_executable(launcher src/launcher.cpp src/robot.cpp src/endpoint.cpp src/nav.cpp)
+add_executable(launcher src/launcher.cpp src/Robot.cpp src/Endpoint.cpp src/Nav.cpp)
 target_link_libraries(launcher ${catkin_LIBRARIES})
 add_dependencies(launcher launcher_generate_messages_cpp)
 

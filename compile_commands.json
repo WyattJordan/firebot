@@ -6,18 +6,18 @@
 },
 {
   "directory": "/home/wyatt/cat_ws/build/firebot",
-  "command": "/usr/bin/c++   -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"firebot\\\" -I/home/wyatt/cat_ws/src/firebot/include -I/opt/ros/indigo/include    -o CMakeFiles/launcher.dir/src/robot.cpp.o -c /home/wyatt/cat_ws/src/firebot/src/robot.cpp",
-  "file": "/home/wyatt/cat_ws/src/firebot/src/robot.cpp"
+  "command": "/usr/bin/c++   -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"firebot\\\" -I/home/wyatt/cat_ws/src/firebot/include -I/opt/ros/indigo/include    -o CMakeFiles/launcher.dir/src/Robot.cpp.o -c /home/wyatt/cat_ws/src/firebot/src/robot.cpp",
+  "file": "/home/wyatt/cat_ws/src/firebot/src/Robot.cpp"
 },
 {
   "directory": "/home/wyatt/cat_ws/build/firebot",
-  "command": "/usr/bin/c++   -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"firebot\\\" -I/home/wyatt/cat_ws/src/firebot/include -I/opt/ros/indigo/include    -o CMakeFiles/launcher.dir/src/map.cpp.o -c /home/wyatt/cat_ws/src/firebot/src/map.cpp",
-  "file": "/home/wyatt/cat_ws/src/firebot/src/map.cpp"
+  "command": "/usr/bin/c++   -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"firebot\\\" -I/home/wyatt/cat_ws/src/firebot/include -I/opt/ros/indigo/include    -o CMakeFiles/launcher.dir/src/Nav.cpp.o -c /home/wyatt/cat_ws/src/firebot/src/map.cpp",
+  "file": "/home/wyatt/cat_ws/src/firebot/src/Nav.cpp"
 },
 {
   "directory": "/home/wyatt/cat_ws/build/firebot",
-  "command": "/usr/bin/c++   -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"firebot\\\" -I/home/wyatt/cat_ws/src/firebot/include -I/opt/ros/indigo/include    -o CMakeFiles/launcher.dir/src/endpoint.cpp.o -c /home/wyatt/cat_ws/src/firebot/src/endpoint.cpp",
-  "file": "/home/wyatt/cat_ws/src/firebot/src/endpoint.cpp"
+  "command": "/usr/bin/c++   -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"firebot\\\" -I/home/wyatt/cat_ws/src/firebot/include -I/opt/ros/indigo/include    -o CMakeFiles/launcher.dir/src/Endpoint.cpp.o -c /home/wyatt/cat_ws/src/firebot/src/endpoint.cpp",
+  "file": "/home/wyatt/cat_ws/src/firebot/src/Endpoint.cpp"
 },
 
 
@@ -25,19 +25,19 @@
 
 {
   "directory": "/home/wyatt/cat_ws/build/firebot",
-  "command": "/usr/bin/c++   -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"firebot\\\" -I/home/wyatt/cat_ws/src/firebot/include -I/opt/ros/indigo/include    -o CMakeFiles/launcher.dir/src/robot.cpp.o -c /home/wyatt/cat_ws/src/firebot/src/robot.cpp",
-  "file": "/home/wyatt/cat_ws/src/firebot/include/robot.h"
+  "command": "/usr/bin/c++   -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"firebot\\\" -I/home/wyatt/cat_ws/src/firebot/include -I/opt/ros/indigo/include    -o CMakeFiles/launcher.dir/src/Robot.cpp.o -c /home/wyatt/cat_ws/src/firebot/src/robot.cpp",
+  "file": "/home/wyatt/cat_ws/src/firebot/include/Robot.h"
 },
 
 {
   "directory": "/home/wyatt/cat_ws/build/firebot",
-  "command": "/usr/bin/c++   -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"firebot\\\" -I/home/wyatt/cat_ws/src/firebot/include -I/opt/ros/indigo/include    -o CMakeFiles/launcher.dir/src/map.cpp.o -c /home/wyatt/cat_ws/src/firebot/src/map.cpp",
-  "file": "/home/wyatt/cat_ws/src/firebot/include/map.h"
+  "command": "/usr/bin/c++   -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"firebot\\\" -I/home/wyatt/cat_ws/src/firebot/include -I/opt/ros/indigo/include    -o CMakeFiles/launcher.dir/src/Nav.h.o -c /home/wyatt/cat_ws/src/firebot/src/map.cpp",
+  "file": "/home/wyatt/cat_ws/src/firebot/include/Nav.h"
 },
 {
   "directory": "/home/wyatt/cat_ws/build/firebot",
-  "command": "/usr/bin/c++   -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"firebot\\\" -I/home/wyatt/cat_ws/src/firebot/include -I/opt/ros/indigo/include    -o CMakeFiles/launcher.dir/src/endpoint.h.o -c /home/wyatt/cat_ws/src/firebot/src/endpoint.h",
-  "file": "/home/wyatt/cat_ws/src/firebot/src/endpoint.h"
+  "command": "/usr/bin/c++   -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"firebot\\\" -I/home/wyatt/cat_ws/src/firebot/include -I/opt/ros/indigo/include    -o CMakeFiles/launcher.dir/src/Endpoint.h.o -c /home/wyatt/cat_ws/src/firebot/src/endpoint.h",
+  "file": "/home/wyatt/cat_ws/src/firebot/src/Endpoint.h"
 }
 
 ]

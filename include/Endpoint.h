@@ -1,4 +1,4 @@
-/* endpoint.h
+/* Endpoint.h
  * Simple class that stores the data for an endpoint on a map.
  *
  *
@@ -25,7 +25,7 @@ class EndPoint{
 	public:
 		EndPoint();
 		EndPoint(float X, float Y, int ID, vector<int> neighs);
-		void getPolar(float Rx, float Ry); 
+		void getPolar(float Rx, float Ry, float theta); 
 		float getx();
 		float gety();
 		int getID();

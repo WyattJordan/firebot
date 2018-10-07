@@ -9,7 +9,7 @@
 
 #pragma once
 #include "ros/ros.h"
-#include "nav.h"
+#include "Nav.h"
 #include <string>
 using std::string;
 
