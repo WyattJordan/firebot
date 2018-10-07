@@ -21,9 +21,10 @@ class Nav{
 		Nav();
 		Nav(string mapfile); // read from file
 		void findExpected(float Rx, float Ry, float theta);
-		void publishMap();
+		void publishMap(float Rx, float Ry, float theta);
 		EndPoint getPoint(int id);
 		EndPoint getBadPoint();
 		int getSize();
 		void outputMapPoints();
+		void eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry);
 };

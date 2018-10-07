@@ -16,11 +16,11 @@ using std::string;
 class Robot{
 
 	private:
-	Nav beSmart;
+		Nav beSmart;
 
 	public:
-	void lidarCallback(); // runs everytime a new lidar scan comes in
-	void sendArduino(int code); // sends indicator info to arduino1
-	void loadMap(int lvl);
-	Nav* getNavPtr();
+		void lidarCallback(); // runs everytime a new lidar scan comes in
+		void sendArduino(int code); // sends indicator info to arduino1
+		void loadMap(int lvl);
+		Nav* getNavPtr();
 };

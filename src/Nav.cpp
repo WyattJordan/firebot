@@ -8,6 +8,7 @@
 #include <ros/console.h> 
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
+#include <rviz_visual_tools/rviz_visual_tools.h>
 #include <geometry_msgs/Point.h>
 #include <string>
 #include <cstdlib>
@@ -87,14 +88,62 @@ struct compareRLess{
 };
 
 void Nav::findExpected(float Rx, float Ry, float theta){
-	for(EndPoint &ep : mapPoints) ep.getPolar(Rx, Ry, theta);
+	for(EndPoint &ep : mapPoints){
+	       	ep.getPolar(Rx, Ry, theta); // calculate all polars
+		ep.setDone(false);
+	}
 	std::sort(mapPoints.begin(), mapPoints.end(), [](const EndPoint& lhs, const EndPoint &rhs){
 			return	lhs.getR() < rhs.getR();	
-		});
-	//std::sort(mapPoints.begin(), mapPoints.end(), std::bind(&EndPoint::RLess(), this));
-	//std::sort(mapPoints.begin(), mapPoints.end(), compareRLess());
-}
+		}); // sort by points closest to robot
 
+	EndPoint ep;
+	int index = 0;
+	bool go = true;
+	while(go){
+		mapPoints[index].setVisible(true);
+		mapPoints[index].setDone(true);
+		// this will only ever loop once or twice
+		for(int i=0; i<mapPoints[index].getNumNeighbors(); i++){ 
+			getNeighbor(mapPoints[index].getID(), i, ep); 
+			if( !ep.getDone() ){
+				eliminatePts(ep, mapPoints[index], Rx, Ry);
+			}
+		}
+
+		for(EndPoint &p : mapPoints){
+			if(!p.getDone()){
+				go = true;
+				break;
+			}
+			else{ go = false;}
+		}	
+
+		while(index<mapPoints.size() &&  mapPoints[index].getDone()) index++;
+		std::cout<<"index is: "<<index<<"\n";
+	}
+}
+void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry){
+	float m = ((ep1.gety() - Ry) - (ep2.gety() - Ry)) / ((ep1.getx() - Rx) - (ep2.getx() - Rx));
+	float b = m*(ep1.getx() - Rx) + ep1.gety() - Ry;
+
+	/*float start = ep1.getTheta();
+	float width = start - ep2.getTheta();
+	if(width > 180) width = 
+	if(t1 - t2 > 180) t2 -= 360;	
+*/
+	for(EndPoint &p : mapPoints){
+		if(!p.getDone()){
+			//if(p.getTheta() < ep1.getTheta() &&
+			if((b<0 && p.gety() < m*p.getx() + b) || (b>0 && p.gety() > m*p.getx() + b)){
+				p.setVisible(false);
+				p.setDone(true);
+			}	
+			else{
+				p.setVisible(true);
+			}
+		}
+	}
+}
 bool Nav::getNeighbor(int startID, int neighNum, EndPoint &neigh){ 
 	EndPoint start = getPoint(startID);
 	if((start.getx() == -1 && start.gety() == -1)
@@ -108,18 +157,18 @@ bool Nav::getNeighbor(int startID, int neighNum, EndPoint &neigh){
 	}	
 }
 
-void Nav::publishMap(){
-	findExpected(200,200,0);
+void Nav::publishMap(float Rx, float Ry, float theta){
+	//rviz_visual_tools::RvizVisualTools::deleteAllMarkers();	
+	findExpected(Rx, Ry, theta);
+	string worldFrame = "map2";
 	ros::NodeHandle n;
 	ros::Publisher rvizMap = n.advertise<visualization_msgs::MarkerArray>("map",1000);
 	visualization_msgs::MarkerArray marks;
 	marks.markers.resize(mapPoints.size());
-	// add vertical arrows at walls
-	findExpected(200,200,0);
+	// add vertical arrows at walls corners and endpoints
+	visualization_msgs::Marker robot;
 	for(int i=0; i<mapPoints.size(); i++){
-//		EndPoint tmp = mapPoints[i];
-		//std::cout<<"making point: "<<mapPoints[i].getID();
-		marks.markers[i].header.frame_id = "map2";
+		marks.markers[i].header.frame_id = worldFrame;
 		marks.markers[i].ns = "vertical markers";
 		marks.markers[i].id = mapPoints[i].getID();
 		marks.markers[i].type = visualization_msgs::Marker::ARROW;
@@ -136,20 +185,34 @@ void Nav::publishMap(){
 		marks.markers[i].scale.x = 3; 
 		marks.markers[i].scale.y = 3;
 		marks.markers[i].scale.z = 3;
-		bool visible = std::find(expectedIDs.begin(), expectedIDs.end(), 
-				mapPoints[i].getID()) != expectedIDs.end();
+		//bool visible = std::find(expectedIDs.begin(), expectedIDs.end(), 
+				//mapPoints[i].getID()) != expectedIDs.end();
 		marks.markers[i].color.a = 1.0;	
 		marks.markers[i].color.r = 0;	
-		marks.markers[i].color.g = visible ? 0 : 1.0;	
-		marks.markers[i].color.b = visible ? 1.0 : 0;
+		marks.markers[i].color.g = mapPoints[i].isVisible() ? 0 : 1.0;	
+		marks.markers[i].color.b = mapPoints[i].isVisible() ? 1.0 : 0;
 		rvizMap.publish(marks);
 		//sleep(1);
 	}
 
+	// add robot sphere
+	robot = marks.markers[0];
+	robot.ns = "robot";
+	robot.type = visualization_msgs::Marker::SPHERE;
+	robot.pose.position.x = Rx;
+	robot.pose.position.y = Ry;
+	robot.pose.position.z = 5;
+	robot.scale.x = 10;	
+	robot.scale.y = 10;	
+	robot.scale.z = 10;	
+	robot.color.g = 1;
+	robot.color.b = 1;
+	marks.markers.push_back(robot);
 	// add horizontal lines on floor
 	vector<bool> accountedForIDs(mapPoints.size()+10, false); // index is ID
 	visualization_msgs::Marker mark;
 	mark.type   = visualization_msgs::Marker::LINE_STRIP;
+	mark.header.frame_id = worldFrame;
 	mark.ns = "floor lines";
 	mark.color.a = 1;
 	mark.color.r = 1;

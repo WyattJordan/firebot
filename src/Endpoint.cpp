@@ -12,28 +12,17 @@ EndPoint::EndPoint(float X, float Y, int ID, vector<int> neighs)
 	for(int i=0; i<neighs.size(); i++){
 		neighborIDs.push_back(neighs[i]);
 	}
+	visible = done = false;
 }	
-/*
-bool EndPoint::IDLess(const EndPoint &rhs) const {
-	return id<rhs.id;
-}
-
-bool EndPoint::IDGreater(const EndPoint &rhs) const {
-	return id>rhs.id;
-}
-*/
-
-/*static  bool EndPoint::RLess(const EndPoint &lhs,const EndPoint &rhs) const {
-	return lhs.pp.R<rhs.pp.R;
-}*/
-
 float EndPoint::getR() const{
 	return pp.R;
 }
-/*
-bool EndPoint::RGreater(const EndPoint &rhs) const {
-	return pp.R>rhs.pp.R;
-}*/
+
+int   EndPoint::getNeighborID(int neighNum){
+	if(neighNum > neighborIDs.size()) return -1;
+	return neighborIDs[neighNum - 1];	
+}
+
 void EndPoint::getPolar(float Rx, float Ry, float theta){
 	float diffx = x-Rx;
 	float diffy = y-Ry;
@@ -45,8 +34,7 @@ float EndPoint::getx(){  return x;}
 float EndPoint::gety(){  return y;}
 int   EndPoint::getID(){ return id;}
 int   EndPoint::getNumNeighbors(){ return neighborIDs.size();}
-int   EndPoint::getNeighborID(int neighNum){
-	if(neighNum > neighborIDs.size()) return -1;
-	return neighborIDs[neighNum - 1];	
-}
-
+bool  EndPoint::isVisible() {return visible;}
+void  EndPoint::setVisible(bool s) {visible = s;}
+bool  EndPoint::getDone() {return done;}
+void  EndPoint::setDone(bool d) {done = d;}

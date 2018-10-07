@@ -21,6 +21,7 @@ class EndPoint{
 		// type edge; // edge, edge/outer, inner classification?
 		int id; // unique from csv
 		vector<int> neighborIDs;
+		bool visible, done;
 
 	public:
 		EndPoint();
@@ -31,6 +32,10 @@ class EndPoint{
 		int getID();
 		int getNumNeighbors();
 		int getNeighborID(int neighNum);
+		bool isVisible();
+		bool getDone();
+		void setDone(bool d);
+		void setVisible(bool s);
 //		bool IDLess(const EndPoint &rhs) const;	
 //		bool IDGreater(const EndPoint &rhs) const;	
 		//static bool RLess(const EndPoint &lhs, const EndPoint &rhs) const;	
