@@ -23,10 +23,20 @@ using std::atof;
 Nav::Nav(){}
 
 void Nav::outputMapPoints(){
+	EndPoint ep;
 	for(int i=0; i<mapPoints.size(); i++){
-		std::cout<<"id: "<<mapPoints[i].getID();
-		std::cout<<"   x: "<<mapPoints[i].getx();
-		std::cout<<"   y: "<<mapPoints[i].gety();
+		std::cout<<" id: "<<mapPoints[i].getID();
+		std::cout<<"\tx: "<<mapPoints[i].getx();
+		std::cout<<"\ty: "<<mapPoints[i].gety();
+		for(int k=0; k<mapPoints[i].getNumNeighbors(); k++){
+			bool check = getNeighbor(mapPoints[i].getID(), k+1, ep);
+			if(check){
+				std::cout<<"\tn: "<< ep.getID();
+			}
+			else{
+				std::cout<<"\tn: N";
+			}
+		}
 		std::cout<<"\n";
 	}
 
@@ -78,6 +88,7 @@ Nav::Nav(string file){  // this is the main constructor, initialize variables he
 	}
 	std::cout<<"size of mapPoints after constructor is: "<<mapPoints.size()<<"\n";
 }
+
 int Nav::getSize(){return mapPoints.size();}
 
 // comparison function to std::sort the mapPoints by closest polar radius from robot
@@ -87,15 +98,15 @@ struct compareRLess{
 	}
 };
 
-void Nav::findExpected(float Rx, float Ry, float theta){
+void Nav::findExpected(float Rx, float Ry){
 	for(EndPoint &ep : mapPoints){
-	       	ep.getPolar(Rx, Ry, theta); // calculate all polars
+	       	ep.getPolar(Rx, Ry); // calculate all polars
 		ep.setDone(false);
 	}
-	std::sort(mapPoints.begin(), mapPoints.end(), [](const EndPoint& lhs, const EndPoint &rhs){
+	std::sort(mapPoints.begin(), mapPoints.end(), 
+			[](const EndPoint& lhs, const EndPoint &rhs){
 			return	lhs.getR() < rhs.getR();	
 		}); // sort by points closest to robot
-
 	EndPoint ep;
 	int index = 0;
 	bool go = true;
@@ -104,10 +115,10 @@ void Nav::findExpected(float Rx, float Ry, float theta){
 		mapPoints[index].setDone(true);
 		// this will only ever loop once or twice
 		for(int i=0; i<mapPoints[index].getNumNeighbors(); i++){ 
-			bool exists = getNeighbor(mapPoints[index].getID(), i, ep); 
-			if( exists && !ep.getDone() ){
-				eliminatePts(ep, mapPoints[index], Rx, Ry);
-			}
+			//bool exists = getNeighbor(mapPoints[index].getID(), i, ep); 
+			//if(  exists && !ep.getDone() ){
+			getNeighbor(mapPoints[index].getID(), i, ep);
+			eliminatePts(ep, mapPoints[index], Rx, Ry);
 		}
 
 		for(EndPoint &p : mapPoints){
@@ -124,26 +135,41 @@ void Nav::findExpected(float Rx, float Ry, float theta){
 }
 
 void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry){
-//	float m = ((ep1.gety() - Ry) - (ep2.gety() - Ry)) / ((ep1.getx() - Rx) - (ep2.getx() - Rx));
-//	float b = m*(ep1.getx() - Rx) + ep1.gety() - Ry;
-
-	float start = ep1.getTheta();
-	float width = ep2.getTheta() - start; // greater than start && less than start + width
-	if(std::abs(width) > 180) { // they are crossing the 0 
-		width -= 360;
+	//float m = ((ep1.gety() - Ry) - (ep2.gety() - Ry)) / 
+		//((ep1.getx() - Rx) - (ep2.getx() - Rx));
+	//float b = -1 * m*(ep1.getx() - Rx) + ep1.gety() - Ry;
+	//if((b<0 && p.gety() < m*p.getx() + b) || (b>0 && p.gety() > m*p.getx() + b)){
+	
+	bool vert = ep1.getx() == ep2.getx() ? 1 : 0; // otherwise shld be horiz line	
+	bool above = (vert && Rx < ep1.getx()) || (!vert && Ry < ep1.gety());
+	float start = std::min(ep1.getTheta(),ep2.getTheta());
+	float end =   std::max(ep1.getTheta(),ep2.getTheta());
+	bool cross = false;
+	if(end - start> 180) { // they are crossing the 0 
+		cross = true;	
 	}	
 
 	for(EndPoint &p : mapPoints){
 		if(!p.getDone()){
-			// if blocked
-			//if((b<0 && p.gety() < m*p.getx() + b) || (b>0 && p.gety() > m*p.getx() + b)){
-			float theta = p.getTheta() - start;
-			//if(theta > start && theta < start + width){
-			if(1){ //TODO find what this boolean expression needs to be
-				p.setVisible(false);
-				p.setDone(true);
-				std::cout<<"point blocked and done\n";
-			}	
+			float theta = p.getTheta();
+			// check R of point (transform back into world frame by
+				// subtracting Rtheta)
+			//	if(p.getR() > b/(std::sin(theta * 3.14159/180)
+			//		- m*std::cos(theta * 3.14159 /180))){ 
+				//if(p.getR() > std::min(ep1.getR(), ep2.getR())){
+				
+			// if theta value in between neighbors		
+			if( ((!cross && theta > start && theta < end) ||
+			 	(cross && (theta > end || theta < start))) &&
+					
+			    (	( vert &&  above && p.getx() > ep1.getx()) ||
+			    ( vert && !above && p.getx() < ep1.getx()) ||
+			    (!vert &&  above && p.gety() > ep1.gety()) ||
+			    (!vert && !above && p.gety() < ep1.gety())) ){  
+					p.setVisible(false);
+					p.setDone(true);
+					std::cout<<"point blocked and done\n";
+			}
 			else{ // if not blocked
 				p.setVisible(true);
 			}
@@ -164,9 +190,9 @@ bool Nav::getNeighbor(int startID, int neighNum, EndPoint &neigh){
 	}	
 }
 
-void Nav::publishMap(float Rx, float Ry, float theta){
+void Nav::publishMap(float Rx, float Ry){
 	//rviz_visual_tools::RvizVisualTools::deleteAllMarkers();	
-	findExpected(Rx, Ry, theta);
+	findExpected(Rx, Ry);
 	string worldFrame = "map2";
 	ros::NodeHandle n;
 	ros::Publisher rvizMap = n.advertise<visualization_msgs::MarkerArray>("map",1000);
@@ -174,6 +200,7 @@ void Nav::publishMap(float Rx, float Ry, float theta){
 	marks.markers.resize(mapPoints.size());
 	// add vertical arrows at walls corners and endpoints
 	visualization_msgs::Marker robot;
+	//sleep(4);
 	for(int i=0; i<mapPoints.size(); i++){
 		marks.markers[i].header.frame_id = worldFrame;
 		marks.markers[i].ns = "vertical markers";

@@ -18,16 +18,17 @@ float EndPoint::getR() const{
 	return pp.R;
 }
 
-int   EndPoint::getNeighborID(int neighNum) const{
+int EndPoint::getNeighborID(int neighNum) const{
 	if(neighNum > neighborIDs.size()) return -1;
 	return neighborIDs[neighNum - 1];	
 }
 
-void EndPoint::getPolar(float Rx, float Ry, float theta){
+void EndPoint::getPolar(float Rx, float Ry){
 	float diffx = x-Rx;
 	float diffy = y-Ry;
 	pp.R = pow(diffx*diffx + diffy*diffy, 0.5);
-	pp.theta = theta - atan2(diffy, diffx) * 180 / 3.14159;	
+	float t = atan2(diffy, diffx) * 180 / 3.14159;
+	pp.theta = t>0 ? t : t*-1 + 180; // polar vals range 0:360
 }
 
 float EndPoint::getx()  const {  return x;}

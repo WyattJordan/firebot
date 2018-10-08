@@ -36,7 +36,34 @@ int main(int argc, char **argv){
 	float x, y;
 	if(argc == 3){ x = atof(argv[1]); y = atof(argv[2]);}
 	else{x = 0; y = 0;}
-	std::thread thread1(bind(&Nav::publishMap,ptr, x,y,0));
+	/*
+	y = 30;
+	unsigned int sleep = 100000;
+	for( int i = 0; i<1000; i++){
+		x = 230.0/1000.0 * i;
+		ptr->publishMap(x,y);
+		usleep(sleep);
+	}	
+	x = 230;
+	for( int i = 0; i<1000; i++){
+		y = 230.0/1000.0 * i;
+		ptr->publishMap(x,y);
+		usleep(sleep);
+	}	
+	y = 230;
+	for( int i = 0; i<1000; i++){
+		x = 230.0/1000.0 * (1000 - i);
+		ptr->publishMap(x,y);
+		usleep(sleep);
+	}	
+	x = 30;
+	for( int i = 0; i<1000; i++){
+		y = 230.0/1000.0 * (1000 - i);
+		ptr->publishMap(x,y);
+		usleep(sleep);
+	}*/	
+	
+	std::thread thread1(bind(&Nav::publishMap,ptr, x,y));
 
 	ros::spin();
 	return 0;

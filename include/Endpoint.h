@@ -26,7 +26,7 @@ class EndPoint{
 	public:
 		EndPoint();
 		EndPoint(float X, float Y, int ID, vector<int> neighs);
-		void getPolar(float Rx, float Ry, float theta); 
+		void getPolar(float Rx, float Ry); 
 		float getx() const;
 		float gety() const;
 		int getID() const;
