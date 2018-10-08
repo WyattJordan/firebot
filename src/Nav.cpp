@@ -8,7 +8,7 @@
 #include <ros/console.h> 
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
-#include <rviz_visual_tools/rviz_visual_tools.h>
+//#include <rviz_visual_tools/rviz_visual_tools.h>
 #include <geometry_msgs/Point.h>
 #include <string>
 #include <cstdlib>
@@ -104,8 +104,8 @@ void Nav::findExpected(float Rx, float Ry, float theta){
 		mapPoints[index].setDone(true);
 		// this will only ever loop once or twice
 		for(int i=0; i<mapPoints[index].getNumNeighbors(); i++){ 
-			getNeighbor(mapPoints[index].getID(), i, ep); 
-			if( !ep.getDone() ){
+			bool exists = getNeighbor(mapPoints[index].getID(), i, ep); 
+			if( exists && !ep.getDone() ){
 				eliminatePts(ep, mapPoints[index], Rx, Ry);
 			}
 		}
@@ -118,32 +118,39 @@ void Nav::findExpected(float Rx, float Ry, float theta){
 			else{ go = false;}
 		}	
 
-		while(index<mapPoints.size() &&  mapPoints[index].getDone()) index++;
+		while(index<mapPoints.size() &&  mapPoints[index].getDone()){ index++; }
 		std::cout<<"index is: "<<index<<"\n";
 	}
 }
-void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry){
-	float m = ((ep1.gety() - Ry) - (ep2.gety() - Ry)) / ((ep1.getx() - Rx) - (ep2.getx() - Rx));
-	float b = m*(ep1.getx() - Rx) + ep1.gety() - Ry;
 
-	/*float start = ep1.getTheta();
-	float width = start - ep2.getTheta();
-	if(width > 180) width = 
-	if(t1 - t2 > 180) t2 -= 360;	
-*/
+void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry){
+//	float m = ((ep1.gety() - Ry) - (ep2.gety() - Ry)) / ((ep1.getx() - Rx) - (ep2.getx() - Rx));
+//	float b = m*(ep1.getx() - Rx) + ep1.gety() - Ry;
+
+	float start = ep1.getTheta();
+	float width = ep2.getTheta() - start; // greater than start && less than start + width
+	if(std::abs(width) > 180) { // they are crossing the 0 
+		width -= 360;
+	}	
+
 	for(EndPoint &p : mapPoints){
 		if(!p.getDone()){
-			//if(p.getTheta() < ep1.getTheta() &&
-			if((b<0 && p.gety() < m*p.getx() + b) || (b>0 && p.gety() > m*p.getx() + b)){
+			// if blocked
+			//if((b<0 && p.gety() < m*p.getx() + b) || (b>0 && p.gety() > m*p.getx() + b)){
+			float theta = p.getTheta() - start;
+			//if(theta > start && theta < start + width){
+			if(1){ //TODO find what this boolean expression needs to be
 				p.setVisible(false);
 				p.setDone(true);
+				std::cout<<"point blocked and done\n";
 			}	
-			else{
+			else{ // if not blocked
 				p.setVisible(true);
 			}
 		}
 	}
 }
+
 bool Nav::getNeighbor(int startID, int neighNum, EndPoint &neigh){ 
 	EndPoint start = getPoint(startID);
 	if((start.getx() == -1 && start.gety() == -1)
@@ -170,7 +177,7 @@ void Nav::publishMap(float Rx, float Ry, float theta){
 	for(int i=0; i<mapPoints.size(); i++){
 		marks.markers[i].header.frame_id = worldFrame;
 		marks.markers[i].ns = "vertical markers";
-		marks.markers[i].id = mapPoints[i].getID();
+		marks.markers[i].id = i; //mapPoints[i].getID();
 		marks.markers[i].type = visualization_msgs::Marker::ARROW;
 		marks.markers[i].action = visualization_msgs::Marker::ADD;
 		
@@ -189,15 +196,16 @@ void Nav::publishMap(float Rx, float Ry, float theta){
 				//mapPoints[i].getID()) != expectedIDs.end();
 		marks.markers[i].color.a = 1.0;	
 		marks.markers[i].color.r = 0;	
-		marks.markers[i].color.g = mapPoints[i].isVisible() ? 0 : 1.0;	
-		marks.markers[i].color.b = mapPoints[i].isVisible() ? 1.0 : 0;
+		marks.markers[i].color.g = mapPoints[i].isVisible() ? 1.0 : 0;
+		marks.markers[i].color.b = mapPoints[i].isVisible() ? 0 : 1.0;	
 		rvizMap.publish(marks);
-		//sleep(1);
+		//sleep(1); //uncomment to visualize point growth from closest to robot
 	}
 
 	// add robot sphere
 	robot = marks.markers[0];
 	robot.ns = "robot";
+	robot.id = mapPoints.size()+1;
 	robot.type = visualization_msgs::Marker::SPHERE;
 	robot.pose.position.x = Rx;
 	robot.pose.position.y = Ry;
@@ -224,8 +232,6 @@ void Nav::publishMap(float Rx, float Ry, float theta){
 	mark.points[1].z = 0;
 
 	EndPoint ep1, ep2;
-	std::cout<<"should be looping for size = " << mapPoints.size()<<"\n";
-
 	int id;		
 	for(int i=0; i<mapPoints.size(); i++){ 	// loop thru points to find connections
 		id = mapPoints[i].getID();
@@ -249,7 +255,7 @@ void Nav::publishMap(float Rx, float Ry, float theta){
 					mark.points[add1 ? 2 : 0].y = ep2.gety();
 				}
 				accountedForIDs[id] = true;
-				mark.id = id;
+				mark.id = i + mapPoints.size() + 1;
 				marks.markers.push_back(mark);	
 				//sleep(1);  		// to watch the map build gradually
 				rvizMap.publish(marks);	
@@ -260,9 +266,11 @@ void Nav::publishMap(float Rx, float Ry, float theta){
 				ep2.getID()<<"\n";
 	*/
 	}
+
 	std::cout<<"size of marker array is: "<<marks.markers.size()<<"\n";
 	while(1){
 		rvizMap.publish(marks);	
+		sleep(1);
 	}
 }
 

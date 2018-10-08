@@ -32,7 +32,11 @@ int main(int argc, char **argv){
 	
 	std::shared_ptr<Nav> ptr(rob.getNavPtr());
 	ptr->outputMapPoints();
-	std::thread thread1(bind(&Nav::publishMap,ptr, 100,210,0));
+
+	float x, y;
+	if(argc == 3){ x = atof(argv[1]); y = atof(argv[2]);}
+	else{x = 0; y = 0;}
+	std::thread thread1(bind(&Nav::publishMap,ptr, x,y,0));
 
 	ros::spin();
 	return 0;
