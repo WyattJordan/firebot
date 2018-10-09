@@ -14,7 +14,7 @@ class Nav{
 		vector<EndPoint> mapPoints;
 		vector<EndPoint> wayPoints;
 		//vector<polarPoint> polarPoints;
-		bool room1Conf, room4Conf;
+		bool room1Conf, room4Conf, runBool;
 		vector<int> expectedIDs;
 		bool getNeighbor(int startID, int neighI, EndPoint &neigh);
 		void eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry);
@@ -26,6 +26,7 @@ class Nav{
 		EndPoint getPoint(int id);
 		EndPoint getBadPoint();
 		int getSize();
+		void setRun(bool t);
 		void outputMapPoints();
 		void run();
 };

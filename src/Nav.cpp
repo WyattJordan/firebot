@@ -230,7 +230,7 @@ void Nav::publishMap(float Rx, float Ry){
 	auto start = std::chrono::steady_clock::now();
 
 	findExpected(Rx, Ry);
-		string worldFrame = "map2";
+	string worldFrame = "map2";
 	ros::NodeHandle n;
 	ros::Publisher rvizMap = n.advertise<visualization_msgs::MarkerArray>("map",1000);
 	visualization_msgs::MarkerArray marks;
@@ -263,7 +263,6 @@ void Nav::publishMap(float Rx, float Ry){
 
 		// show text ID above marker with id += 1000
 		int text = i+mapPoints.size();
-		//marks.markers[text] = marks.markers[i];
 		marks.markers[text].header.frame_id = worldFrame;
 		marks.markers[text].id = i+1000;
 		marks.markers[text].ns = "text";
@@ -284,8 +283,7 @@ void Nav::publishMap(float Rx, float Ry){
 		marks.markers[text].color.r = 1; 
 		marks.markers[text].color.g = 1; 
 		marks.markers[text].color.b = 1; 
-		rvizMap.publish(marks);
-		//sleep(1); //uncomment to visualize point growth from closest to robot
+		//sleep(1); rvizMap.publish(marks); //uncomment to see point growth from closest to robot
 	}
 
 	// add robot sphere
@@ -350,40 +348,36 @@ void Nav::publishMap(float Rx, float Ry){
 				rvizMap.publish(marks);	
 			}
 		}	
-//		std::cout<<"pt "<<mapPoints[i].getID()<<" is connected to : "<<
-//				ep1.getID()<<" and : "<<
-//				ep2.getID()<<"\n";
-	
 	}
-auto end = std::chrono::steady_clock::now();
-	std::cout<<"time to expect: "<<std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count()<<"\n";
+	auto end = std::chrono::steady_clock::now();
+	std::cout<<"time to expect: "<<std::chrono::duration_cast
+		<std::chrono::milliseconds>(end-start).count()<<"\n";
 
 	std::cout<<"size of marker array is: "<<marks.markers.size()<<"\n";
+
 	rvizMap.publish(marks);	
 	rvizMap.publish(marks);	
 	rvizMap.publish(marks);	
 	rvizMap.publish(marks);
-	/*int milli = 40;
+
 	struct timespec req = {0};
-	req.tv_sec = 0;
-	req.tv_nsec = milli * 1000000L;
-	nanosleep(&req, (struct timespec *)NULL);
-	*/sleep(3);
-	rvizMap.publish(marks);	
-	rvizMap.publish(marks);	
-	rvizMap.publish(marks);	
-	//nanosleep(&req, (struct timespec *)NULL);
-	sleep(3);
+	if(runBool){
+		int milli = 40;
+		req.tv_sec = 0;
+		req.tv_nsec = milli * 1000000L;
+		nanosleep(&req, (struct timespec *)NULL);
+	}
+	else{ sleep(3);}
 	rvizMap.publish(marks);	
 	rvizMap.publish(marks);	
 	rvizMap.publish(marks);	
 	
+	if(runBool){nanosleep(&req, (struct timespec *)NULL);}
+	else{ sleep(3);}
+
 	rvizMap.publish(marks);	
-		//while(1){
-	/*for(int i=0; i<10; i++){
-		rvizMap.publish(marks);	
-		sleep(1);
-	}*/
+	rvizMap.publish(marks);	
+	rvizMap.publish(marks);	
+	rvizMap.publish(marks);	
 }
-
-
+void Nav::setRun(bool t){ runBool = t;}
