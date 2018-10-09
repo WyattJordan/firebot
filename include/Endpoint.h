@@ -27,16 +27,18 @@ class EndPoint{
 		EndPoint();
 		EndPoint(float X, float Y, int ID, vector<int> neighs);
 		void getPolar(float Rx, float Ry); 
-		float getx() const;
-		float gety() const;
-		int getID() const;
 		int getNumNeighbors() const;
 		int getNeighborID(int neighI) const;
-		bool isVisible() const;
-		bool getDone() const;
-		void setDone(bool d);
-		void setVisible(bool s);
+		void setNeighbors(int n1, int n2);
+
+		int getID() const;
+		float getx() const;
+		float gety() const;
 		float getR() const;
 		float getTheta() const;
+		bool getDone() const;
+		void setDone(bool d);
+		bool isVisible() const;
+		void setVisible(bool s);
 };
 

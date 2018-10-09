@@ -15,10 +15,13 @@ EndPoint::EndPoint(float X, float Y, int ID, vector<int> neighs)
 	}
 	visible = done = false;
 }	
-float EndPoint::getR() const{
-	return pp.R;
+void EndPoint::setNeighbors(int n1, int n2){
+	int size = n1 > 0  ? 1 : 0;
+	if(n2 > 0) size++;
+	neighborIDs.resize(size);
+	if(size>0) neighborIDs[0] = n1;
+	if(size == 2) neighborIDs[1] = n2;
 }
-
 int EndPoint::getNeighborID(int neighI) const{
 	if(neighI > neighborIDs.size() - 1) return -1;
 	return neighborIDs[neighI];	
@@ -35,6 +38,7 @@ void EndPoint::getPolar(float Rx, float Ry){
 float EndPoint::getx()  const {  return x;}
 float EndPoint::gety()  const {  return y;}
 float EndPoint::getTheta() const{ return pp.theta;}
+float EndPoint::getR() const{ return pp.R; }
 int   EndPoint::getID() const { return id;}
 bool  EndPoint::getDone() const {return done;}
 bool  EndPoint::isVisible() const {return visible;}

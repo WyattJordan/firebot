@@ -29,15 +29,19 @@ int main(int argc, char **argv){
 
 	float x, y;
 	bool run = atoi(argv[1]) == 0; 
-	if(argc == 4 ){ x = atof(argv[1]); y = atof(argv[2]);}
+	if(argc == 4 ){ x = atof(argv[2]); y = atof(argv[3]);}
 	else{x = 0; y = 0;}
 	ptr->setRun(run);
+	ptr->setBigRoomUpper(false);
+	ptr->setSmallRoomUpper(false);
+	ptr->outputMapPoints();
+
 	std::thread thread1;
 	if(run){
 		thread1 = std::thread(bind(&Nav::run, ptr));
 	}
 	else{
-		std::thread thread1(bind(&Nav::publishMap,ptr, x,y));
+		thread1 = std::thread(bind(&Nav::publishMap,ptr, x,y));
 	}
 
 	ros::spin();

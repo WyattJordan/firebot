@@ -24,42 +24,19 @@ using std::atof;
 
 Nav::Nav(){}
 
-void Nav::outputMapPoints(){
-	EndPoint ep;
-	for(int i=0; i<mapPoints.size(); i++){
-		std::cout<<" id: "<<mapPoints[i].getID();
-		std::cout<<"\tx: "<<mapPoints[i].getx();
-		std::cout<<"\ty: "<<mapPoints[i].gety();
-		for(int k=0; k<mapPoints[i].getNumNeighbors(); k++){
-			bool check = getNeighbor(mapPoints[i].getID(), k, ep);
-			if(check){
-				std::cout<<"\tn: "<< ep.getID();
-			}
-			else{
-				std::cout<<"\tn: N";
-			}
-		}
-		std::cout<<"\n";
-	}
-
-}
-
-EndPoint Nav::getBadPoint(){
-	vector<int> none;
-	EndPoint notfound(-1, -1, -1, none);
-	return notfound;	
-}
-
-EndPoint Nav::getPoint(int id){
+EndPoint& Nav::getPoint(int id){
 	if(mapPoints[id].getID() == id) return mapPoints[id];
 	for(int i=0; i<mapPoints.size(); i++){
 		if(mapPoints[i].getID() == id) return mapPoints[i];
 	}
-	return getBadPoint();
+	return badPt;
 }
 
 Nav::Nav(string file){  // this is the main constructor, initialize variables here
-	room1Conf = room4Conf = false;
+	smallRoomConf = bigRoomConf = false;
+	vector<int> none;
+	badPt = EndPoint(-1, -1, -1, none);
+
 	std::ifstream mapFile;
         mapFile.open(file.c_str());
         string line = "";
@@ -73,9 +50,7 @@ Nav::Nav(string file){  // this is the main constructor, initialize variables he
                 }
                 mapFile.close();
         }
-	else{
-		ROS_ERROR("WARNING: map file not found!\n");
-	}
+	else{ ROS_ERROR("WARNING: map file not found!\n"); }
 
 	while(nums.size()>=7){
 		vector<int> temp;
@@ -90,15 +65,41 @@ Nav::Nav(string file){  // this is the main constructor, initialize variables he
 	}
 	std::cout<<"size of mapPoints after constructor is: "<<mapPoints.size()<<"\n";
 }
-
-int Nav::getSize(){return mapPoints.size();}
-
-// comparison function to std::sort the mapPoints by closest polar radius from robot
-struct compareRLess{
-	bool operator()(const EndPoint &l, const EndPoint &r){
-	return l.getR()>r.getR();
+void Nav::removePoint(int id){
+	for(int i=0; i<mapPoints.size(); i++){
+		if(mapPoints[i].getID() == id){
+			mapPoints.erase(mapPoints.begin() + i);
+			break;
+		}
 	}
-};
+}
+
+void Nav::setSmallRoomUpper(bool up){
+	if(up){
+		getPoint(18).setNeighbors(12,-1);		
+		getPoint(13).setNeighbors(14,-1);
+		getPoint(11).setNeighbors(12,14);
+		getPoint(14).setNeighbors(13,11);
+		removePoint(19);
+	}
+	else{
+		getPoint(11).setNeighbors(12,-1);
+		getPoint(19).setNeighbors(14,-1);
+		getPoint(12).setNeighbors(11,13);
+		getPoint(13).setNeighbors(12,14);
+		removePoint(18);
+	}
+}
+void Nav::setBigRoomUpper(bool up){
+	if(up){
+		getPoint(17).setNeighbors(20,-1);
+		getPoint(16).setNeighbors(15,-1);
+	}
+	else{
+		getPoint(17).setNeighbors(16,-1);
+		removePoint(20);
+	}	
+}
 
 void Nav::findExpected(float Rx, float Ry){
 	for(EndPoint &ep : mapPoints){
@@ -119,8 +120,6 @@ void Nav::findExpected(float Rx, float Ry){
 		mapPoints[index].setDone(true);
 		// this will only ever loop once or twice
 		for(int i=0; i<mapPoints[index].getNumNeighbors(); i++){ 
-			//bool exists = getNeighbor(mapPoints[index].getID(), i, ep); 
-			//if(  exists && !ep.getDone() ){
 			getNeighbor(mapPoints[index].getID(), i, ep);
 			eliminatePts(ep, mapPoints[index], Rx, Ry);
 		}
@@ -139,22 +138,10 @@ void Nav::findExpected(float Rx, float Ry){
 }
 
 void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry){
-	//float m = ((ep1.gety() - Ry) - (ep2.gety() - Ry)) / 
-		//((ep1.getx() - Rx) - (ep2.getx() - Rx));
-	//float b = -1 * m*(ep1.getx() - Rx) + ep1.gety() - Ry;
-	//if((b<0 && p.gety() < m*p.getx() + b) || (b>0 && p.gety() > m*p.getx() + b)){
-	//	if(p.getR() > b/(std::sin(theta * 3.14159/180)
-			//		- m*std::cos(theta * 3.14159 /180))){ 
-				
-	std::cout<<"elim from "<<ep1.getID()<<" to "<<ep2.getID()<<"\n";
+	//std::cout<<"elim from "<<ep1.getID()<<" to "<<ep2.getID()<<"\n";
 	for(EndPoint &p : mapPoints){
 		if(!p.getDone()){
-		// check R of point (transform back into world frame by
-			// subtracting Rtheta)
-		
-		// if theta value in between neighbors		
-		float margin = 5; // if it's within 5 deg still eliminate
-		
+
 		if(p.getR()<15 || p.getR() > 180){
 			p.setVisible(false);
 			p.setDone(true);
@@ -169,6 +156,7 @@ void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry){
 			if(end - start> 180) { // they are crossing the 0 
 				cross = true;	
 			}	
+			float margin = 5; // if it's within 5 deg still eliminate
 			if( ((!cross && theta > start - margin && theta < end + margin) ||
 				(cross && (theta > end - margin || theta < start + margin))) 
 			    &&   (	
@@ -193,7 +181,7 @@ bool Nav::getNeighbor(int startID, int neighI, EndPoint &neigh){
 	EndPoint start = getPoint(startID);
 	if((start.getx() == -1 && start.gety() == -1)
 			|| start.getNumNeighbors() - 1 < neighI){
-		neigh = getBadPoint();
+		neigh = badPt;
 		return false;
 	}
 	else {
@@ -201,29 +189,26 @@ bool Nav::getNeighbor(int startID, int neighI, EndPoint &neigh){
 		return true;
 	}	
 }
+
 void Nav::run(){
 	float x,y;
 	y = 30;
 	unsigned int sleep = 10000;
 	float iter = 100;
 	for( int i = 0; i<iter; i++){
-		x = 230.0/iter * i;
-		publishMap(x,y);
+		x = 230.0/iter * i; publishMap(x,y);
 	}	
 	x = 230;
 	for( int i = 0; i<iter; i++){
-		y = 230.0/iter * i;
-		publishMap(x,y);
+		y = 230.0/iter * i; publishMap(x,y);
 	}	
 	y = 230;
 	for( int i = 0; i<iter; i++){
-		x = 230.0/iter * (iter - i);
-		publishMap(x,y);
+		x = 230.0/iter * (iter - i); publishMap(x,y);
 	}	
 	x = 30;
 	for( int i = 0; i<iter; i++){
-		y = 230.0/iter * (iter - i);
-		publishMap(x,y);
+		y = 230.0/iter * (iter - i); publishMap(x,y);
 	}	
 }
 void Nav::publishMap(float Rx, float Ry){
@@ -350,7 +335,7 @@ void Nav::publishMap(float Rx, float Ry){
 		}	
 	}
 	auto end = std::chrono::steady_clock::now();
-	std::cout<<"time to expect: "<<std::chrono::duration_cast
+	std::cout<<"time to draw: "<<std::chrono::duration_cast
 		<std::chrono::milliseconds>(end-start).count()<<"\n";
 
 	std::cout<<"size of marker array is: "<<marks.markers.size()<<"\n";
@@ -380,4 +365,26 @@ void Nav::publishMap(float Rx, float Ry){
 	rvizMap.publish(marks);	
 	rvizMap.publish(marks);	
 }
+
+void Nav::outputMapPoints(){
+	EndPoint ep;
+	for(int i=0; i<mapPoints.size(); i++){
+		std::cout<<" id: "<<mapPoints[i].getID();
+		std::cout<<"\tx: "<<mapPoints[i].getx();
+		std::cout<<"\ty: "<<mapPoints[i].gety();
+		for(int k=0; k<mapPoints[i].getNumNeighbors(); k++){
+			bool check = getNeighbor(mapPoints[i].getID(), k, ep);
+			if(check){
+				std::cout<<"\tn: "<< ep.getID();
+			}
+			else{
+				std::cout<<"\tn: N";
+			}
+		}
+		std::cout<<"\n";
+	}
+
+}
+
 void Nav::setRun(bool t){ runBool = t;}
+int Nav::getSize(){return mapPoints.size();}

@@ -12,41 +12,54 @@ Nav	src/Nav.cpp	/^Nav::Nav(){}$/;"	f	class:Nav
 Nav	src/Nav.cpp	/^Nav::Nav(string file){  \/\/ this is the main constructor, initialize variables here$/;"	f	class:Nav
 R	include/Endpoint.h	/^	float R, theta;$/;"	m	struct:polar
 Robot	include/Robot.h	/^class Robot{$/;"	c
-beSmart	include/Robot.h	/^	Nav beSmart;$/;"	m	class:Robot
+badPt	include/Nav.h	/^		EndPoint badPt;$/;"	m	class:Nav
+beSmart	include/Robot.h	/^		Nav beSmart;$/;"	m	class:Robot
+bigRoomConf	include/Nav.h	/^		bool smallRoomConf, bigRoomConf, runBool;$/;"	m	class:Nav
 candle1	include/Nav.h	/^		EndPoint safeZone, candle1, candle2; \/\/ key location markers$/;"	m	class:Nav
 candle2	include/Nav.h	/^		EndPoint safeZone, candle1, candle2; \/\/ key location markers$/;"	m	class:Nav
-compareRLess	src/Nav.cpp	/^struct compareRLess{$/;"	s	file:
+done	include/Endpoint.h	/^		bool visible, done;$/;"	m	class:EndPoint
+eliminatePts	src/Nav.cpp	/^void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry){$/;"	f	class:Nav
 expectedIDs	include/Nav.h	/^		vector<int> expectedIDs;$/;"	m	class:Nav
-findExpected	src/Nav.cpp	/^void Nav::findExpected(float Rx, float Ry, float theta){$/;"	f	class:Nav
-getBadPoint	src/Nav.cpp	/^EndPoint Nav::getBadPoint(){$/;"	f	class:Nav
-getID	src/Endpoint.cpp	/^int   EndPoint::getID(){ return id;}$/;"	f	class:EndPoint
+findExpected	src/Nav.cpp	/^void Nav::findExpected(float Rx, float Ry){$/;"	f	class:Nav
+getDone	src/Endpoint.cpp	/^bool  EndPoint::getDone() const {return done;}$/;"	f	class:EndPoint
+getID	src/Endpoint.cpp	/^int   EndPoint::getID() const { return id;}$/;"	f	class:EndPoint
 getNavPtr	src/Robot.cpp	/^Nav* Robot::getNavPtr(){ return &beSmart;}$/;"	f	class:Robot
-getNeighbor	src/Nav.cpp	/^bool Nav::getNeighbor(int startID, int neighNum, EndPoint &neigh){ $/;"	f	class:Nav
-getNeighborID	src/Endpoint.cpp	/^int   EndPoint::getNeighborID(int neighNum){$/;"	f	class:EndPoint
-getNumNeighbors	src/Endpoint.cpp	/^int   EndPoint::getNumNeighbors(){ return neighborIDs.size();}$/;"	f	class:EndPoint
-getPoint	src/Nav.cpp	/^EndPoint Nav::getPoint(int id){$/;"	f	class:Nav
+getNeighbor	src/Nav.cpp	/^bool Nav::getNeighbor(int startID, int neighI, EndPoint &neigh){ $/;"	f	class:Nav
+getNeighborID	src/Endpoint.cpp	/^int EndPoint::getNeighborID(int neighI) const{$/;"	f	class:EndPoint
+getNumNeighbors	src/Endpoint.cpp	/^int   EndPoint::getNumNeighbors() const{ return neighborIDs.size();}$/;"	f	class:EndPoint
+getPoint	src/Nav.cpp	/^EndPoint& Nav::getPoint(int id){$/;"	f	class:Nav
 getPolar	src/Endpoint.cpp	/^void EndPoint::getPolar(float Rx, float Ry){$/;"	f	class:EndPoint
-getR	src/Endpoint.cpp	/^float EndPoint::getR() const{$/;"	f	class:EndPoint
+getR	src/Endpoint.cpp	/^float EndPoint::getR() const{ return pp.R; }$/;"	f	class:EndPoint
 getSize	src/Nav.cpp	/^int Nav::getSize(){return mapPoints.size();}$/;"	f	class:Nav
-getx	src/Endpoint.cpp	/^float EndPoint::getx(){  return x;}$/;"	f	class:EndPoint
-gety	src/Endpoint.cpp	/^float EndPoint::gety(){  return y;}$/;"	f	class:EndPoint
+getTheta	src/Endpoint.cpp	/^float EndPoint::getTheta() const{ return pp.theta;}$/;"	f	class:EndPoint
+getx	src/Endpoint.cpp	/^float EndPoint::getx()  const {  return x;}$/;"	f	class:EndPoint
+gety	src/Endpoint.cpp	/^float EndPoint::gety()  const {  return y;}$/;"	f	class:EndPoint
 id	include/Endpoint.h	/^		int id; \/\/ unique from csv$/;"	m	class:EndPoint
+isVisible	src/Endpoint.cpp	/^bool  EndPoint::isVisible() const {return visible;}$/;"	f	class:EndPoint
 loadMap	src/Robot.cpp	/^void Robot::loadMap(int lvl){$/;"	f	class:Robot
 main	src/launcher.cpp	/^int main(int argc, char **argv){$/;"	f
 mapPoints	include/Nav.h	/^		vector<EndPoint> mapPoints;$/;"	m	class:Nav
 neighborIDs	include/Endpoint.h	/^		vector<int> neighborIDs;$/;"	m	class:EndPoint
-operator ()	src/Nav.cpp	/^	bool operator()(const EndPoint &l, const EndPoint &r){$/;"	f	struct:compareRLess
 outputMapPoints	src/Nav.cpp	/^void Nav::outputMapPoints(){$/;"	f	class:Nav
 polar	include/Endpoint.h	/^	polar(){ R = 0; theta = 0;}$/;"	f	struct:polar
 polar	include/Endpoint.h	/^	polar(float r, float t) : R(r), theta(t) {}$/;"	f	struct:polar
 polar	include/Endpoint.h	/^struct polar{$/;"	s
 pp	include/Endpoint.h	/^		polar pp;$/;"	m	class:EndPoint
-publishMap	src/Nav.cpp	/^void Nav::publishMap(){$/;"	f	class:Nav
-room1Conf	include/Nav.h	/^		bool room1Conf, room4Conf;$/;"	m	class:Nav
-room4Conf	include/Nav.h	/^		bool room1Conf, room4Conf;$/;"	m	class:Nav
+publishMap	src/Nav.cpp	/^void Nav::publishMap(float Rx, float Ry){$/;"	f	class:Nav
+removePoint	src/Nav.cpp	/^void Nav::removePoint(int id){$/;"	f	class:Nav
+run	src/Nav.cpp	/^void Nav::run(){$/;"	f	class:Nav
+runBool	include/Nav.h	/^		bool smallRoomConf, bigRoomConf, runBool;$/;"	m	class:Nav
 safeZone	include/Nav.h	/^		EndPoint safeZone, candle1, candle2; \/\/ key location markers$/;"	m	class:Nav
 sendArduino	src/Robot.cpp	/^void Robot::sendArduino(int code){$/;"	f	class:Robot
+setBigRoomUpper	src/Nav.cpp	/^void Nav::setBigRoomUpper(bool up){$/;"	f	class:Nav
+setDone	src/Endpoint.cpp	/^void  EndPoint::setDone(bool d) {done = d;}$/;"	f	class:EndPoint
+setNeighbors	src/Endpoint.cpp	/^void EndPoint::setNeighbors(int n1, int n2){$/;"	f	class:EndPoint
+setRun	src/Nav.cpp	/^void Nav::setRun(bool t){ runBool = t;}$/;"	f	class:Nav
+setSmallRoomUpper	src/Nav.cpp	/^void Nav::setSmallRoomUpper(bool up){$/;"	f	class:Nav
+setVisible	src/Endpoint.cpp	/^void  EndPoint::setVisible(bool s) {visible = s;}$/;"	f	class:EndPoint
+smallRoomConf	include/Nav.h	/^		bool smallRoomConf, bigRoomConf, runBool;$/;"	m	class:Nav
 theta	include/Endpoint.h	/^	float R, theta;$/;"	m	struct:polar
+visible	include/Endpoint.h	/^		bool visible, done;$/;"	m	class:EndPoint
 wayPoints	include/Nav.h	/^		vector<EndPoint> wayPoints;$/;"	m	class:Nav
 x	include/Endpoint.h	/^		float x,y;$/;"	m	class:EndPoint
 y	include/Endpoint.h	/^		float x,y;$/;"	m	class:EndPoint
