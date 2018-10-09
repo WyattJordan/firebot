@@ -29,7 +29,7 @@ void Nav::outputMapPoints(){
 		std::cout<<"\tx: "<<mapPoints[i].getx();
 		std::cout<<"\ty: "<<mapPoints[i].gety();
 		for(int k=0; k<mapPoints[i].getNumNeighbors(); k++){
-			bool check = getNeighbor(mapPoints[i].getID(), k+1, ep);
+			bool check = getNeighbor(mapPoints[i].getID(), k, ep);
 			if(check){
 				std::cout<<"\tn: "<< ep.getID();
 			}
@@ -107,6 +107,8 @@ void Nav::findExpected(float Rx, float Ry){
 			[](const EndPoint& lhs, const EndPoint &rhs){
 			return	lhs.getR() < rhs.getR();	
 		}); // sort by points closest to robot
+	std::cout<<"after sorting by polar:\n";
+	outputMapPoints();
 	EndPoint ep;
 	int index = 0;
 	bool go = true;
@@ -177,30 +179,55 @@ void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry){
 	}
 }
 
-bool Nav::getNeighbor(int startID, int neighNum, EndPoint &neigh){ 
+bool Nav::getNeighbor(int startID, int neighI, EndPoint &neigh){ 
 	EndPoint start = getPoint(startID);
 	if((start.getx() == -1 && start.gety() == -1)
-			|| start.getNumNeighbors() < neighNum){
+			|| start.getNumNeighbors() - 1 < neighI){
 		neigh = getBadPoint();
 		return false;
 	}
 	else {
-		neigh = getPoint(start.getNeighborID(neighNum));	
+		neigh = getPoint(start.getNeighborID(neighI));	
 		return true;
 	}	
 }
-
+void Nav::run(){
+	float x,y;
+	y = 30;
+	unsigned int sleep = 10000;
+	float iter = 10;
+	for( int i = 0; i<iter; i++){
+		x = 230.0/iter * i;
+		publishMap(x,y);
+		//usleep(sleep);
+	}	
+	x = 230;
+	for( int i = 0; i<iter; i++){
+		y = 230.0/iter * i;
+		publishMap(x,y);
+		//usleep(sleep);
+	}	
+	y = 230;
+	for( int i = 0; i<iter; i++){
+		x = 230.0/iter * (iter - i);
+		publishMap(x,y);
+		//usleep(sleep);
+	}	
+	x = 30;
+	for( int i = 0; i<iter; i++){
+		y = 230.0/iter * (iter - i);
+		publishMap(x,y);
+		//usleep(sleep);
+	}	
+}
 void Nav::publishMap(float Rx, float Ry){
-	//rviz_visual_tools::RvizVisualTools::deleteAllMarkers();	
 	findExpected(Rx, Ry);
 	string worldFrame = "map2";
 	ros::NodeHandle n;
 	ros::Publisher rvizMap = n.advertise<visualization_msgs::MarkerArray>("map",1000);
 	visualization_msgs::MarkerArray marks;
-	marks.markers.resize(mapPoints.size());
+	marks.markers.resize(2*mapPoints.size());
 	// add vertical arrows at walls corners and endpoints
-	visualization_msgs::Marker robot;
-	//sleep(4);
 	for(int i=0; i<mapPoints.size(); i++){
 		marks.markers[i].header.frame_id = worldFrame;
 		marks.markers[i].ns = "vertical markers";
@@ -225,14 +252,39 @@ void Nav::publishMap(float Rx, float Ry){
 		marks.markers[i].color.r = 0;	
 		marks.markers[i].color.g = mapPoints[i].isVisible() ? 1.0 : 0;
 		marks.markers[i].color.b = mapPoints[i].isVisible() ? 0 : 1.0;	
+
+		// show text ID above marker with id += 1000
+		int text = i+mapPoints.size();
+		//marks.markers[text] = marks.markers[i];
+		marks.markers[text].header.frame_id = worldFrame;
+		marks.markers[text].id = i+1000;
+		marks.markers[text].ns = "text";
+		marks.markers[text].text = std::to_string(mapPoints[i].getID());
+		marks.markers[text].type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+		marks.markers[text].action = visualization_msgs::Marker::ADD;
+		marks.markers[text].scale.x = 3;
+		marks.markers[text].scale.y = 3;
+		marks.markers[text].scale.z = 8.0; // text height	
+		marks.markers[text].pose.position.x = mapPoints[i].getx();
+		marks.markers[text].pose.position.y = mapPoints[i].gety();
+		marks.markers[text].pose.position.z = 15;
+		marks.markers[text].pose.orientation.x = 0;
+		marks.markers[text].pose.orientation.y = 0;
+		marks.markers[text].pose.orientation.z = 0;
+		marks.markers[text].pose.orientation.w = 1;
+		marks.markers[text].color.a = 1.0; 
+		marks.markers[text].color.r = 1; 
+		marks.markers[text].color.g = 1; 
+		marks.markers[text].color.b = 1; 
 		rvizMap.publish(marks);
 		//sleep(1); //uncomment to visualize point growth from closest to robot
 	}
 
 	// add robot sphere
+	visualization_msgs::Marker robot;
 	robot = marks.markers[0];
 	robot.ns = "robot";
-	robot.id = mapPoints.size()+1;
+	robot.id = 9999;
 	robot.type = visualization_msgs::Marker::SPHERE;
 	robot.pose.position.x = Rx;
 	robot.pose.position.y = Ry;
@@ -243,6 +295,7 @@ void Nav::publishMap(float Rx, float Ry){
 	robot.color.g = 1;
 	robot.color.b = 1;
 	marks.markers.push_back(robot);
+
 	// add horizontal lines on floor
 	vector<bool> accountedForIDs(mapPoints.size()+10, false); // index is ID
 	visualization_msgs::Marker mark;
@@ -260,12 +313,13 @@ void Nav::publishMap(float Rx, float Ry){
 
 	EndPoint ep1, ep2;
 	int id;		
+	
 	for(int i=0; i<mapPoints.size(); i++){ 	// loop thru points to find connections
 		id = mapPoints[i].getID();
 		if(!accountedForIDs[id]){
-			bool add1 = getNeighbor(mapPoints[i].getID(), 1, ep1) &&
+			bool add1 = getNeighbor(mapPoints[i].getID(), 0, ep1) &&
 			       	!accountedForIDs[ep1.getID()];
-			bool add2 = getNeighbor(mapPoints[i].getID(), 2, ep2) && 
+			bool add2 = getNeighbor(mapPoints[i].getID(), 1, ep2) && 
 				!accountedForIDs[ep2.getID()];
 
 			if( add1 || add2 ){
@@ -288,17 +342,33 @@ void Nav::publishMap(float Rx, float Ry){
 				rvizMap.publish(marks);	
 			}
 		}	
-	/*	std::cout<<"pt "<<mapPoints[i].getID()<<" is connected to : "<<
-				ep1.getID()<<" and : "<<
-				ep2.getID()<<"\n";
-	*/
+//		std::cout<<"pt "<<mapPoints[i].getID()<<" is connected to : "<<
+//				ep1.getID()<<" and : "<<
+//				ep2.getID()<<"\n";
+	
 	}
 
 	std::cout<<"size of marker array is: "<<marks.markers.size()<<"\n";
-	while(1){
+	rvizMap.publish(marks);	
+	rvizMap.publish(marks);	
+	rvizMap.publish(marks);	
+	rvizMap.publish(marks);
+	sleep(1);
+	rvizMap.publish(marks);	
+	rvizMap.publish(marks);	
+	rvizMap.publish(marks);	
+	
+	sleep(1);
+	rvizMap.publish(marks);	
+	rvizMap.publish(marks);	
+	rvizMap.publish(marks);	
+	
+	rvizMap.publish(marks);	
+		//while(1){
+	/*for(int i=0; i<10; i++){
 		rvizMap.publish(marks);	
 		sleep(1);
-	}
+	}*/
 }
 
 

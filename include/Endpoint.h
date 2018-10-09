@@ -31,7 +31,7 @@ class EndPoint{
 		float gety() const;
 		int getID() const;
 		int getNumNeighbors() const;
-		int getNeighborID(int neighNum) const;
+		int getNeighborID(int neighI) const;
 		bool isVisible() const;
 		bool getDone() const;
 		void setDone(bool d);

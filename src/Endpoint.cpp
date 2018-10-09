@@ -18,9 +18,9 @@ float EndPoint::getR() const{
 	return pp.R;
 }
 
-int EndPoint::getNeighborID(int neighNum) const{
-	if(neighNum > neighborIDs.size()) return -1;
-	return neighborIDs[neighNum - 1];	
+int EndPoint::getNeighborID(int neighI) const{
+	if(neighI > neighborIDs.size() - 1) return -1;
+	return neighborIDs[neighI];	
 }
 
 void EndPoint::getPolar(float Rx, float Ry){
