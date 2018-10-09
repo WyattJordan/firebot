@@ -15,7 +15,9 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <pthread.h>
+//#include <pthread.h>
+#include <time.h>
+#include <chrono>
 #include <algorithm>
 using std::vector;
 using std::atof;
@@ -107,8 +109,8 @@ void Nav::findExpected(float Rx, float Ry){
 			[](const EndPoint& lhs, const EndPoint &rhs){
 			return	lhs.getR() < rhs.getR();	
 		}); // sort by points closest to robot
-	std::cout<<"after sorting by polar:\n";
-	outputMapPoints();
+	//std::cout<<"after sorting by polar:\n";
+	//outputMapPoints();
 	EndPoint ep;
 	int index = 0;
 	bool go = true;
@@ -132,7 +134,7 @@ void Nav::findExpected(float Rx, float Ry){
 		}	
 
 		while(index<mapPoints.size() &&  mapPoints[index].getDone()){ index++; }
-		std::cout<<"index is: "<<index<<"\n";
+	//	std::cout<<"index is: "<<index<<"\n";
 	}
 }
 
@@ -141,40 +143,48 @@ void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry){
 		//((ep1.getx() - Rx) - (ep2.getx() - Rx));
 	//float b = -1 * m*(ep1.getx() - Rx) + ep1.gety() - Ry;
 	//if((b<0 && p.gety() < m*p.getx() + b) || (b>0 && p.gety() > m*p.getx() + b)){
-	
-	bool vert = ep1.getx() == ep2.getx() ? 1 : 0; // otherwise shld be horiz line	
-	bool above = (vert && Rx < ep1.getx()) || (!vert && Ry < ep1.gety());
-	float start = std::min(ep1.getTheta(),ep2.getTheta());
-	float end =   std::max(ep1.getTheta(),ep2.getTheta());
-	bool cross = false;
-	if(end - start> 180) { // they are crossing the 0 
-		cross = true;	
-	}	
-
+	//	if(p.getR() > b/(std::sin(theta * 3.14159/180)
+			//		- m*std::cos(theta * 3.14159 /180))){ 
+				
+	std::cout<<"elim from "<<ep1.getID()<<" to "<<ep2.getID()<<"\n";
 	for(EndPoint &p : mapPoints){
 		if(!p.getDone()){
+		// check R of point (transform back into world frame by
+			// subtracting Rtheta)
+		
+		// if theta value in between neighbors		
+		float margin = 5; // if it's within 5 deg still eliminate
+		
+		if(p.getR()<15 || p.getR() > 180){
+			p.setVisible(false);
+			p.setDone(true);
+		}
+		else{
 			float theta = p.getTheta();
-			// check R of point (transform back into world frame by
-				// subtracting Rtheta)
-			//	if(p.getR() > b/(std::sin(theta * 3.14159/180)
-			//		- m*std::cos(theta * 3.14159 /180))){ 
-				//if(p.getR() > std::min(ep1.getR(), ep2.getR())){
-				
-			// if theta value in between neighbors		
-			if( ((!cross && theta > start && theta < end) ||
-			 	(cross && (theta > end || theta < start))) &&
-					
-			    (	( vert &&  above && p.getx() > ep1.getx()) ||
+			bool vert = ep1.getx() == ep2.getx() ? 1 : 0; // otherwise shld be horiz line	
+			bool above = (vert && Rx < ep1.getx()) || (!vert && Ry < ep1.gety());
+			float start = std::min(ep1.getTheta(),ep2.getTheta());
+			float end =   std::max(ep1.getTheta(),ep2.getTheta());
+			bool cross = false;
+			if(end - start> 180) { // they are crossing the 0 
+				cross = true;	
+			}	
+			if( ((!cross && theta > start - margin && theta < end + margin) ||
+				(cross && (theta > end - margin || theta < start + margin))) 
+			    &&   (	
+			    ( vert &&  above && p.getx() > ep1.getx()) ||
 			    ( vert && !above && p.getx() < ep1.getx()) ||
 			    (!vert &&  above && p.gety() > ep1.gety()) ||
-			    (!vert && !above && p.gety() < ep1.gety())) ){  
-					p.setVisible(false);
-					p.setDone(true);
-					std::cout<<"point blocked and done\n";
+			    (!vert && !above && p.gety() < ep1.gety())    )
+			  ){  
+				p.setVisible(false);
+				p.setDone(true);
+//				std::cout<<"\tpoint "<<p.getID()<<" blocked and done\n";
 			}
 			else{ // if not blocked
 				p.setVisible(true);
 			}
+		}
 		}
 	}
 }
@@ -195,34 +205,32 @@ void Nav::run(){
 	float x,y;
 	y = 30;
 	unsigned int sleep = 10000;
-	float iter = 10;
+	float iter = 100;
 	for( int i = 0; i<iter; i++){
 		x = 230.0/iter * i;
 		publishMap(x,y);
-		//usleep(sleep);
 	}	
 	x = 230;
 	for( int i = 0; i<iter; i++){
 		y = 230.0/iter * i;
 		publishMap(x,y);
-		//usleep(sleep);
 	}	
 	y = 230;
 	for( int i = 0; i<iter; i++){
 		x = 230.0/iter * (iter - i);
 		publishMap(x,y);
-		//usleep(sleep);
 	}	
 	x = 30;
 	for( int i = 0; i<iter; i++){
 		y = 230.0/iter * (iter - i);
 		publishMap(x,y);
-		//usleep(sleep);
 	}	
 }
 void Nav::publishMap(float Rx, float Ry){
+	auto start = std::chrono::steady_clock::now();
+
 	findExpected(Rx, Ry);
-	string worldFrame = "map2";
+		string worldFrame = "map2";
 	ros::NodeHandle n;
 	ros::Publisher rvizMap = n.advertise<visualization_msgs::MarkerArray>("map",1000);
 	visualization_msgs::MarkerArray marks;
@@ -347,18 +355,25 @@ void Nav::publishMap(float Rx, float Ry){
 //				ep2.getID()<<"\n";
 	
 	}
+auto end = std::chrono::steady_clock::now();
+	std::cout<<"time to expect: "<<std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count()<<"\n";
 
 	std::cout<<"size of marker array is: "<<marks.markers.size()<<"\n";
 	rvizMap.publish(marks);	
 	rvizMap.publish(marks);	
 	rvizMap.publish(marks);	
 	rvizMap.publish(marks);
-	sleep(1);
+	/*int milli = 40;
+	struct timespec req = {0};
+	req.tv_sec = 0;
+	req.tv_nsec = milli * 1000000L;
+	nanosleep(&req, (struct timespec *)NULL);
+	*/sleep(3);
 	rvizMap.publish(marks);	
 	rvizMap.publish(marks);	
 	rvizMap.publish(marks);	
-	
-	sleep(1);
+	//nanosleep(&req, (struct timespec *)NULL);
+	sleep(3);
 	rvizMap.publish(marks);	
 	rvizMap.publish(marks);	
 	rvizMap.publish(marks);	
