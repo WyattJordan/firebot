@@ -32,30 +32,28 @@ EndPoint& Nav::getPoint(int id){
 	return badPt;
 }
 
-Nav::Nav(string file){  // this is the main constructor, initialize variables here
+Nav::Nav(string mapfile, string wayfile){  // this is the main constructor, initialize variables here
 	smallRoomConf = bigRoomConf = false;
 	vector<int> none;
 	badPt = EndPoint(-1, -1, -1, none);
 
-	std::ifstream mapFile;
-        mapFile.open(file.c_str());
+	std::ifstream file;
+        file.open(mapfile.c_str());
         string line = "";
 
         vector<string> nums;
-	std::cout<<"opening file..."<<file<<"\n";
-        if (mapFile.is_open()){
-                while(getline(mapFile, line, ',')){
+        if (file.is_open()){
+                while(getline(file, line, ',')){
                         //std::cout<<line<<"\n";
                         nums.push_back(line);
                 }
-                mapFile.close();
+                file.close();
         }
 	else{ ROS_ERROR("WARNING: map file not found!\n"); }
 
 	while(nums.size()>=7){
 		vector<int> temp;
 		// nums[3] and nums[4] are definite and potential corner types, ignored here	
-		// neighbors saved via next two lines
 		if(nums[5].compare("x") != 0) temp.push_back(std::atof(nums[5].c_str())); 
 		if(nums[6].compare("x") != 0) temp.push_back(std::atof(nums[6].c_str())); 
 		EndPoint tmp(std::atof(nums[0].c_str()), std::atof(nums[1].c_str()),
@@ -64,7 +62,31 @@ Nav::Nav(string file){  // this is the main constructor, initialize variables he
 		for(int i=0; i<7; i++) nums.erase(nums.begin()+0);
 	}
 	std::cout<<"size of mapPoints after constructor is: "<<mapPoints.size()<<"\n";
+
+	nums.resize(0);
+	file.open(wayfile.c_str());
+        if (file.is_open()){
+                while(getline(file, line, ',')){
+                        //std::cout<<line<<"\n";
+                        nums.push_back(line);
+                }
+                file.close();
+        }
+	else{ ROS_ERROR("WARNING: way file not found!\n"); }
+
+	while(nums.size()>=7){
+		vector<int> temp;
+		// nums[3] is radius here unused 
+		if(nums[4].compare("x") != 0) temp.push_back(std::atof(nums[4].c_str())); 
+		if(nums[5].compare("x") != 0) temp.push_back(std::atof(nums[5].c_str())); 
+		if(nums[6].compare("x") != 0) temp.push_back(std::atof(nums[6].c_str())); 
+		EndPoint tmp(std::atof(nums[0].c_str()), std::atof(nums[1].c_str()),
+		    std::atof(nums[2].c_str()),temp);
+		mapPoints.push_back(tmp);
+		for(int i=0; i<7; i++) nums.erase(nums.begin()+0);
+	}
 }
+
 void Nav::removePoint(int id){
 	for(int i=0; i<mapPoints.size(); i++){
 		if(mapPoints[i].getID() == id){
@@ -214,7 +236,7 @@ void Nav::run(){
 void Nav::publishMap(float Rx, float Ry){
 	auto start = std::chrono::steady_clock::now();
 
-	findExpected(Rx, Ry);
+//	findExpected(Rx, Ry);
 	string worldFrame = "map2";
 	ros::NodeHandle n;
 	ros::Publisher rvizMap = n.advertise<visualization_msgs::MarkerArray>("map",1000);

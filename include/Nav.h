@@ -21,7 +21,7 @@ class Nav{
 		EndPoint badPt;
 	public:
 		Nav();
-		Nav(string mapfile); // read from file
+		Nav(string mapfile, string wayfile); // read from file
 		void findExpected(float Rx, float Ry);
 		void publishMap(float Rx, float Ry);
 		EndPoint& getPoint(int id);

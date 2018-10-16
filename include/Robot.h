@@ -21,6 +21,6 @@ class Robot{
 	public:
 		void lidarCallback(); // runs everytime a new lidar scan comes in
 		void sendArduino(int code); // sends indicator info to arduino1
-		void loadMap(int lvl);
+		void loadMapAndWayPoints(int lvl);
 		Nav* getNavPtr();
 };

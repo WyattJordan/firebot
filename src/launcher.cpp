@@ -22,7 +22,7 @@ int main(int argc, char **argv){
 	ROS_INFO("running main launcher, going to create robot\n");
 	Robot rob;
 
-	rob.loadMap(1); // working dir is the catkin workspace
+	rob.loadMapAndWayPoints(1); // working dir is the catkin workspace
 	
 	std::shared_ptr<Nav> ptr(rob.getNavPtr());
 	ptr->outputMapPoints();
