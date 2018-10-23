@@ -16,8 +16,8 @@ class Nav{
 		//vector<polarPoint> polarPoints;
 		bool smallRoomConf, bigRoomConf, runBool;
 		vector<int> expectedIDs;
-		bool getNeighbor(int startID, int neighI, EndPoint &neigh);
-		void eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry);
+		bool getNeighbor(int startID, int neighI, EndPoint &neigh, vector<EndPoint> &pts);
+		void eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry, vector<EndPoint> &pts);
 		EndPoint badPt;
 	public:
 		Nav();
@@ -28,9 +28,9 @@ class Nav{
 		void setSmallRoomUpper(bool up);
 		void setBigRoomUpper(bool up);
 
-		EndPoint& getPoint(int id);
+		EndPoint& getPoint(int id, vector<EndPoint> &pts);
 		EndPoint& getBadPoint();
-		void removePoint(int id);
+		void removePoint(int id, vector<EndPoint> &pts);
 		void setRun(bool t);
 		void outputGraph(vector<EndPoint> pts);
 		void run();

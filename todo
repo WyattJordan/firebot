@@ -1,0 +1,4 @@
+display wayPoints in RVIZ
+develop graph traversal and planning (display numbered order)
+	requires robot and destination inputs
+	how to do numbering without editing graphPublish...

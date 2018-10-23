@@ -33,18 +33,25 @@ int main(int argc, char **argv){
 	if(argc >= 2){ run = atoi(argv[1]) == 1; }
 	if(argc >= 4){ x = atof(argv[2]); y = atof(argv[3]);}
 	if(argc >= 5){ map = atoi(argv[4]) == 1;} 
-	if(argc >= 7){ big = atof(argv[5]) == 1; small = atof(argv[6]) == 1;}
+	if(argc >= 7){ big = atoi(argv[5]) == 1; small = atoi(argv[6]) == 1;}
 
 	vector<EndPoint>* tmp = map ? ptr->getMap() : ptr->getWays();
 	ptr->setRun(run);
 
 	// set map config, find expected marks
-	ptr->setBigRoomUpper(big);
-	ptr->setSmallRoomUpper(small);
+	std::cout<<"before room config\n";
+	ptr->outputGraph(*ptr->getMap());
+
+	ptr->setBigRoomUpper(true);
+	ptr->setSmallRoomUpper(true);
+	std::cout<<"before findExpected\n";
+	ptr->outputGraph(*ptr->getMap());
+
+
 	if(map){ 
-		ptr->findExpected(x,y,*tmp); 
 		std::cout<<"using waypoints!\n";}
 	else{
+		ptr->findExpected(x,y,*tmp); 
 		std::cout<<"finding expected\n";
 	}
 

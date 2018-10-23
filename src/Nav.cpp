@@ -25,10 +25,10 @@ using std::atof;
 Nav::Nav(){}
 
 // gets a point given an ID, assumes in order initially then searches if not
-EndPoint& Nav::getPoint(int id){
-	if(mapPoints[id].getID() == id) return mapPoints[id];
-	for(int i=0; i<mapPoints.size(); i++){
-		if(mapPoints[i].getID() == id) return mapPoints[i];
+EndPoint& Nav::getPoint(int id, vector<EndPoint> &pts){
+	if(pts[id].getID() == id) return mapPoints[id];
+	for(int i=0; i<pts.size(); i++){
+		if(pts[i].getID() == id) return mapPoints[i];
 	}
 	return badPt;
 }
@@ -94,10 +94,10 @@ Nav::Nav(string mapfile, string wayfile){
 }
 
 // remove a point with a given ID
-void Nav::removePoint(int id){
-	for(int i=0; i<mapPoints.size(); i++){
-		if(mapPoints[i].getID() == id){
-			mapPoints.erase(mapPoints.begin() + i);
+void Nav::removePoint(int id, vector<EndPoint> &pts){
+	for(int i=0; i<pts.size(); i++){
+		if(pts[i].getID() == id){
+			pts.erase(mapPoints.begin() + i);
 			break;
 		}
 	}
@@ -107,18 +107,18 @@ void Nav::removePoint(int id){
 // door is on the higher side (larger y coordinate) 
 void Nav::setSmallRoomUpper(bool up){
 	if(up){
-		getPoint(18).setNeighbors(12,-1);		
-		getPoint(13).setNeighbors(14,-1);
-		getPoint(11).setNeighbors(12,14);
-		getPoint(14).setNeighbors(13,11);
-		removePoint(19);
+		getPoint(18,mapPoints).setNeighbors(12,-1);		
+		getPoint(13,mapPoints).setNeighbors(14,-1);
+		getPoint(11,mapPoints).setNeighbors(12,14);
+		getPoint(14,mapPoints).setNeighbors(13,11);
+		removePoint(19,mapPoints);
 	}
 	else{
-		getPoint(11).setNeighbors(12,-1);
-		getPoint(19).setNeighbors(14,-1);
-		getPoint(12).setNeighbors(11,13);
-		getPoint(13).setNeighbors(12,14);
-		removePoint(18);
+		getPoint(11,mapPoints).setNeighbors(12,-1);
+		getPoint(19,mapPoints).setNeighbors(14,-1);
+		getPoint(12,mapPoints).setNeighbors(11,13);
+		getPoint(13,mapPoints).setNeighbors(12,14);
+		removePoint(18,mapPoints);
 	}
 }
 
@@ -126,20 +126,23 @@ void Nav::setSmallRoomUpper(bool up){
 // in the higher location (larger y coordinate)
 void Nav::setBigRoomUpper(bool up){
 	if(up){
-		getPoint(17).setNeighbors(20,-1);
-		getPoint(16).setNeighbors(15,-1);
+		getPoint(17,mapPoints).setNeighbors(20,-1);
+		getPoint(16,mapPoints).setNeighbors(15,-1);
 	}
 	else{
-		getPoint(17).setNeighbors(16,-1);
-		removePoint(20);
+		getPoint(17,mapPoints).setNeighbors(16,-1);
+		removePoint(20,mapPoints);
 	}	
 }
 
 void Nav::findExpected(float Rx, float Ry, vector<EndPoint> &pts){
+	std::cout<<"instant inside findExpected\n";
+	outputGraph(pts);
 	for(EndPoint &ep : pts){
 	       	ep.getPolar(Rx, Ry); // calculate all polars
 		ep.setDone(false);
 	}
+
 	std::sort(pts.begin(), pts.end(), 
 			[](const EndPoint& lhs, const EndPoint &rhs){
 			return	lhs.getR() < rhs.getR();	
@@ -154,8 +157,8 @@ void Nav::findExpected(float Rx, float Ry, vector<EndPoint> &pts){
 		pts[index].setDone(true);
 		// this will only ever loop once or twice
 		for(int i=0; i<pts[index].getNumNeighbors(); i++){ 
-			getNeighbor(pts[index].getID(), i, ep);
-			eliminatePts(ep, pts[index], Rx, Ry);
+			getNeighbor(pts[index].getID(), i, ep, pts);
+			eliminatePts(ep, pts[index], Rx, Ry, pts);
 		}
 
 		for(EndPoint &p : pts){
@@ -172,9 +175,9 @@ void Nav::findExpected(float Rx, float Ry, vector<EndPoint> &pts){
 	std::cout<<"done finding expected\n";
 }
 
-void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry){
+void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry, vector<EndPoint> &pts){
 	//std::cout<<"elim from "<<ep1.getID()<<" to "<<ep2.getID()<<"\n";
-	for(EndPoint &p : mapPoints){
+	for(EndPoint &p : pts){
 		if(!p.getDone()){
 
 		if(p.getR()<15 || p.getR() > 180){
@@ -214,15 +217,15 @@ void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry){
 
 // give a point ID and a neighbor index returns true if a neighbor exists and copies that
 // neighbor to the reference neigh
-bool Nav::getNeighbor(int startID, int neighI, EndPoint &neigh){ 
-	EndPoint start = getPoint(startID);
+bool Nav::getNeighbor(int startID, int neighI, EndPoint &neigh, vector<EndPoint> &pts){ 
+	EndPoint start = getPoint(startID, pts);
 	if((start.getx() == -1 && start.gety() == -1)
 			|| start.getNumNeighbors() - 1 < neighI){
 		neigh = badPt;
 		return false;
 	}
 	else {
-		neigh = getPoint(start.getNeighborID(neighI));	
+		neigh = getPoint(start.getNeighborID(neighI), pts);	
 		return true;
 	}	
 }
@@ -348,10 +351,10 @@ void Nav::publishGraph(float Rx, float Ry, string NS, vector<EndPoint> &pts){
 		id = pts[i].getID();
 				//std::cout<<"got ID\n";
 		if(!accountedForIDs[id]){
-			bool add1 = getNeighbor(pts[i].getID(), 0, ep1)  &&
+			bool add1 = getNeighbor(pts[i].getID(), 0, ep1, pts)  &&
 			       	!accountedForIDs[ep1.getID()];
 			///std::cout<<"neigh1 ID: "<<ep1.getID()<<"\n";
-			bool add2 = getNeighbor(pts[i].getID(), 1, ep2) && 
+			bool add2 = getNeighbor(pts[i].getID(), 1, ep2, pts) && 
 				!accountedForIDs[ep2.getID()];
 			//std::cout<<"neigh2 ID: "<<ep2.getID()<<"\n";
 
@@ -420,7 +423,7 @@ void Nav::outputGraph(vector<EndPoint> pts){
 		std::cout<<"\tNEIGH: "<< pts[i].getNumNeighbors();
 		for(int k=0; k<pts[i].getNumNeighbors(); k++){
 			// for some reason this check needs to be here...
-			bool check = getNeighbor(pts[i].getID(), k, ep);
+			bool check = getNeighbor(pts[i].getID(), k, ep, pts);
 			if(check){
 				std::cout<<"\tn: "<< ep.getID();
 			}
