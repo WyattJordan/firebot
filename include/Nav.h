@@ -22,15 +22,18 @@ class Nav{
 	public:
 		Nav();
 		Nav(string mapfile, string wayfile); // read from file
-		void findExpected(float Rx, float Ry);
-		void publishMap(float Rx, float Ry);
-		EndPoint& getPoint(int id);
-		void removePoint(int id);
-		EndPoint& getBadPoint();
-		int getSize();
-		void setRun(bool t);
-		void outputMapPoints();
-		void run();
+		void findExpected(float Rx, float Ry, vector<EndPoint> &pts);
+		void publishBot(float Rx, float Ry);
+		void publishGraph(float Rx, float Ry, string NS, vector<EndPoint> &pts);
 		void setSmallRoomUpper(bool up);
 		void setBigRoomUpper(bool up);
+
+		EndPoint& getPoint(int id);
+		EndPoint& getBadPoint();
+		void removePoint(int id);
+		void setRun(bool t);
+		void outputGraph(vector<EndPoint> pts);
+		void run();
+		vector<EndPoint>* getMap();
+		vector<EndPoint>* getWays();
 };

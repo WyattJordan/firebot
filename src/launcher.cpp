@@ -25,23 +25,36 @@ int main(int argc, char **argv){
 	rob.loadMapAndWayPoints(1); // working dir is the catkin workspace
 	
 	std::shared_ptr<Nav> ptr(rob.getNavPtr());
-	ptr->outputMapPoints();
+	std::cout<<"outputting map graph\n";
+	ptr->outputGraph(*ptr->getMap());
 
-	float x, y;
-	bool run = atoi(argv[1]) == 0; 
-	if(argc == 4 ){ x = atof(argv[2]); y = atof(argv[3]);}
-	else{x = 0; y = 0;}
+	float x=0, y=0;
+	bool map = true, run = false, big = false, small = false;
+	if(argc >= 2){ run = atoi(argv[1]) == 1; }
+	if(argc >= 4){ x = atof(argv[2]); y = atof(argv[3]);}
+	if(argc >= 5){ map = atoi(argv[4]) == 1;} 
+	if(argc >= 7){ big = atof(argv[5]) == 1; small = atof(argv[6]) == 1;}
+
+	vector<EndPoint>* tmp = map ? ptr->getMap() : ptr->getWays();
 	ptr->setRun(run);
-	ptr->setBigRoomUpper(false);
-	ptr->setSmallRoomUpper(false);
-	ptr->outputMapPoints();
+
+	// set map config, find expected marks
+	ptr->setBigRoomUpper(big);
+	ptr->setSmallRoomUpper(small);
+	if(map){ 
+		ptr->findExpected(x,y,*tmp); 
+		std::cout<<"using waypoints!\n";}
+	else{
+		std::cout<<"finding expected\n";
+	}
 
 	std::thread thread1;
+	std::cout<<"starting thread\n";
 	if(run){
-		thread1 = std::thread(bind(&Nav::run, ptr));
+	thread1 = std::thread(bind(&Nav::run, ptr));
 	}
 	else{
-		thread1 = std::thread(bind(&Nav::publishMap,ptr, x,y));
+	thread1 = std::thread(bind(&Nav::publishGraph, ptr, x, y, "map_NS", *tmp));
 	}
 
 	ros::spin();

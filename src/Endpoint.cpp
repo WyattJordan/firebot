@@ -6,7 +6,21 @@
 EndPoint::EndPoint(){
 	
 }
+/*EndPoint::EndPoint(const EndPoint &ep2){
+	x = ep2.x;
+	y = ep2.y;
+	id = ep2.id;
+	visible = ep2.visible;
+	done = ep2.done;
+	pp = ep2.pp;
+	neighborIDs.resize(0);
+	for(int i=0; i<ep2.neighborIDs.size(); i++){
+		neighborIDs.push_back(ep2.neighborIDs[i]);
+	}
+	
 
+
+}*/
 EndPoint::EndPoint(float X, float Y, int ID, vector<int> neighs)
 : x(X), y(Y), id(ID)
 {
