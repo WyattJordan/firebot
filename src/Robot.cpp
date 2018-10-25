@@ -20,7 +20,7 @@ void Robot::loadMapAndWayPoints(int lvl){
 	else {
 
 		Nav tmp("/home/wyatt/cat_ws/src/firebot/lvl1_map.txt", 
-				"/home/wyatt/cat_ws/src/firebot/lvl1_map.txt");	
+				"/home/wyatt/cat_ws/src/firebot/wayPoints.txt");	
 		beSmart = tmp;
 	}
 }

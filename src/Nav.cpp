@@ -26,9 +26,9 @@ Nav::Nav(){}
 
 // gets a point given an ID, assumes in order initially then searches if not
 EndPoint& Nav::getPoint(int id, vector<EndPoint> &pts){
-	if(pts[id].getID() == id) return mapPoints[id];
+	if(pts[id].getID() == id) return pts[id];
 	for(int i=0; i<pts.size(); i++){
-		if(pts[i].getID() == id) return mapPoints[i];
+		if(pts[i].getID() == id) return pts[i];
 	}
 	return badPt;
 }
@@ -72,6 +72,7 @@ Nav::Nav(string mapfile, string wayfile){
 
 	nums.resize(0);
 	file.open(wayfile.c_str());
+	std::cout<<"outputting "<<wayfile<<"\n";
         if (file.is_open()){
                 while(getline(file, line, ',')){
                         nums.push_back(line); //std::cout<<line<<"\n";
@@ -87,7 +88,7 @@ Nav::Nav(string mapfile, string wayfile){
 		if(nums[5].compare("x") != 0) temp.push_back(std::atof(nums[5].c_str())); 
 		if(nums[6].compare("x") != 0) temp.push_back(std::atof(nums[6].c_str())); 
 		EndPoint tmp(std::atof(nums[0].c_str()), std::atof(nums[1].c_str()),
-		    std::atof(nums[2].c_str()),temp);
+		    std::atof(nums[3].c_str()),temp); // nums[2] is radius set to 10 constant
 		wayPoints.push_back(tmp);
 		for(int i=0; i<7; i++) nums.erase(nums.begin()+0);
 	}
@@ -97,7 +98,7 @@ Nav::Nav(string mapfile, string wayfile){
 void Nav::removePoint(int id, vector<EndPoint> &pts){
 	for(int i=0; i<pts.size(); i++){
 		if(pts[i].getID() == id){
-			pts.erase(mapPoints.begin() + i);
+			pts.erase(pts.begin() + i);
 			break;
 		}
 	}
@@ -351,8 +352,10 @@ void Nav::publishGraph(float Rx, float Ry, string NS, vector<EndPoint> &pts){
 		id = pts[i].getID();
 				//std::cout<<"got ID\n";
 		if(!accountedForIDs[id]){
+			//TODO figure out why the second part of the condition must be
+			// commented out for the waypoints
 			bool add1 = getNeighbor(pts[i].getID(), 0, ep1, pts)  &&
-			       	!accountedForIDs[ep1.getID()];
+			      	!accountedForIDs[ep1.getID()];
 			///std::cout<<"neigh1 ID: "<<ep1.getID()<<"\n";
 			bool add2 = getNeighbor(pts[i].getID(), 1, ep2, pts) && 
 				!accountedForIDs[ep2.getID()];

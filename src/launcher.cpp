@@ -27,6 +27,9 @@ int main(int argc, char **argv){
 	std::shared_ptr<Nav> ptr(rob.getNavPtr());
 	std::cout<<"outputting map graph\n";
 	ptr->outputGraph(*ptr->getMap());
+	std::cout<<"outputting ways graph\n";
+	ptr->outputGraph(*ptr->getWays());
+
 
 	float x=0, y=0;
 	bool map = true, run = false, big = false, small = false;
