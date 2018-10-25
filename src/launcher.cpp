@@ -39,16 +39,16 @@ int main(int argc, char **argv){
 	ptr->setRun(run);
 
 	// set map config, find expected marks
-	std::cout<<"before room config\n";
-	ptr->outputGraph(*ptr->getMap());
+	//std::cout<<"before room config\n";
+	//ptr->outputGraph(*ptr->getMap());
 
-	ptr->setBigRoomUpper(true);
-	ptr->setSmallRoomUpper(true);
-	std::cout<<"before findExpected\n";
-	ptr->outputGraph(*ptr->getMap());
+	ptr->setBigRoomUpper(big);
+	ptr->setSmallRoomUpper(small);
+	//std::cout<<"before findExpected\n";
+	//ptr->outputGraph(*ptr->getMap());
 
 
-	if(map){ 
+	if(!map){ 
 		std::cout<<"using waypoints!\n";}
 	else{
 		ptr->findExpected(x,y,*tmp); 
