@@ -21,7 +21,12 @@ int main(int argc, char **argv){
 
 	ROS_INFO("running main launcher, going to create robot\n");
 	Robot rob;
+	rob.tmp = "specific to class!!\n";
+	std::thread thread1;
+	std::cout<<"starting thread\n";
+	thread1 = std::thread(boost::bind(&Robot::serial, &rob));
 
+/*	
 	rob.loadMapAndWayPoints(1); // working dir is the catkin workspace
 	
 	std::shared_ptr<Nav> ptr(rob.getNavPtr());
@@ -58,14 +63,12 @@ int main(int argc, char **argv){
 		std::cout<<"finding expected\n";
 	}
 
-	std::thread thread1;
-	std::cout<<"starting thread\n";
-	if(run){
+	/*if(run){
 	thread1 = std::thread(bind(&Nav::run, ptr));
 	}
 	else{
 	thread1 = std::thread(bind(&Nav::publishGraph, ptr, x, y, "map_NS", *tmp));
-	}
+	}*/
 
 	ros::spin();
 	return 0;
