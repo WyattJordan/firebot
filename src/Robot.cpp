@@ -49,7 +49,6 @@ using std::string;
 void Robot::sendArduino(int code){
 	std::cout<<"the given code was: "<<code<<" \n";
 }
-
 void Robot::loadMapAndWayPoints(int lvl){
 	if(lvl == 3){
 		Nav tmp("lvl3_map.txt", "dummy");  //root is catkin ws
@@ -66,10 +65,21 @@ void Robot::i2c(){
 	int fd;                     // File descrition
    const char *fileName = "/dev/i2c-1";         // Name of the port we will be using
    int  address = 0x11;               // Address of CMPS03 shifted right one bit
-   unsigned char buf[10];            // Buffer for data being read/ written on the i2c bus
-   
+   unsigned char buf[1000];            // Buffer for data being read/ written on the i2c bus
+
+	std::ifstream fin;
+	fin.open("/home/wyatt/i2cin.txt");
+	std::cout<<"opened i2cin.txt\n";
+	char ch;
+	int pos = 0;
+	while(fin >> std::noskipws >> ch){
+		buf[pos] = ch;
+		std::cout<<pos<<" ||| "<<ch<<"\n";
+		pos++;
+	}
+
    if ((fd = open(fileName, O_RDWR)) < 0) {   // Open port for reading and writing
-      printf("Failed to open i2c port\n");
+      printf("Failed to open i2c port, did you set sudo??\n");
       exit(1);
    }
    
@@ -78,26 +88,51 @@ void Robot::i2c(){
       printf("Unable to get bus access to talk to slave\n");
       exit(1);
    }
-      
-   buf[0] = 0;  // This is the register we want to read from
    
-   if ((write(fd, buf, 1)) != 1) {            // Send register we want to read from   
+  
+	auto start = std::chrono::steady_clock::now();		
+     for(int i=0; i<200; i+=2){
+	  unsigned char tmp[2]; 
+	  tmp[0] = buf[i];
+	  tmp[1] = buf[i+1];
+    if ((write(fd, tmp, 2)) != 2) {            // Send register we want to read from   
       printf("Error writing to i2c slave\n");
       exit(1);
    }
+     }
+
+  for(int i=0; i<200; i+=2){
+  unsigned char tmp[2]; 
+	   if (read(fd, tmp, 2) != 2) {            // Read back data into buf[]
+	      printf("Unable to read from slave\n");
+	      exit(1);
+	   }
+	   else{
+		   buf[i]   = tmp[0];
+		   buf[i+1] = tmp[1];
+	   }
+   }
    
-   if (read(fd, buf, 4) != 4) {            // Read back data into buf[]
-      printf("Unable to read from slave\n");
-      exit(1);
-   }
-   else {
-      unsigned char highByte = buf[2];
-      unsigned char lowByte = buf[3];
-      unsigned int result = (highByte <<8) + lowByte;
-      std::cout<<"result is: "<<result<<"\n";
+	auto end = std::chrono::steady_clock::now();		
+		std::cout << "Elapsed time in microseconds : "
+		<< std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
+		<< " us" << std::endl;
 
-   }
+   /*for(int i=0; i<200; i++){
+		   std::cout<<"buf["<<i<<"] = "<<buf[i]<<"\n";
+	   }*/
+	 
+	std::ofstream f;
+	f.open("/home/wyatt/i2cout.txt");
+	int count = 0;
+	std::cout<<"writing to file\n";
+	while(count < 200){
+		f<<buf[count++];
+	}
 
+	f<<std::endl;
+	f.close();
+	
 }
 
 void Robot::spi(){
