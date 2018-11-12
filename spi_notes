@@ -1,0 +1,9 @@
+run the following commands to add to the kernel:
+
+$ modprobe spidev
+$ modprobe spi_sc64xx
+
+
+SPI mode0: clk normally low, sample on faling (leading) edge
+CPOL = 0; CPHA = 0;
+

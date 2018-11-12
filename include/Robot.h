@@ -12,6 +12,11 @@
 #include "Nav.h"
 #include <string>
 using std::string;
+static void pabort(const char *s)
+{
+	perror(s);
+	abort();
+}
 
 class Robot{
 
@@ -24,5 +29,7 @@ class Robot{
 		void loadMapAndWayPoints(int lvl);
 		Nav* getNavPtr();
 		void serial();
+		void spi();
+		void i2c();
 		string tmp;
 };

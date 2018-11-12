@@ -24,7 +24,9 @@ int main(int argc, char **argv){
 	rob.tmp = "specific to class!!\n";
 	std::thread thread1;
 	std::cout<<"starting thread\n";
-	thread1 = std::thread(boost::bind(&Robot::serial, &rob));
+	thread1 = std::thread(boost::bind(&Robot::i2c, &rob));
+	//thread1 = std::thread(boost::bind(&Robot::serial, &rob));
+	//thread1 = std::thread(boost::bind(&Robot::spi, &rob));
 
 /*	
 	rob.loadMapAndWayPoints(1); // working dir is the catkin workspace

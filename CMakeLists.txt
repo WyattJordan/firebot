@@ -123,6 +123,7 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+#  ~/wiringPi/
 )
 
 ## Declare a C++ library
@@ -150,9 +151,18 @@ include_directories(
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 #Wyatt:
+
+#SET(GCC_COVERAGE_COMPILER_FLAGS "-lwiringPi -lwiringPiDev")
+#SET(GCC_COVERAGE_LINK_FLAGS    "-lwiringPi -lwiringPiDev")
+#SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS}")
+#SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${GCC_COVERAGE_LINK_FLAGS}")
+#add_definitions(${GCC_COVERAGE_COMPILE_FLAGS})
+
 add_executable(launcher src/launcher.cpp src/Robot.cpp src/Endpoint.cpp src/Nav.cpp)
+target_compile_options(launcher PRIVATE "-lwiringPi")
 target_link_libraries(launcher ${catkin_LIBRARIES})
 add_dependencies(launcher launcher_generate_messages_cpp)
+
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
