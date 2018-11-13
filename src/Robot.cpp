@@ -31,7 +31,7 @@ using std::string;
 #include <linux/types.h>
 #include <linux/spi/spidev.h>
 
-//#include <wiringPi.h>
+#include <wiringPi.h>
  
 // includes for i2c
 #include <stdio.h>
@@ -136,7 +136,7 @@ void Robot::i2c(){
 }
 
 void Robot::spi(){
-	//wiringPiSetup();
+	wiringPiSetup();
 	while(1){
 
 		usleep(800000); // wait 100ms
@@ -191,7 +191,7 @@ void Robot::spi(){
 
 
 		uint8_t tx[] = {
-			0xCC, 0x15, 0xF2,
+			0xCC, 0x15, 0xF2, 0x0A,
 		//	0x48, 0x49, 0x20, 0x54, 0x48, 0x45, 0x52, 0x45, // HI THERE
 		};
 		printf("size of tx is: %d\n", ARRAY_SIZE(tx));

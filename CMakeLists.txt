@@ -159,7 +159,8 @@ include_directories(
 #add_definitions(${GCC_COVERAGE_COMPILE_FLAGS})
 
 add_executable(launcher src/launcher.cpp src/Robot.cpp src/Endpoint.cpp src/Nav.cpp)
-target_compile_options(launcher PRIVATE "-lwiringPi")
+#target_link_libraries(launcher lwiringPi)
+target_compile_options(launcher PRIVATE -lwiringPi)
 target_link_libraries(launcher ${catkin_LIBRARIES})
 add_dependencies(launcher launcher_generate_messages_cpp)
 
