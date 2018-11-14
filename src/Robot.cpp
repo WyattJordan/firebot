@@ -137,7 +137,9 @@ void Robot::i2c(){
 
 void Robot::spi(){
 	wiringPiSetup();
-	while(1){
+	pinMode(1, OUTPUT);
+	digitalWrite(1, HIGH);	
+//	while(1){
 
 		usleep(800000); // wait 100ms
 		static const char *device = "/dev/spidev1.0";
@@ -206,8 +208,8 @@ void Robot::spi(){
 		tr.speed_hz = speed;
 		tr.bits_per_word = bits;
 		tr.cs_change = 0;
-
-		ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
+		digitalWrite(1, LOW);
+	       	ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
 		if (ret < 1)
 			pabort("can't send spi message");
 	 
@@ -217,7 +219,8 @@ void Robot::spi(){
 			printf("%.2X ", rx[ret]);
 		}
 		puts("");
-	}
+		digitalWrite(1,HIGH);
+//	}
  
 }
 void Robot::serial(){
