@@ -262,7 +262,7 @@ void Nav::publishGraph(float Rx, float Ry, string NS, vector<EndPoint> &pts){
 	ros::Publisher rvizMap = n.advertise<visualization_msgs::MarkerArray>("map",1000);
 	visualization_msgs::MarkerArray marks;
 	marks.markers.resize(2*pts.size());
-	// add vertical arrows at walls corners and endpoints
+	// add vertical arrows at pt locations
 	for(int i=0; i<pts.size(); i++){
 		marks.markers[i].header.frame_id = worldFrame;
 		marks.markers[i].ns = NS; 
@@ -344,43 +344,25 @@ void Nav::publishGraph(float Rx, float Ry, string NS, vector<EndPoint> &pts){
 	mark.points[0].z = 0;
 	mark.points[1].z = 0;
 
-	EndPoint ep1, ep2;
+	EndPoint ep1;
 	vector<bool> accountedForIDs(pts.size()*10, false); // index is ID
 	int id;		
-	
-	for(int i=0; i<pts.size(); i++){ 	// loop thru points to find connections
-		id = pts[i].getID();
-				//std::cout<<"got ID\n";
-		if(!accountedForIDs[id]){
-			//TODO figure out why the second part of the condition must be
-			// commented out for the waypoints
-			bool add1 = getNeighbor(pts[i].getID(), 0, ep1, pts)  &&
-			      	!accountedForIDs[ep1.getID()];
-			///std::cout<<"neigh1 ID: "<<ep1.getID()<<"\n";
-			bool add2 = getNeighbor(pts[i].getID(), 1, ep2, pts) && 
-				!accountedForIDs[ep2.getID()];
-			//std::cout<<"neigh2 ID: "<<ep2.getID()<<"\n";
 
-			if( add1 || add2 ){
-				mark.points.resize(2);
-				mark.points[1].x = pts[i].getx();
-				mark.points[1].y = pts[i].gety();
-				if(add1){
-					mark.points[0].x = ep1.getx();
-					mark.points[0].y = ep1.gety();
-				}
-				if(add2){
-					if(add1) mark.points.resize(3);
-					mark.points[add1 ? 2 : 0].x = ep2.getx();
-					mark.points[add1 ? 2 : 0].y = ep2.gety();
-				}
-				accountedForIDs[id] = true;
-				mark.id = id*100; //i + pts.size() + 1;
+	for(int i=0; i<pts.size(); i++){ 	// loop thru points to find connections
+		mark.points[0].x = pts[i].getx();
+		mark.points[0].y = pts[i].gety();
+
+		for(int k=0; k<pts[i].getNumNeighbors(); k++){
+			
+			if(getNeighbor(pts[i].getID(), k, ep1, pts) &&
+				       	!accountedForIDs[ep1.getID()]){
+				mark.points[1].x = ep1.getx();
+				mark.points[1].y = ep1.gety();
+				mark.id = pts[i].getID() * 10000 + k; 
 				marks.markers.push_back(mark);	
-				//sleep(1);  		// to watch the map build gradually
-				rvizMap.publish(marks);	
 			}
-		}	
+		}		
+		accountedForIDs[pts[i].getID()] = true;
 	}
 	auto end = std::chrono::steady_clock::now();
 	std::cout<<"time to draw: "<<std::chrono::duration_cast
@@ -413,7 +395,36 @@ void Nav::publishGraph(float Rx, float Ry, string NS, vector<EndPoint> &pts){
 	rvizMap.publish(marks);	
 	rvizMap.publish(marks);	
 }
+void Nav::findPath(int id, vector<EndPoint> pts){
+	float record = 9999999999;
+	vector<vector<int>> paths;
+	vector<float> dists;
+	paths.resize(100); // assuming this is large enough
+	dists.resize(100); 
+	EndPoint last;
+	bool closed = false;
+	paths[0][0].push_back(id);
+	int end = 0;
+	while(!closed){
+		for(int p=0; p<paths.size(); p++){
+			last = getPoint(paths[p].at(paths[p].back()), pts);
+			vector<int> neighs = last.getNeighborList();	
+			bool added = false;
+			for(int i=0; i<neighs.size(); i++){
 
+				if(!added){ // first neighbor edits original path
+
+				}
+				else{
+
+				}
+				
+			}
+			
+		
+		}	
+	}
+}
 // prints the map point info to console
 void Nav::outputGraph(vector<EndPoint> pts){
 	EndPoint ep;

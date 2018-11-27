@@ -25,11 +25,12 @@ class EndPoint{
 
 	public:
 		EndPoint();
-//		EndPoint(const EndPoint &ep2);
+		EndPoint(const EndPoint &ep2);
 		EndPoint(float X, float Y, int ID, vector<int> neighs);
 		void getPolar(float Rx, float Ry); 
 		int getNumNeighbors() const;
 		int getNeighborID(int neighI) const;
+		vector<int> getNeighborList() const;
 		void setNeighbors(int n1, int n2);
 
 		int getID() const;

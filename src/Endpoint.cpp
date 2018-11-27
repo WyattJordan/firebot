@@ -6,7 +6,7 @@
 EndPoint::EndPoint(){
 	
 }
-/*EndPoint::EndPoint(const EndPoint &ep2){
+EndPoint::EndPoint(const EndPoint &ep2){
 	x = ep2.x;
 	y = ep2.y;
 	id = ep2.id;
@@ -17,10 +17,11 @@ EndPoint::EndPoint(){
 	for(int i=0; i<ep2.neighborIDs.size(); i++){
 		neighborIDs.push_back(ep2.neighborIDs[i]);
 	}
-	
 
-
-}*/
+}
+vector<int> EndPoint::getNeighborList() const{
+	return neighborIDs;
+}
 EndPoint::EndPoint(float X, float Y, int ID, vector<int> neighs)
 : x(X), y(Y), id(ID)
 {
