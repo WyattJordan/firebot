@@ -27,10 +27,11 @@ class Nav{
 		void publishGraph(float Rx, float Ry, string NS, vector<EndPoint> &pts);
 		void setSmallRoomUpper(bool up);
 		void setBigRoomUpper(bool up);
-		void findPath(int id, vector<EndPoint> pts);
+		vector<int> findPath(int start, int end, vector<EndPoint> &pts);
 
 		EndPoint& getPoint(int id, vector<EndPoint> &pts);
 		EndPoint& getBadPoint();
+		float getDistance(EndPoint &ep1, EndPoint &ep2);
 		void removePoint(int id, vector<EndPoint> &pts);
 		void setRun(bool t);
 		void outputGraph(vector<EndPoint> pts);

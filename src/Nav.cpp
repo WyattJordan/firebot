@@ -21,19 +21,12 @@
 #include <algorithm>
 using std::vector;
 using std::atof;
+
+#define LARGENUM 99999999
 // don't use default constuctor, it must load the map and way files
 Nav::Nav(){}
 
-// gets a point given an ID, assumes in order initially then searches if not
-EndPoint& Nav::getPoint(int id, vector<EndPoint> &pts){
-	if(pts[id].getID() == id) return pts[id];
-	for(int i=0; i<pts.size(); i++){
-		if(pts[i].getID() == id) return pts[i];
-	}
-	return badPt;
-}
-
-// this is the main constructor, initialize variables here
+// This is the main constructor, initialize variables here
 Nav::Nav(string mapfile, string wayfile){  
 	smallRoomConf = bigRoomConf = false;
 	vector<int> none;
@@ -46,10 +39,10 @@ Nav::Nav(string mapfile, string wayfile){
 	// though this does require identical formatting in the file fields
         
 	std::ifstream file;
-        file.open(mapfile.c_str());
-        string line = "";
+	file.open(mapfile.c_str());
+	string line = "";
 
-        vector<string> nums;
+	vector<string> nums;
 	if (file.is_open()){
                 while(getline(file, line, ',')){
                         nums.push_back(line); //std::cout<<line<<"\n";
@@ -94,17 +87,7 @@ Nav::Nav(string mapfile, string wayfile){
 	}
 }
 
-// remove a point with a given ID
-void Nav::removePoint(int id, vector<EndPoint> &pts){
-	for(int i=0; i<pts.size(); i++){
-		if(pts[i].getID() == id){
-			pts.erase(pts.begin() + i);
-			break;
-		}
-	}
-}
-
-// sets the door configuration for the small room, if up == true the 
+// Sets the door configuration for the small room, if up == true the 
 // door is on the higher side (larger y coordinate) 
 void Nav::setSmallRoomUpper(bool up){
 	if(up){
@@ -123,7 +106,7 @@ void Nav::setSmallRoomUpper(bool up){
 	}
 }
 
-// sets the door configuration for the larger room, if up == true the door is
+// Sets the door configuration for the larger room, if up == true the door is
 // in the higher location (larger y coordinate)
 void Nav::setBigRoomUpper(bool up){
 	if(up){
@@ -136,87 +119,84 @@ void Nav::setBigRoomUpper(bool up){
 	}	
 }
 
+// Determines which map points are visible to the robot given 
+// the robot's location on the map
 void Nav::findExpected(float Rx, float Ry, vector<EndPoint> &pts){
-	std::cout<<"instant inside findExpected\n";
-	outputGraph(pts);
 	for(EndPoint &ep : pts){
-	       	ep.getPolar(Rx, Ry); // calculate all polars
+		ep.getPolar(Rx, Ry); // calculate all polars
 		ep.setDone(false);
 	}
-
 	std::sort(pts.begin(), pts.end(), 
 			[](const EndPoint& lhs, const EndPoint &rhs){
 			return	lhs.getR() < rhs.getR();	
 		}); // sort by points closest to robot
-	std::cout<<"after sorting by polar:\n";
-	outputGraph(pts);
+
 	EndPoint ep;
 	int index = 0;
 	bool go = true;
 	while(go){
 		pts[index].setVisible(true);
 		pts[index].setDone(true);
-		// this will only ever loop once or twice
+		// this will only ever loop once or twice since all corners are just 2 walls
 		for(int i=0; i<pts[index].getNumNeighbors(); i++){ 
 			getNeighbor(pts[index].getID(), i, ep, pts);
-			eliminatePts(ep, pts[index], Rx, Ry, pts);
+			eliminatePts(ep, pts[index], Rx, Ry, pts); // removes points hidden by the wall
 		}
 
+		go = false;
 		for(EndPoint &p : pts){
 			if(!p.getDone()){
 				go = true;
 				break;
 			}
-			else{ go = false;}
 		}	
 
-		while(index<pts.size() &&  pts[index].getDone()){ index++; }
-	//	std::cout<<"index is: "<<index<<"\n";
+		while(index<pts.size() &&  pts[index].getDone()){ index++; } // find next point to check
 	}
-	std::cout<<"done finding expected\n";
 }
 
+// Given endpoints for a wall and robot location, sets all points "visible" and "done" 
+// values accordingly.
 void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry, vector<EndPoint> &pts){
 	//std::cout<<"elim from "<<ep1.getID()<<" to "<<ep2.getID()<<"\n";
 	for(EndPoint &p : pts){
 		if(!p.getDone()){
 
-		if(p.getR()<15 || p.getR() > 180){
-			p.setVisible(false);
-			p.setDone(true);
-		}
-		else{
-			float theta = p.getTheta();
-			bool vert = ep1.getx() == ep2.getx() ? 1 : 0; // otherwise horiz line	
-			bool above = (vert && Rx < ep1.getx()) || (!vert && Ry < ep1.gety());
-			float start = std::min(ep1.getTheta(),ep2.getTheta());
-			float end =   std::max(ep1.getTheta(),ep2.getTheta());
-			bool cross = false;
-			if(end - start> 180) { // they are crossing the 0 
-				cross = true;	
-			}	
-			float margin = 5; // if it's within 5 deg still eliminate
-			if( ((!cross && theta > start - margin && theta < end + margin) ||
-				(cross && (theta > end - margin || theta < start + margin))) 
-			    &&   (	
-			    ( vert &&  above && p.getx() > ep1.getx()) ||
-			    ( vert && !above && p.getx() < ep1.getx()) ||
-			    (!vert &&  above && p.gety() > ep1.gety()) ||
-			    (!vert && !above && p.gety() < ep1.gety())    )
-			  ){  
+			if(p.getR()<15 || p.getR() > 180){ // must be within LIDAR range
 				p.setVisible(false);
 				p.setDone(true);
-//				std::cout<<"\tpoint "<<p.getID()<<" blocked and done\n";
 			}
-			else{ // if not blocked
-				p.setVisible(true);
+			else{
+				float theta = p.getTheta();
+				bool vert = ep1.getx() == ep2.getx() ? 1 : 0; // otherwise horiz line	
+				bool above = (vert && Rx < ep1.getx()) || (!vert && Ry < ep1.gety());
+				float start = std::min(ep1.getTheta(),ep2.getTheta());
+				float end =   std::max(ep1.getTheta(),ep2.getTheta());
+				bool cross = false;
+				if(end - start> 180) { // they are crossing the 0 
+					cross = true;	
+				}	
+				float margin = 5; // if it's within 5 deg still eliminate
+				if( ((!cross && theta > start - margin && theta < end + margin) ||
+					(cross && (theta > end - margin || theta < start + margin))) 
+					&&   (	
+					( vert &&  above && p.getx() > ep1.getx()) ||
+					( vert && !above && p.getx() < ep1.getx()) ||
+					(!vert &&  above && p.gety() > ep1.gety()) ||
+					(!vert && !above && p.gety() < ep1.gety())    )
+				  ){  
+					p.setVisible(false);
+					p.setDone(true);
+				}
+				else{ // if not blocked
+					p.setVisible(true);
+				}
 			}
-		}
 		}
 	}
 }
 
-// give a point ID and a neighbor index returns true if a neighbor exists and copies that
+// Given a point ID and a neighbor index returns true if a neighbor exists and copies that
 // neighbor to the reference neigh
 bool Nav::getNeighbor(int startID, int neighI, EndPoint &neigh, vector<EndPoint> &pts){ 
 	EndPoint start = getPoint(startID, pts);
@@ -231,7 +211,7 @@ bool Nav::getNeighbor(int startID, int neighI, EndPoint &neigh, vector<EndPoint>
 	}	
 }
 
-// move the robot around the map and publish what mapPoints it can see
+// Move the robot around the map and publish what mapPoints it can see
 void Nav::run(){
 	float x,y;
 	y = 30;
@@ -394,37 +374,108 @@ void Nav::publishGraph(float Rx, float Ry, string NS, vector<EndPoint> &pts){
 	rvizMap.publish(marks);	
 	rvizMap.publish(marks);	
 	rvizMap.publish(marks);	
-}
-void Nav::findPath(int id, vector<EndPoint> pts){
-	float record = 9999999999;
-	vector<vector<int>> paths;
-	vector<float> dists;
-	paths.resize(100); // assuming this is large enough
-	dists.resize(100); 
-	EndPoint last;
-	bool closed = false;
-	paths[0][0].push_back(id);
-	int end = 0;
-	while(!closed){
-		for(int p=0; p<paths.size(); p++){
-			last = getPoint(paths[p].at(paths[p].back()), pts);
-			vector<int> neighs = last.getNeighborList();	
-			bool added = false;
-			for(int i=0; i<neighs.size(); i++){
+} 
 
-				if(!added){ // first neighbor edits original path
+// Returns list of ids from start to end that represent the shortest
+// path between two waypoints
+vector<int> Nav::findPath(int start, int end, vector<EndPoint> &pts){
+	float record = LARGENUM;
+	vector<vector<int>> paths(100); // assuming this is large enough
+	vector<float> dists(100, 0);
+	vector<int> finalpath;
+	EndPoint tail, neigh;
+	bool done = false;
+	paths[0] = {start};
+	dists[0] = 0;
+	int last = 0; // index of last element
+	int index;
+	while(!done){
+		done = true;
 
-				}
+		for(int k=0; k<8; k++){
+			for(int i=0; i<=last; i++){
+				int id = -1;
+				if(k<paths[i].size()){ id = paths[i][k];}
+				if(id == -1){ std::cout<<" _";} 
 				else{
-
+					if(id<10){std::cout<< " ";}
+					std::cout<<id;
 				}
-				
 			}
-			
+			std::cout<< "\n";
+		}
+		std::cout<<"----------------------------\n";
+
+		if(last>90) ROS_ERROR("More paths encountered than expected!\n");
+		int len = last+1;
+		for(int p=0; p<len; p++){
+			if(paths[p].size()>0 && dists[p] < record) { // if initialized and still viable 
+				//std::cout<<paths[p].back();
+				tail = getPoint(paths[p].back(), pts);
+				vector<int> neighs = tail.getNeighborList();	
+
+				//std::cout<<"got neighbors\n";
+				vector<int> todelete;
+				bool usefirst = true;
+				for(int i=0; i<neighs.size(); i++){
+					if(paths[p].size() < 2 || 
+							paths[p].size() > 1 && neighs[i] != paths[p][paths[p].size() - 2]){ // no retracing
+
+						if(usefirst) {
+							index = p;
+							usefirst = false;
+						}
+						else{
+							paths[++last] = paths[p]; // make one longer
+							paths[last].pop_back(); // since already added first neighbor
+							index = last;
+						}
+						neigh = getPoint(neighs[i], pts);
+						bool closed = std::find(paths[index].begin(),
+							   	paths[index].end(), neighs[i]) != paths[index].end();
+//TODO
+//figure out why running : rosrun firebot launcher 0 1 8 1
+//is not terminating, it's getting the valid path but keeps going and then
+//overwrites that path with a much longer one, check that paths are being eliminated appropriately
+
+						paths[index].push_back(neighs[i]);
+						dists[index] = dists[index] + getDistance(neigh, tail);
+						if(neighs[i] == end ){
+
+							std::cout<<"connected a valid loop\n";
+							if( dists[index] < record) { 
+								record = dists[index]; 
+								finalpath = paths[index];	
+							}
+							std::cout<<"1going to delete index "<<index<<"\n";
+							todelete.push_back(index);
+							//paths[p].resize(0); // hit end so delete
+						}
+						else if(closed || dists[index]>record){
+							todelete.push_back(index);
+							std::cout<<"2going to delete index "<<index<<"\n";
+							//paths[p].resize(0); // longer than best or looped back on itself, delete
+						}
+						else{
+							done = false; // still a valid path being built, keep going
+						}
+					}	
+				} // done looping through neighbors
+				for(int i=0; i<todelete.size(); i++){
+					paths[todelete[i]].resize(0);
+				}
+			} 
 		
-		}	
+		}	// done looping through paths	
 	}
+	if(record == LARGENUM) { ROS_ERROR("no suitable path found!\n");}
+	return finalpath;
 }
+
+float Nav::getDistance(EndPoint &ep1, EndPoint &ep2){
+	return pow(pow(ep1.getx() - ep2.getx(),2) + pow(ep1.gety() - ep2.gety(),2), 0.5);
+}
+
 // prints the map point info to console
 void Nav::outputGraph(vector<EndPoint> pts){
 	EndPoint ep;
@@ -448,6 +499,25 @@ void Nav::outputGraph(vector<EndPoint> pts){
 		std::cout<<"\n";
 	}
 	std::cout<<"////////////////////////////////////////////////////\n";
+}
+
+// gets a point given an ID, assumes in order initially then searches 
+EndPoint& Nav::getPoint(int id, vector<EndPoint> &pts){
+	if(pts[id].getID() == id) return pts[id];
+	for(int i=0; i<pts.size(); i++){
+		if(pts[i].getID() == id) return pts[i];
+	}
+	return badPt;
+}
+
+// remove a point with a given ID
+void Nav::removePoint(int id, vector<EndPoint> &pts){
+	for(int i=0; i<pts.size(); i++){
+		if(pts[i].getID() == id){
+			pts.erase(pts.begin() + i);
+			break;
+		}
+	}
 }
 
 void Nav::setRun(bool t){ runBool = t;}
