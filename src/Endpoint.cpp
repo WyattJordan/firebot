@@ -2,6 +2,7 @@
 #include <utility>
 #include <cmath>
 #include <iostream>
+#include <stdarg.h>
 
 EndPoint::EndPoint(){
 	
@@ -17,11 +18,12 @@ EndPoint::EndPoint(const EndPoint &ep2){
 	for(int i=0; i<ep2.neighborIDs.size(); i++){
 		neighborIDs.push_back(ep2.neighborIDs[i]);
 	}
-
 }
+
 vector<int> EndPoint::getNeighborList() const{
 	return neighborIDs;
 }
+
 EndPoint::EndPoint(float X, float Y, int ID, vector<int> neighs)
 : x(X), y(Y), id(ID)
 {
@@ -29,14 +31,30 @@ EndPoint::EndPoint(float X, float Y, int ID, vector<int> neighs)
 		neighborIDs.push_back(neighs[i]);
 	}
 	visible = done = false;
-}	
-void EndPoint::setNeighbors(int n1, int n2){
+}
+
+void EndPoint::setNeighbors(int n, ...){
+	va_list neighs;
+	va_start(neighs, n);
+	neighborIDs.resize(0);
+	std::cout<<"num - "<<n<<"\n";
+	for(int i=0; i<n; i++){
+		int t = va_arg(neighs,int);
+		neighborIDs.push_back(t);
+		std::cout<<" t= "<<t;
+	}
+	std::cout<<"\n";
+	for(int i=0; i<neighborIDs.size() // ouptput vector and confirm changes are good
+//TODO use gitk to see changes and why seg faulting in publishGraph()
+// some major changes made were the setNeighbors() function (check working)
+	/*
 	int size = n1 > 0  ? 1 : 0;
 	if(n2 > 0) size++;
 	neighborIDs.resize(size);
 	if(size>0) neighborIDs[0] = n1;
-	if(size == 2) neighborIDs[1] = n2;
+	if(size == 2) neighborIDs[1] = n2;*/
 }
+
 int EndPoint::getNeighborID(int neighI) const{
 	if(neighI > neighborIDs.size() - 1) return -1;
 	return neighborIDs[neighI];	

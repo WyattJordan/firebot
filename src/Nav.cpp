@@ -26,6 +26,8 @@ using std::atof;
 // don't use default constuctor, it must load the map and way files
 Nav::Nav(){}
 
+//TODO see list in EndPoint.cpp, there's a seg fault :(
+
 // This is the main constructor, initialize variables here
 Nav::Nav(string mapfile, string wayfile){  
 	smallRoomConf = bigRoomConf = false;
@@ -91,18 +93,24 @@ Nav::Nav(string mapfile, string wayfile){
 // door is on the higher side (larger y coordinate) 
 void Nav::setSmallRoomUpper(bool up){
 	if(up){
-		getPoint(18,mapPoints).setNeighbors(12,-1);		
-		getPoint(13,mapPoints).setNeighbors(14,-1);
-		getPoint(11,mapPoints).setNeighbors(12,14);
-		getPoint(14,mapPoints).setNeighbors(13,11);
+		getPoint(18,mapPoints).setNeighbors(1,12);		
+		getPoint(13,mapPoints).setNeighbors(1,14);
+		getPoint(11,mapPoints).setNeighbors(2,12,14);
+		getPoint(14,mapPoints).setNeighbors(2,13,11);
 		removePoint(19,mapPoints);
+
+		getPoint(12,wayPoints).setNeighbors(1,11);
+		getPoint(13,wayPoints).setNeighbors(2,5,15);
 	}
 	else{
-		getPoint(11,mapPoints).setNeighbors(12,-1);
-		getPoint(19,mapPoints).setNeighbors(14,-1);
-		getPoint(12,mapPoints).setNeighbors(11,13);
-		getPoint(13,mapPoints).setNeighbors(12,14);
+		getPoint(11,mapPoints).setNeighbors(1,12);
+		getPoint(19,mapPoints).setNeighbors(1,14);
+		getPoint(12,mapPoints).setNeighbors(2,11,13);
+		getPoint(13,mapPoints).setNeighbors(2,12,14);
 		removePoint(18,mapPoints);
+
+		getPoint(11,wayPoints).setNeighbors(1,12);
+		getPoint(10,wayPoints).setNeighbors(2,9,14);
 	}
 }
 
@@ -110,12 +118,18 @@ void Nav::setSmallRoomUpper(bool up){
 // in the higher location (larger y coordinate)
 void Nav::setBigRoomUpper(bool up){
 	if(up){
-		getPoint(17,mapPoints).setNeighbors(20,-1);
-		getPoint(16,mapPoints).setNeighbors(15,-1);
+		getPoint(17,mapPoints).setNeighbors(1,20);
+		getPoint(16,mapPoints).setNeighbors(1,15);
+
+		getPoint(3,wayPoints).setNeighbors(2,2,4);
+		removePoint(17,wayPoints);
 	}
 	else{
-		getPoint(17,mapPoints).setNeighbors(16,-1);
+		getPoint(17,mapPoints).setNeighbors(1,16);
 		removePoint(20,mapPoints);
+
+		getPoint(4,wayPoints).setNeighbors(2,3,5);
+		getPoint(16,wayPoints).setNeighbors(2,15,17);
 	}	
 }
 
@@ -329,7 +343,7 @@ void Nav::publishGraph(float Rx, float Ry, string NS, vector<EndPoint> &pts){
 	vector<bool> accountedForIDs(pts.size()*10, false); // index is ID
 	int id;		
 
-	for(int i=0; i<pts.size(); i++){ 	// loop thru points to find connections
+	for(int i=0; i<pts.size(); i++){ // loop thru points to find connections
 		mark.points[0].x = pts[i].getx();
 		mark.points[0].y = pts[i].gety();
 
@@ -345,15 +359,14 @@ void Nav::publishGraph(float Rx, float Ry, string NS, vector<EndPoint> &pts){
 		}		
 		accountedForIDs[pts[i].getID()] = true;
 	}
+
 	auto end = std::chrono::steady_clock::now();
 	std::cout<<"time to draw: "<<std::chrono::duration_cast
 		<std::chrono::milliseconds>(end-start).count()<<"\n";
 
 	rvizMap.publish(marks);	
-	rvizMap.publish(marks);	
-	rvizMap.publish(marks);	
-	rvizMap.publish(marks);
 
+	// If running continually have a small delay otherwise 
 	struct timespec req = {0};
 	if(runBool){
 		int milli = 40;
@@ -362,16 +375,12 @@ void Nav::publishGraph(float Rx, float Ry, string NS, vector<EndPoint> &pts){
 		nanosleep(&req, (struct timespec *)NULL);
 	}
 	else{ sleep(3);}
-	rvizMap.publish(marks);	
-	rvizMap.publish(marks);	
+
 	rvizMap.publish(marks);	
 	
 	if(runBool){nanosleep(&req, (struct timespec *)NULL);}
-	else{ sleep(3);}
+	else{ sleep(5);}
 
-	rvizMap.publish(marks);	
-	rvizMap.publish(marks);	
-	rvizMap.publish(marks);	
 	rvizMap.publish(marks);	
 } 
 
@@ -389,7 +398,8 @@ vector<int> Nav::findPath(int start, int end, vector<EndPoint> &pts){
 	dists[0] = 0;
 	int last = 0; // index of last valid path in paths since the vector is a large constant size
 	int index;    
-	if(start == end) return finalpath;
+	if(start == end) return finalpath; // check for same point or not in list
+	if(getPoint(start,pts).getID()==-1 || getPoint(end,pts).getID()==-1) return finalpath;
 	while(!done){
 		done = true;
 
