@@ -322,6 +322,7 @@ void Nav::publishGraph(float Rx, float Ry, string NS, vector<EndPoint> &pts){
 	mark.scale.x = 3;
 	mark.points.resize(2);
 	mark.points[0].z = 0;
+
 	mark.points[1].z = 0;
 
 	EndPoint ep1;
@@ -347,8 +348,6 @@ void Nav::publishGraph(float Rx, float Ry, string NS, vector<EndPoint> &pts){
 	auto end = std::chrono::steady_clock::now();
 	std::cout<<"time to draw: "<<std::chrono::duration_cast
 		<std::chrono::milliseconds>(end-start).count()<<"\n";
-
-	std::cout<<"size of marker array is: "<<marks.markers.size()<<"\n";
 
 	rvizMap.publish(marks);	
 	rvizMap.publish(marks);	
@@ -379,42 +378,54 @@ void Nav::publishGraph(float Rx, float Ry, string NS, vector<EndPoint> &pts){
 // Returns list of ids from start to end that represent the shortest
 // path between two waypoints
 vector<int> Nav::findPath(int start, int end, vector<EndPoint> &pts){
+
 	float record = LARGENUM;
-	vector<vector<int>> paths(100); // assuming this is large enough
-	vector<float> dists(100, 0);
+	vector<vector<int>> paths(100); // store each path which itself is a list of point IDs 
+	vector<float> dists(100, 0);    // store the corresponding travel distance for a path
 	vector<int> finalpath;
-	EndPoint tail, neigh;
+	EndPoint tail, neigh;           // tail is the last endpoint of i_th path (paths[i].back())
 	bool done = false;
-	paths[0] = {start};
+	paths[0] = {start}; // initalize
 	dists[0] = 0;
-	int last = 0; // index of last element
-	int index;
+	int last = 0; // index of last valid path in paths since the vector is a large constant size
+	int index;    
+	if(start == end) return finalpath;
 	while(!done){
 		done = true;
 
-		for(int k=0; k<8; k++){
+		// debugging output code, leave here for when it inevitable breaks
+		/*
+		for(int k=0; k<9; k++){
 			for(int i=0; i<=last; i++){
-				int id = -1;
-				if(k<paths[i].size()){ id = paths[i][k];}
-				if(id == -1){ std::cout<<" _";} 
+				if(k==0){
+					for(int tmp = 999; tmp>dists[i]; tmp/=10){
+						std::cout<<" ";
+						//tmp*=10;
+					}	
+					std::cout<<(int) dists[i];
+				}
 				else{
-					if(id<10){std::cout<< " ";}
-					std::cout<<id;
+					int id = -1;
+					if(k<paths[i].size()){ id = paths[i][k];}
+					if(id == -1){ std::cout<<"   _";} 
+					else{
+						if(id<10){std::cout<<" ";}
+						std::cout<<"  "<<id;
+					}
 				}
 			}
 			std::cout<< "\n";
 		}
-		std::cout<<"----------------------------\n";
+		std::cout<<"----------------------------"<<" record = "<<record<<"\n";
+		*/
 
 		if(last>90) ROS_ERROR("More paths encountered than expected!\n");
-		int len = last+1;
+		int len = last+1; // last is going to change as new paths are added
 		for(int p=0; p<len; p++){
-			if(paths[p].size()>0 && dists[p] < record) { // if initialized and still viable 
-				//std::cout<<paths[p].back();
+			if(paths[p].size()>0 /*&& dists[p] < record*/) { // if not deleted and still viable 
 				tail = getPoint(paths[p].back(), pts);
-				vector<int> neighs = tail.getNeighborList();	
+				vector<int> neighs = tail.getNeighborList();  	
 
-				//std::cout<<"got neighbors\n";
 				vector<int> todelete;
 				bool usefirst = true;
 				for(int i=0; i<neighs.size(); i++){
@@ -426,43 +437,58 @@ vector<int> Nav::findPath(int start, int end, vector<EndPoint> &pts){
 							usefirst = false;
 						}
 						else{
-							paths[++last] = paths[p]; // make one longer
-							paths[last].pop_back(); // since already added first neighbor
+							paths[++last] = paths[p]; // make one longer and copy path
+							// since the first vector was already used, subtract the prev. added distance
+							// and remove the neighbor so this second neighbor can be added
+							dists[last] = dists[p] - getDistance(getPoint(paths[p].back(), pts), neigh);
+							paths[last].pop_back();
 							index = last;
 						}
 						neigh = getPoint(neighs[i], pts);
+						// check if the path closed on itself
 						bool closed = std::find(paths[index].begin(),
 							   	paths[index].end(), neighs[i]) != paths[index].end();
-//TODO
-//figure out why running : rosrun firebot launcher 0 1 8 1
-//is not terminating, it's getting the valid path but keeps going and then
-//overwrites that path with a much longer one, check that paths are being eliminated appropriately
 
 						paths[index].push_back(neighs[i]);
 						dists[index] = dists[index] + getDistance(neigh, tail);
 						if(neighs[i] == end ){
-
-							std::cout<<"connected a valid loop\n";
+							todelete.push_back(index);
 							if( dists[index] < record) { 
 								record = dists[index]; 
 								finalpath = paths[index];	
+						/* // output the connected valid path 		
+								std::cout<<"connected a valid loop record = "<<record<<" loop : ";
+								
+								for(int t=0; t<finalpath.size(); t++){
+									std::cout<<"  "<<finalpath[t];
+								}
+								std::cout<<"\n";
+								for(int t=0; t<finalpath.size()-1; t++){
+									std::cout<<"  "<<getDistance(getPoint(finalpath[t],pts),
+										   	getPoint(finalpath[t+1], pts));
+								}
+								std::cout<<"\n";
+						*/
+
 							}
-							std::cout<<"1going to delete index "<<index<<"\n";
-							todelete.push_back(index);
-							//paths[p].resize(0); // hit end so delete
 						}
-						else if(closed || dists[index]>record){
+						else if(closed){
 							todelete.push_back(index);
-							std::cout<<"2going to delete index "<<index<<"\n";
-							//paths[p].resize(0); // longer than best or looped back on itself, delete
+						//	std::cout<<"closed at index "<<index<<"\n";
+						}
+						else if(dists[index]>record){
+							todelete.push_back(index);
+						//	std::cout<<"above record at index "<<index<<"\n";
 						}
 						else{
 							done = false; // still a valid path being built, keep going
 						}
-					}	
+					} // done checking retracing	
 				} // done looping through neighbors
-				for(int i=0; i<todelete.size(); i++){
+
+				for(int i=0; i<todelete.size(); i++){ // could delete entries but resizing might be faster
 					paths[todelete[i]].resize(0);
+					dists[todelete[i]] = 1;
 				}
 			} 
 		

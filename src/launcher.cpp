@@ -44,7 +44,7 @@ int main(int argc, char **argv){
 	for(int i=0; i<path.size(); i++){
 		std::cout<<path[i]<<"\n";
 	}	
-	std::cout<<"now go traverse\n";
+	std::cout<<"\nnow go traverse\n";
 	std::thread thread1;
 
 //	thread1 = std::thread(boost::bind(&Robot::i2c, &rob));

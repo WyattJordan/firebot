@@ -1,4 +1,13 @@
-display wayPoints in RVIZ
-develop graph traversal and planning (display numbered order)
-	requires robot and destination inputs
-	how to do numbering without editing graphPublish...
+1. Make room reconfigure funcitions (upper and lower) edit waypoint neighbor connections
+2. Test findPath()
+3. Program Arduino to take motor power inputs (also setup all Arduino pin connections)
+4. Program Arduino to output encoder values (do odometry math on Odroid or Arduino??)
+	if on Odroid 
+		check update rates (needs to be very fast)
+
+	if on Arduino
+		Odroid needs to be able to send location updates based on LIDAR
+
+5. Get SSH setup on Odroid
+6. 
+
