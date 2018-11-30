@@ -26,8 +26,6 @@ using std::atof;
 // don't use default constuctor, it must load the map and way files
 Nav::Nav(){}
 
-//TODO see list in EndPoint.cpp, there's a seg fault :(
-
 // This is the main constructor, initialize variables here
 Nav::Nav(string mapfile, string wayfile){  
 	smallRoomConf = bigRoomConf = false;
@@ -92,6 +90,7 @@ Nav::Nav(string mapfile, string wayfile){
 // Sets the door configuration for the small room, if up == true the 
 // door is on the higher side (larger y coordinate) 
 void Nav::setSmallRoomUpper(bool up){
+	std::cout<<"setting small room upper\n";	
 	if(up){
 		getPoint(18,mapPoints).setNeighbors(1,12);		
 		getPoint(13,mapPoints).setNeighbors(1,14);
@@ -101,7 +100,7 @@ void Nav::setSmallRoomUpper(bool up){
 
 		getPoint(12,wayPoints).setNeighbors(1,11);
 		getPoint(13,wayPoints).setNeighbors(2,5,15);
-	}
+		}
 	else{
 		getPoint(11,mapPoints).setNeighbors(1,12);
 		getPoint(19,mapPoints).setNeighbors(1,14);
@@ -117,6 +116,7 @@ void Nav::setSmallRoomUpper(bool up){
 // Sets the door configuration for the larger room, if up == true the door is
 // in the higher location (larger y coordinate)
 void Nav::setBigRoomUpper(bool up){
+	std::cout<<"setting big room upper\n";	
 	if(up){
 		getPoint(17,mapPoints).setNeighbors(1,20);
 		getPoint(16,mapPoints).setNeighbors(1,15);
@@ -176,7 +176,7 @@ void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry, vector<E
 	for(EndPoint &p : pts){
 		if(!p.getDone()){
 
-			if(p.getR()<15 || p.getR() > 180){ // must be within LIDAR range
+			if(p.getR()<15 || p.getR() > 130){ // must be within LIDAR range
 				p.setVisible(false);
 				p.setDone(true);
 			}
@@ -210,46 +210,69 @@ void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry, vector<E
 	}
 }
 
-// Given a point ID and a neighbor index returns true if a neighbor exists and copies that
-// neighbor to the reference neigh
+// Given a point ID and a neighbor index returns true if a neighbor exists and that neigh
+// is in pts<> and copies that neighbor to the reference neigh
 bool Nav::getNeighbor(int startID, int neighI, EndPoint &neigh, vector<EndPoint> &pts){ 
 	EndPoint start = getPoint(startID, pts);
-	if((start.getx() == -1 && start.gety() == -1)
-			|| start.getNumNeighbors() - 1 < neighI){
+	if(start.getID()!=-1){ 
+		neigh = getPoint(start.getNeighborID(neighI), pts);
+		if(neigh.getID()==-1){
+			neigh = badPt;
+			return false;
+		}
+		return true;
+	}
+	else{
 		neigh = badPt;
 		return false;
 	}
-	else {
-		neigh = getPoint(start.getNeighborID(neighI), pts);	
-		return true;
-	}	
 }
 
 // Move the robot around the map and publish what mapPoints it can see
 void Nav::run(){
+	color mapLine = {1.0, 0.5, 0.5};
+	color mapMark = {1.0, 1.0, 1.0};
 	float x,y;
 	y = 30;
 	unsigned int sleep = 10000;
 	float iter = 100;
 	for( int i = 0; i<iter; i++){
-		x = 230.0/iter * i; publishGraph(x,y, "test", mapPoints);
+		x = 230.0/iter * i; publishGraph(x,y, "test", 
+				mapPoints, mapLine, mapMark);
 	}	
 	x = 230;
 	for( int i = 0; i<iter; i++){
-		y = 230.0/iter * i; publishGraph(x,y, "test", mapPoints);
+		y = 230.0/iter * i; publishGraph(x,y, "test", 
+				mapPoints, mapLine, mapMark);
 	}	
 	y = 230;
 	for( int i = 0; i<iter; i++){
-		x = 230.0/iter * (iter - i); publishGraph(x,y, "test", mapPoints);
+		x = 230.0/iter * (iter - i); publishGraph(x,y, "test", 
+				mapPoints, mapLine, mapMark);
 	}	
 	x = 30;
 	for( int i = 0; i<iter; i++){
-		y = 230.0/iter * (iter - i); publishGraph(x,y, "test", mapPoints);
+		y = 230.0/iter * (iter - i); publishGraph(x,y, "test", 
+				mapPoints, mapLine, mapMark);
 	}	
+	
 }
 
+void Nav::publishMapAndWays(float Rx, float Ry){
+	findExpected(Rx, Ry, mapPoints);
+	color mapLine = {0.9, 0.5, 0.0};
+	color mapMark = {1.0, 0.1, 0.1};
+	color wayLine = {0.1, 0.9, 0.9};
+	color wayMark = {0.8, 0.1, 0.9};
 
-void Nav::publishGraph(float Rx, float Ry, string NS, vector<EndPoint> &pts){
+
+	publishGraph(Rx, Ry, "map", mapPoints, mapLine, mapMark);
+	publishGraph(Rx, Ry, "way", wayPoints, wayLine, wayMark);
+		
+}
+
+void Nav::publishGraph(float Rx, float Ry, string NS,
+	   	vector<EndPoint> &pts, color lncol, color  markcol){
 	auto start = std::chrono::steady_clock::now();
 	string worldFrame = "map2";
 	ros::NodeHandle n;
@@ -278,17 +301,16 @@ void Nav::publishGraph(float Rx, float Ry, string NS, vector<EndPoint> &pts){
 		//bool visible = std::find(expectedIDs.begin(), expectedIDs.end(), 
 				//pts[i].getID()) != expectedIDs.end();
 		marks.markers[i].color.a = 1.0;	
-		marks.markers[i].color.r = 0;	
-		if(pts[i].isVisible()){ std::cout<< "drawing visible marks\n";	}
-		marks.markers[i].color.g = pts[i].isVisible() ? 1.0 : 0;
-		marks.markers[i].color.b = pts[i].isVisible() ? 0 : 1.0;	
+		marks.markers[i].color.r = pts[i].isVisible() ? 0.0 : markcol.r;	
+		marks.markers[i].color.g = pts[i].isVisible() ? 1.0 : markcol.g;
+		marks.markers[i].color.b = pts[i].isVisible() ? 0.0 : markcol.b;	
 
 		// show text ID above marker with id += 1000
 		int text = i+pts.size();
 		marks.markers[text].header.frame_id = worldFrame;
 		marks.markers[text].id = i+1000;
 		marks.markers[text].ns = NS;
-		marks.markers[text].text = std::to_string(pts[i].getID());
+		marks.markers[text].text = "";//std::to_string(pts[i].getID());
 		marks.markers[text].type = visualization_msgs::Marker::TEXT_VIEW_FACING;
 		marks.markers[text].action = visualization_msgs::Marker::ADD;
 		marks.markers[text].scale.x = 3;
@@ -330,9 +352,9 @@ void Nav::publishGraph(float Rx, float Ry, string NS, vector<EndPoint> &pts){
 	mark.header.frame_id = worldFrame;
 	mark.ns = NS;
 	mark.color.a = 1;
-	mark.color.r = 1;
-	mark.color.g = 0;
-	mark.color.b = 0;
+	mark.color.r = lncol.r;
+	mark.color.g = lncol.g;
+	mark.color.b = lncol.b;
 	mark.scale.x = 3;
 	mark.points.resize(2);
 	mark.points[0].z = 0;

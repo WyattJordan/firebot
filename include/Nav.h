@@ -7,6 +7,9 @@
 #include <string>
 using std::string;
 
+struct color{
+	float r,g,b;
+};
 
 class Nav{
 	private:
@@ -24,7 +27,8 @@ class Nav{
 		Nav(string mapfile, string wayfile); // read from file
 		void findExpected(float Rx, float Ry, vector<EndPoint> &pts);
 		void publishBot(float Rx, float Ry);
-		void publishGraph(float Rx, float Ry, string NS, vector<EndPoint> &pts);
+		void publishMapAndWays(float Rx, float Ry);
+		void publishGraph(float Rx, float Ry, string NS, vector<EndPoint> &pts, color lncol, color  markcol);
 		void setSmallRoomUpper(bool up);
 		void setBigRoomUpper(bool up);
 		vector<int> findPath(int start, int end, vector<EndPoint> &pts);

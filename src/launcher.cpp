@@ -70,7 +70,8 @@ int main(int argc, char **argv){
 	thread1 = std::thread(bind(&Nav::run, ptr));
 	}
 	else{
-	thread1 = std::thread(bind(&Nav::publishGraph,ptr,x,y,"map_NS", *tmp));
+	//thread1 = std::thread(bind(&Nav::publishGraph,ptr,x,y,"map_NS", *tmp));
+	thread1 = std::thread(bind(&Nav::publishMapAndWays,ptr,x,y));
 	}
 
 	ros::spin();

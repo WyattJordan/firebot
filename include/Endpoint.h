@@ -32,6 +32,7 @@ class EndPoint{
 		int getNeighborID(int neighI) const;
 		vector<int> getNeighborList() const;
 		void setNeighbors(int n, ...);
+		//void setNeighbors(int n1, int n2);
 
 		int getID() const;
 		float getx() const;

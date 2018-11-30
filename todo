@@ -1,3 +1,6 @@
+make a helper function to publish both way and map points, make publishGraph take an integer
+prefix to make them seperate rviz IDs so they don't overwrite eachother
+
 1. Make room reconfigure funcitions (upper and lower) edit waypoint neighbor connections
 2. Test findPath()
 3. Program Arduino to take motor power inputs (also setup all Arduino pin connections)
