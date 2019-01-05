@@ -31,26 +31,16 @@ int main() {
 	}
 
 	myLine.setFloats();
-
 	cout << "Slope: " << myLine.getSlope() << "  Intercept: " << myLine.getIntercept() << endl;
-
 	myLine.printLine();
-
 	myDist = myLine.findDist(100, 0);
-
 	cout << myDist << endl;
-
 	findLine(myX, myY);
 
 	cout << "Press any key to continue:";
 	int myEnd;
 	cin >> myEnd;
-	
-
-	
-
 	return 0;
-
 }
 
 
