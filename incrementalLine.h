@@ -17,6 +17,9 @@ public:
 	//returns intercept
 	void addPoint(float xVal, float yVal);
 	float findDist(float xPoint, float yPoint);
+	void clearLine();
+	//empties the vectors of the line
+	void printLine();
 private:
 	vector <float> x;
 	vector <float> y;
@@ -30,6 +33,6 @@ private:
 //x includes all of the xpoints in the line
 //y includes all of the ypoints in the line
 
-void findLine(vector <float> xVal, vector <float> yVal);
+void findLine(vector <float> xReal, vector <float> yReal);
 
 #endif
