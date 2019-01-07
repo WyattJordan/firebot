@@ -16,10 +16,13 @@ public:
 	float getIntercept();
 	//returns intercept
 	void addPoint(float xVal, float yVal);
+	//adds a point to the line
 	float findDist(float xPoint, float yPoint);
+	//finds the distance from a given point to the line
 	void clearLine();
 	//empties the vectors of the line
 	void printLine();
+	float lineSize();
 private:
 	vector <float> x;
 	vector <float> y;
