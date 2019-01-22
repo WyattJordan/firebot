@@ -28,8 +28,8 @@ class Robot{
 		void sendArduino(int code); // sends indicator info to arduino1
 		void loadMapAndWayPoints(int lvl);
 		Nav* getNavPtr();
-		void serial();
-		void spi();
+		//void serial(char send[], int size);
+		//void spi();
 		void i2c();
 		string tmp;
 };

@@ -259,7 +259,7 @@ void Nav::run(){
 }
 
 void Nav::publishMapAndWays(float Rx, float Ry){
-	findExpected(Rx, Ry, mapPoints);
+	//findExpected(Rx, Ry, mapPoints);
 	color mapLine = {0.9, 0.5, 0.0};
 	color mapMark = {1.0, 0.1, 0.1};
 	color wayLine = {0.1, 0.9, 0.9};
@@ -310,7 +310,7 @@ void Nav::publishGraph(float Rx, float Ry, string NS,
 		marks.markers[text].header.frame_id = worldFrame;
 		marks.markers[text].id = i+1000;
 		marks.markers[text].ns = NS;
-		marks.markers[text].text = "";//std::to_string(pts[i].getID());
+		marks.markers[text].text = NS=="way" ? std::to_string(pts[i].getID()) : "";
 		marks.markers[text].type = visualization_msgs::Marker::TEXT_VIEW_FACING;
 		marks.markers[text].action = visualization_msgs::Marker::ADD;
 		marks.markers[text].scale.x = 3;
@@ -426,7 +426,7 @@ vector<int> Nav::findPath(int start, int end, vector<EndPoint> &pts){
 		done = true;
 
 		// debugging output code, leave here for when it inevitable breaks
-		/*
+	//	/*
 		for(int k=0; k<9; k++){
 			for(int i=0; i<=last; i++){
 				if(k==0){
@@ -449,7 +449,7 @@ vector<int> Nav::findPath(int start, int end, vector<EndPoint> &pts){
 			std::cout<< "\n";
 		}
 		std::cout<<"----------------------------"<<" record = "<<record<<"\n";
-		*/
+	//	*/
 
 		if(last>90) ROS_ERROR("More paths encountered than expected!\n");
 		int len = last+1; // last is going to change as new paths are added
@@ -488,7 +488,7 @@ vector<int> Nav::findPath(int start, int end, vector<EndPoint> &pts){
 							if( dists[index] < record) { 
 								record = dists[index]; 
 								finalpath = paths[index];	
-						/* // output the connected valid path 		
+						///* // output the connected valid path 		
 								std::cout<<"connected a valid loop record = "<<record<<" loop : ";
 								
 								for(int t=0; t<finalpath.size(); t++){
@@ -500,7 +500,7 @@ vector<int> Nav::findPath(int start, int end, vector<EndPoint> &pts){
 										   	getPoint(finalpath[t+1], pts));
 								}
 								std::cout<<"\n";
-						*/
+					//	*/
 
 							}
 						}
