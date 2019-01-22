@@ -60,7 +60,7 @@ void Robot::loadMapAndWayPoints(int lvl){
 		beSmart = tmp;
 	}
 }
-/*
+
 void Robot::i2c(){
 	int fd;                     // File descrition
    const char *fileName = "/dev/i2c-1";         // Name of the port we will be using
@@ -118,7 +118,7 @@ void Robot::i2c(){
 		<< std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
 		<< " us" << std::endl;
 
-   /*for(int i=0; i<200; i++){
+   for(int i=0; i<200; i++){
 		   std::cout<<"buf["<<i<<"] = "<<buf[i]<<"\n";
 	   }
 	 
@@ -134,9 +134,9 @@ void Robot::i2c(){
 	f.close();
 	
 	
-}*/
-/*
-void Robot::serial(char send[], int size){
+}
+
+/*void Robot::serial(char send[], int size){
 	std::cout<<"in thread. waiting for USB connection...\n";
 
 	int fd;
@@ -174,5 +174,5 @@ void Robot::serial(char send[], int size){
 		}
 	}
 }
-
-Nav* Robot::getNavPtr(){ return &beSmart;}*/
+*/
+Nav* Robot::getNavPtr(){ return &beSmart;}
