@@ -20,14 +20,14 @@ const byte leftPWM  = 6;
 
 void setup()
 {
-  Serial.begin(57600);//Initialize the serial port
+  Serial.begin(9600);//Initialize the serial port
   pinMode( leftPWM, OUTPUT);
   pinMode(rightPWM, OUTPUT);
   pinMode(armServo1, OUTPUT);
   pinMode(armServo2, OUTPUT);
   pinMode(armServo3, OUTPUT);
   EncoderInit();//Initialize the module
-  analogWrite(leftPWM, 200);
+  analogWrite(leftPWM, 250);
 }
 
 void loop()
