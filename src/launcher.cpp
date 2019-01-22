@@ -38,17 +38,17 @@ int main(int argc, char **argv){
 	std::cout<<"outputting ways graph\n";
 	ptr->outputGraph(*ptr->getWays());
 
-/*	std::cout<<"getting path between " << x <<" and "<<y<<"\n";
+	std::cout<<"getting path between " << x <<" and "<<y<<"\n";
 	vector<int> path = ptr->findPath(x, y, *ptr->getWays());
 	std::cout<<"path is: \n";
 	for(int i=0; i<path.size(); i++){
 		std::cout<<path[i]<<"\n";
 	}	
-	std::cout<<"\nnow go traverse\n";*/
+	std::cout<<"\nnow go traverse\n";//*/
 	std::thread thread1;
 
 //	thread1 = std::thread(boost::bind(&Robot::i2c, &rob));
-//	thread1 = std::thread(boost::bind(&Robot::serial, &rob));
+	thread1 = std::thread(boost::bind(&Robot::serial, &rob));
 //	thread1 = std::thread(boost::bind(&Robot::spi, &rob));
 	
 	vector<EndPoint>* tmp = ways ? ptr->getWays() : ptr->getMap();  
@@ -62,10 +62,10 @@ int main(int argc, char **argv){
 	if(ways){ 
 		std::cout<<"using waypoints!\n";}
 	else{
-		ptr->findExpected(x,y,*tmp); 
+		//ptr->findExpected(x,y,*tmp); 
 		std::cout<<"finding expected\n";
 	}
-
+/*
 	if(run){
 	thread1 = std::thread(bind(&Nav::run, ptr));
 	}
@@ -73,7 +73,7 @@ int main(int argc, char **argv){
 	//thread1 = std::thread(bind(&Nav::publishGraph,ptr,x,y,"map_NS", *tmp));
 	thread1 = std::thread(bind(&Nav::publishMapAndWays,ptr,x,y));
 	}
-
+*/
 	ros::spin();
 	return 0;
 }
