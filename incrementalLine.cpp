@@ -117,7 +117,7 @@ void findLine(vector <float> xReal, vector <float> yReal){
 
 void line::setFloats() {
 	float xAvg = 0, yAvg = 0;
-	for (int i = 0; i < x.size() - 1; i++) {
+	for (int i = 0; i < x.size(); i++) { // why did you have x.size()-1 ?
 		xAvg += x[i];
 		yAvg += y[i];
 	};
@@ -126,7 +126,7 @@ void line::setFloats() {
 
 	float num = 0, denum = 0;
 
-	for (int i = 0; i < x.size() - 1; i++) {
+	for (int i = 0; i < x.size(); i++) { // same off by 1 error here
 		num += (x[i] - xAvg)*(y[i] - yAvg);
 		denum += pow(x[i] - xAvg, 2);
 	};
