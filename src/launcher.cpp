@@ -38,12 +38,14 @@ int main(int argc, char **argv){
 	std::cout<<"outputting ways graph\n";
 	ptr->outputGraph(*ptr->getWays());
 
-	std::cout<<"getting path between " << x <<" and "<<y<<"\n";
+	// code fore testing path planning
+/*	std::cout<<"getting path between " << x <<" and "<<y<<"\n";
 	vector<int> path = ptr->findPath(x, y, *ptr->getWays());
 	std::cout<<"path is: \n";
 	for(int i=0; i<path.size(); i++){
 		std::cout<<path[i]<<"\n";
 	}	
+*/
 	std::cout<<"\nnow go traverse\n";//*/
 	std::thread thread1;
 

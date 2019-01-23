@@ -24,7 +24,6 @@ void setup()
 {
   Serial.begin(9600);//Initialize the serial port
   pos = 0;
-  Serial.begin(9600);//Initialize the serial port
   while(!Serial) {;}
   Serial.println("starting motor...");
   Serial.println("serial ready");

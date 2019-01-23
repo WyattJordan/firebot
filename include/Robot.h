@@ -31,5 +31,7 @@ class Robot{
 		//void serial(char send[], int size);
 		//void spi();
 		void i2c();
+		void openSensoI2C();
+		int getEncoder(bool left);
 		string tmp;
 };

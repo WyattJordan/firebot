@@ -60,23 +60,77 @@ void Robot::loadMapAndWayPoints(int lvl){
 		beSmart = tmp;
 	}
 }
-
+//void openSensorI2C(){
 void Robot::i2c(){
-	int fd;                     // File descrition
+   int fd;                     // File descrition
+   const char *fileName = "/dev/i2c-1";         // Name of the port we will be using
+   int  address = 0x11;               // Address of CMPS03 shifted right one bit
+    if ((fd = open(fileName, O_RDWR)) < 0) {   // Open port for reading and writing
+      printf("Failed to open i2c port, did you set sudo??\n");
+      exit(1);
+   }
+   
+   if (ioctl(fd, I2C_SLAVE, address) < 0) {     
+	   // Set the port options and set the address of the device we wish to speak to
+      printf("Unable to get bus access to talk to slave\n");
+      exit(1);
+   }
+   std::cout<<"sending data to sensors\n";
+	unsigned char send[2];
+	send[0] = 'w';
+	send[1] = 'e';
+         if ((write(fd, &send, 2)) != 2) {            // Send register we want to read from   
+	      printf("Error writing to i2c slave\n");
+	      exit(1);
+	   }
+
+   std::cout<<"reading from sensors \n";
+  int readSize = 2;
+  unsigned char get[readSize]; 
+  get[0] = 'x';
+  get[1] = 'y';
+	   if (read(fd, get, readSize) != readSize) {            // Read back data into buf[]
+	      printf("Unable to read from slave\n");
+	      exit(1);
+	   }
+	   else{
+		   for(int i=0; i<readSize; i++){
+			   std::cout<<"byte "<<i<<" :" << get[i]<<"\n"; // data byte 1
+		   }
+	   }
+	   std::cout<<"opening motor arduino\n";
+ if (ioctl(fd, I2C_SLAVE, 0x10) < 0) {     
+	   // Set the port options and set the address of the device we wish to speak to
+      printf("Unable to get bus access to talk to slave\n");
+      exit(1);
+   }
+ std::cout<<"reading from motor arduino\n ";
+  get[0] = 'x';
+  get[1] = 'y';
+	   if (read(fd, get, readSize) != readSize) {            // Read back data into buf[]
+	      printf("Unable to read from slave\n");
+	      exit(1);
+	   }
+	   else{
+		   for(int i=0; i<readSize; i++){
+			   std::cout<<"byte "<<i<<" :" << get[i]<<"\n"; // data byte 1
+		   }
+	   }
+	   std::cout<< "Done and can use same port opening different slaves\n";
+ 
+
+}
+int Robot::getEncoder(bool left){
+
+	return 0;
+}
+/*
+void Robot::i2c(){
+	std::cout<<"started I2C connection \n";
+   int fd;                     // File descrition
    const char *fileName = "/dev/i2c-1";         // Name of the port we will be using
    int  address = 0x11;               // Address of CMPS03 shifted right one bit
    unsigned char buf[1000];            // Buffer for data being read/ written on the i2c bus
-
-	std::ifstream fin;
-	fin.open("/home/wyatt/i2cin.txt");
-	std::cout<<"opened i2cin.txt\n";
-	char ch;
-	int pos = 0;
-	while(fin >> std::noskipws >> ch){
-		buf[pos] = ch;
-		std::cout<<pos<<" ||| "<<ch<<"\n";
-		pos++;
-	}
 
    if ((fd = open(fileName, O_RDWR)) < 0) {   // Open port for reading and writing
       printf("Failed to open i2c port, did you set sudo??\n");
@@ -88,54 +142,36 @@ void Robot::i2c(){
       printf("Unable to get bus access to talk to slave\n");
       exit(1);
    }
-   
   
 	auto start = std::chrono::steady_clock::now();		
-     for(int i=0; i<200; i+=2){
-	  unsigned char tmp[2]; 
-	  tmp[0] = buf[i];
-	  tmp[1] = buf[i+1];
-    if ((write(fd, tmp, 2)) != 2) {            // Send register we want to read from   
-      printf("Error writing to i2c slave\n");
-      exit(1);
-   }
-     }
-
-  for(int i=0; i<200; i+=2){
-  unsigned char tmp[2]; 
-	   if (read(fd, tmp, 2) != 2) {            // Read back data into buf[]
+	// should the tmp have the & ?
+	unsigned char send[2];
+	send[0] = 'w';
+	send[1] = 'e';
+         if ((write(fd, &send, 2)) != 2) {            // Send register we want to read from   
+	      printf("Error writing to i2c slave\n");
+	      exit(1);
+	   }
+  int readSize = 2;
+  unsigned char get[readSize]; 
+  get[0] = 'x';
+  get[1] = 'y';
+	   if (read(fd, get, readSize) != readSize) {            // Read back data into buf[]
 	      printf("Unable to read from slave\n");
 	      exit(1);
 	   }
 	   else{
-		   buf[i]   = tmp[0];
-		   buf[i+1] = tmp[1];
+		   for(int i=0; i<readSize; i++){
+			   std::cout<<"byte "<<i<<" :" << get[i]<<"\n"; // data byte 1
+		   }
 	   }
-   }
    
 	auto end = std::chrono::steady_clock::now();		
 		std::cout << "Elapsed time in microseconds : "
 		<< std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
 		<< " us" << std::endl;
-
-   for(int i=0; i<200; i++){
-		   std::cout<<"buf["<<i<<"] = "<<buf[i]<<"\n";
-	   }
-	 
-	std::ofstream f;
-	f.open("/home/wyatt/i2cout.txt");
-	int count = 0;
-	std::cout<<"writing to file\n";
-	while(count < 200){
-		f<<buf[count++];
-	}
-
-	f<<std::endl;
-	f.close();
-	
-	
 }
-
+*/
 /*void Robot::serial(char send[], int size){
 	std::cout<<"in thread. waiting for USB connection...\n";
 

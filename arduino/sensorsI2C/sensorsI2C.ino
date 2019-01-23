@@ -14,7 +14,7 @@ int rightDuration;//the number of the pulses
 boolean rightDirection;//the rotation direction
 
 char sendbuff [100];
-char  getbuff [100];
+char  getBuff [100];
 float time2;
 void setup() {
   // I2C
@@ -29,25 +29,34 @@ void setup() {
   pinMode(rightpinB,INPUT);
   attachInterrupt(0, leftwheelSpeed, CHANGE);//int.0 (pin2)
   attachInterrupt(1, rightwheelSpeed,CHANGE);//int.1 (pin3)
+  for(int i=0; i<3; i++){
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(100);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(100);
+  }
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
 void loop() {
-  if(millis() - time2 > 1000){
+  /*if(millis() - time2 > 1000){
     digitalWrite(LED_BUILTIN, LOW);
-  }
+  }*/
 }
 
 void getData(int num){
-  
+  getBuff[0] = Wire.read();
+  getBuff[1] = Wire.read();
 }
 
 void sendData(){
-  Wire.write('a'); //leftDuration
-  Wire.write('b'); //rightDuration
   leftDuration = 0;
   rightDuration = 0;
   time2 = millis();
   digitalWrite(LED_BUILTIN, HIGH);
+  Wire.write(getBuff[0]); //leftDuration
+  Wire.write(getBuff[1]); //rightDuration
+  
 }
 
 void leftwheelSpeed()
