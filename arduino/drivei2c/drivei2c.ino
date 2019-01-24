@@ -49,7 +49,7 @@ void loop() {
 
 void getData(int num){
   getBuff[0] = Wire.read();
-  if(getBuff[0] == "l"){ contactCount = 4;} // starts 4 byte interaction
+  if(getBuff[0] == 'l'){ contactCount = 4;} // starts 4 byte interaction
   if(contactCount == 3) lPWM = getBuff[0];
   if(contactCount == 1) rPWM = getBuff[0];
 }
@@ -65,7 +65,7 @@ void sendData(){
       leftDuration = 0;
     }
     else if(contactCount == 2){
-      Wire.write(highByte(righDuration));    
+      Wire.write(highByte(rightDuration));    
     }
     else if(contactCount == 1){
       Wire.write(lowByte(rightDuration));
