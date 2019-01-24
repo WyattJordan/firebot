@@ -39,6 +39,11 @@ Robot::Robot() : posePID(0,0,0,0,0,0){ // also calls pose constructor
 	left255 = right255 = 0;
 	usingi2c = false;
 	lDrive = rDrive = 0;
+	D3 = 0;
+	D6 = 40;
+	D9 = 127;
+	D10 = 180;
+	D11 = 255;
 	power2pwm();
 } 
 void Robot::loadMapAndWayPoints(int lvl){
@@ -79,40 +84,62 @@ void Robot::checki2c(){
 	usingi2c = true;
 }
 
+bool Robot::contactArms(){
+	checki2c();
+	if (ioctl(fd, I2C_SLAVE, addrDrive) < 0) {     
+	   // Set the port options and set the address of the device we wish to speak to
+	   ROS_ERROR("Unable to open port, someone else using it?");
+	   return false;
+	   }
+
+	// sets all PWM values for pins D3, D6, D9, D10, and D11
+	unsigned char que[6] = {'a', D3, D6, D9, D10, D11 };
+	quei2c(6, que);
+
+	usingi2c = false;
+	return true;
+}
+
+// sends a byte que to the already selected I2C device 
+// bytes returned from device replace sent messages in the que
+void Robot::quei2c(int size, unsigned char *q){
+	for(int i=0; i<size; i++){
+		unsigned char send[1] = {q[i]};
+		if ((write(fd, &send, 1)) != 1) {         // send a byte   
+		      printf("error writing to i2c slave in Robot::contactDrive\n");
+		      exit(1);
+		   }
+
+		 if (read(fd, send, 1) != 1) {            // Read a byte 
+		      printf("Unable to read from slave in Robot::contactDrive\n");
+		      failed_reads++;
+	   }
+
+	 q[i] = send[0];
+	}
+
+}
 // sends the drive pwm levels and gets the encoder counts
-void Robot::contactDrive(){
+bool Robot::contactDrive(){
 	contacts++;
 	checki2c();
 	if (ioctl(fd, I2C_SLAVE, addrDrive) < 0) {     
 	   // Set the port options and set the address of the device we wish to speak to
-      printf("Unable to get bus access to talk to slave\n");
-      exit(1);
-   }
+	   ROS_ERROR("Unable to open port, someone else using it?");
+	   return false;
+	   }
 
 	// do 2 interactions one for each motor, each interacion sends and receives 2 bytes
 	// 		odroid sends l/r and lPWM/rPWM
 	// 		arduino sends upper and lower bytes of int count
 	unsigned char que[4] = {'l',lPWM,'r',rPWM};
-	unsigned char receive[4];
-	for(int i=0; i<4; i++){
-		unsigned char send[1] = {que[i]};
-		if ((write(fd, &send, 1)) != 1) {         // send a byte   
-	      printf("error writing to i2c slave in Robot::contactDrive\n");
-	      exit(1);
-	   }
-
-		 if (read(fd, send, 1) != 1) {            // Read a byte 
-	      printf("Unable to read from slave in Robot::contactDrive\n");
-	      failed_reads++;
-	      //exit(1);
-	   }
-
-	 receive[i] = send[0];
-	}
-         	
+	quei2c(4,que);
 	usingi2c = false;
-	lEnc = (receive[0] << 8) | receive[1]; // left is first, high byte is first
-	rEnc = (receive[2] << 8) | receive[3];
+
+	lEnc = (que[0] << 8) | que[1]; // left is first, high byte is first
+	rEnc = (que[2] << 8) | que[3];
+	
+	if(lEnc == 255 || rEnc == 255) return false; // very rarely it fails
 
 	// debug code
 	/*if(abs(lEnc)>maxleft) maxleft = lEnc;
@@ -121,8 +148,8 @@ void Robot::contactDrive(){
 	if(rEnc == 255) right255++;
 	std::cout<<"lEnc = "<<lEnc<<"  maxleft = "<<maxleft<<" 255 count = "<<left255<<"\n";
 	std::cout<<"rEnc = "<<rEnc<<"  maxright = "<<maxright<<" 255 count = "<<right255<<"\n";
-	std::cout<<"Failed reads: "<<failed_reads<<" out of "<<contacts<<"\n"; //*/
-
+	std::cout<<"Failed reads: "<<failed_reads<<" out of "<<contacts<<"\n";// */
+	return true;
 }
 
 // i2c example code for testing
