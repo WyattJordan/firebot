@@ -160,7 +160,7 @@ include_directories(
 
 add_executable(launcher src/launcher.cpp src/Robot.cpp src/Endpoint.cpp src/Nav.cpp src/pid.cpp)
 #target_compile_options(launcher PRIVATE -lwiringPi -lcrypt -lm -lrt)
-add_dependencie(launcher ${PROJECT_NAME}_gencfg)
+add_dependencies(launcher ${PROJECT_NAME}_gencfg)
 target_link_libraries(launcher ${catkin_LIBRARIES})
 target_link_libraries(launcher wiringPi)
 

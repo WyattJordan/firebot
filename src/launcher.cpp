@@ -17,6 +17,7 @@
 #include "ros/ros.h"
 #include <pthread.h>
 #include <ros/console.h>
+#include <unistd.h>
 
 int main(int argc, char **argv){
 	ros::init(argc,argv,"robot");
@@ -74,9 +75,12 @@ int main(int argc, char **argv){
 	thread1 = std::thread(bind(&Nav::publishMapAndWays,ptr,x,y));
 	}
 */
+	rob.openI2C();
 	while(1){
 		std::cout<<"running\n";
-		sleep(2);
+		rob.contactDrive();
+		std::cout<<"ran\n\n";
+		usleep(10*1000); // ms * 1000
 	}
 	ros::spin();
 	return 0;

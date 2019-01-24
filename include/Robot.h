@@ -31,7 +31,9 @@ class Robot{
 		void loadMapAndWayPoints(int lvl);
 		void i2c();
 		void openI2C();
+		void contactDrive();
 		string tmp;
+		int failed_reads, contacts, left255, right255;
 
 	private:
 		Nav beSmart;
@@ -39,10 +41,9 @@ class Robot{
 		int fd; // file descriptor for I2C port
 		float lDrive, rDrive;     // drive power levels -1:1
 		unsigned char lPWM, rPWM; // drive PWMs 0:255
-		uint16_t lEnc, rEnc;      // enc counts 0:65535
+		int16_t lEnc, rEnc;      // enc counts 0:65535
 		bool usingi2c;            // avoid conflicting contacts	
-
-		void contactDrive();
+		int maxleft, maxright;
 		void power2pwm();
 		void checki2c();
 };

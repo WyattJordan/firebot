@@ -14,6 +14,8 @@ int rightDuration;//the number of the pulses
 boolean rightDirection;//the rotation direction
 
 unsigned char lPWM, rPWM;
+const byte leftDrivePin  = 10;
+const byte rightDrivePin = 11;
 char sendbuff [100];
 char  getBuff [100];
 float time2;
@@ -23,6 +25,7 @@ void setup() {
   Wire.begin(17); 
   Wire.onReceive(getData);
   Wire.onRequest(sendData);
+  
   // encoders
   pinMode(LED_BUILTIN, OUTPUT);
   leftDirection = true;//default -> Forward
@@ -32,6 +35,14 @@ void setup() {
   attachInterrupt(0, leftwheelSpeed, CHANGE);//int.0 (pin2)
   attachInterrupt(1, rightwheelSpeed,CHANGE);//int.1 (pin3)
   contactCount = -1; // counts down to 0
+  
+  // drive
+  lPWM = rPWM = 127; // stopped
+  pinMode(leftDrivePin, OUTPUT);
+  pinMode(rightDrivePin, OUTPUT);
+  analogWrite(leftDrivePin, lPWM);
+  analogWrite(rightDrivePin, rPWM);
+      
   for(int i=0; i<3; i++){
     digitalWrite(LED_BUILTIN, LOW);
     delay(100);
@@ -45,6 +56,7 @@ void loop() {
   /*if(millis() - time2 > 1000){
     digitalWrite(LED_BUILTIN, LOW);
   }*/
+ 
 }
 
 void getData(int num){
@@ -70,6 +82,8 @@ void sendData(){
     else if(contactCount == 1){
       Wire.write(lowByte(rightDuration));
       rightDuration = 0;
+      analogWrite(leftDrivePin, lPWM);
+      analogWrite(rightDrivePin, rPWM);
     }
     contactCount--;
     time2 = millis();

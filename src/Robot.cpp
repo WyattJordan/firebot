@@ -34,7 +34,12 @@ using std::string;
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 Robot::Robot() : posePID(0,0,0,0,0,0){ // also calls pose constructor
-
+	failed_reads = contacts = 0;
+	maxleft = maxright = 0;
+	left255 = right255 = 0;
+	usingi2c = false;
+	lDrive = rDrive = 0;
+	power2pwm();
 } 
 void Robot::loadMapAndWayPoints(int lvl){
 	if(lvl == 3){
@@ -76,6 +81,7 @@ void Robot::checki2c(){
 
 // sends the drive pwm levels and gets the encoder counts
 void Robot::contactDrive(){
+	contacts++;
 	checki2c();
 	if (ioctl(fd, I2C_SLAVE, addrDrive) < 0) {     
 	   // Set the port options and set the address of the device we wish to speak to
@@ -97,14 +103,26 @@ void Robot::contactDrive(){
 
 		 if (read(fd, send, 1) != 1) {            // Read a byte 
 	      printf("Unable to read from slave in Robot::contactDrive\n");
-	      exit(1);
+	      failed_reads++;
+	      //exit(1);
 	   }
 
 	 receive[i] = send[0];
 	}
          	
+	usingi2c = false;
 	lEnc = (receive[0] << 8) | receive[1]; // left is first, high byte is first
 	rEnc = (receive[2] << 8) | receive[3];
+
+	// debug code
+	/*if(abs(lEnc)>maxleft) maxleft = lEnc;
+	if(abs(rEnc)>maxright) maxright = rEnc;
+	if(lEnc == 255) left255++;
+	if(rEnc == 255) right255++;
+	std::cout<<"lEnc = "<<lEnc<<"  maxleft = "<<maxleft<<" 255 count = "<<left255<<"\n";
+	std::cout<<"rEnc = "<<rEnc<<"  maxright = "<<maxright<<" 255 count = "<<right255<<"\n";
+	std::cout<<"Failed reads: "<<failed_reads<<" out of "<<contacts<<"\n"; //*/
+
 }
 
 // i2c example code for testing
