@@ -13,9 +13,11 @@ byte rightPinALast;
 int rightDuration;//the number of the pulses
 boolean rightDirection;//the rotation direction
 
+unsigned char lPWM, rPWM;
 char sendbuff [100];
 char  getBuff [100];
 float time2;
+int contactCount;
 void setup() {
   // I2C
   Wire.begin(17); 
@@ -29,6 +31,7 @@ void setup() {
   pinMode(rightpinB,INPUT);
   attachInterrupt(0, leftwheelSpeed, CHANGE);//int.0 (pin2)
   attachInterrupt(1, rightwheelSpeed,CHANGE);//int.1 (pin3)
+  contactCount = -1; // counts down to 0
   for(int i=0; i<3; i++){
     digitalWrite(LED_BUILTIN, LOW);
     delay(100);
@@ -46,17 +49,32 @@ void loop() {
 
 void getData(int num){
   getBuff[0] = Wire.read();
-  getBuff[1] = Wire.read();
+  if(getBuff[0] == "l"){ contactCount = 4;} // starts 4 byte interaction
+  if(contactCount == 3) lPWM = getBuff[0];
+  if(contactCount == 1) rPWM = getBuff[0];
 }
 
 void sendData(){
-  leftDuration = 0;
-  rightDuration = 0;
-  time2 = millis();
-  digitalWrite(LED_BUILTIN, HIGH);
-  Wire.write(getBuff[0]); //leftDuration
-  Wire.write(getBuff[1]); //rightDuration
-  
+  if(contactCount > 0){
+    // incoming bytes should be ['l',lPWM,'r',rPWM], send back enc vals
+    if(contactCount == 4){
+      Wire.write(highByte(leftDuration));
+    }
+    else if(contactCount == 3){
+      Wire.write(lowByte(leftDuration));
+      leftDuration = 0;
+    }
+    else if(contactCount == 2){
+      Wire.write(highByte(righDuration));    
+    }
+    else if(contactCount == 1){
+      Wire.write(lowByte(rightDuration));
+      rightDuration = 0;
+    }
+    contactCount--;
+    time2 = millis();
+    digitalWrite(LED_BUILTIN, HIGH);
+  }
 }
 
 void leftwheelSpeed()

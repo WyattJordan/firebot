@@ -11,6 +11,10 @@
 #include "ros/ros.h"
 #include "Nav.h"
 #include <string>
+#include "pid.h"
+
+#define addrDrive 17  // I2C slave addresses
+#define addrArm   16
 using std::string;
 static void pabort(const char *s)
 {
@@ -20,18 +24,25 @@ static void pabort(const char *s)
 
 class Robot{
 
+	public:
+		Robot();
+		Nav* getNavPtr();
+		void lidarCallback(); // runs everytime a new lidar scan comes in
+		void loadMapAndWayPoints(int lvl);
+		void i2c();
+		void openI2C();
+		string tmp;
+
 	private:
 		Nav beSmart;
+		PID posePID;
+		int fd; // file descriptor for I2C port
+		float lDrive, rDrive;     // drive power levels -1:1
+		unsigned char lPWM, rPWM; // drive PWMs 0:255
+		uint16_t lEnc, rEnc;      // enc counts 0:65535
+		bool usingi2c;            // avoid conflicting contacts	
 
-	public:
-		void lidarCallback(); // runs everytime a new lidar scan comes in
-		void sendArduino(int code); // sends indicator info to arduino1
-		void loadMapAndWayPoints(int lvl);
-		Nav* getNavPtr();
-		//void serial(char send[], int size);
-		//void spi();
-		void i2c();
-		void openSensoI2C();
-		int getEncoder(bool left);
-		string tmp;
+		void contactDrive();
+		void power2pwm();
+		void checki2c();
 };

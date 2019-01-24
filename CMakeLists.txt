@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  dynamic_reconfigure
 )
 
 ## System dependencies are found with CMake's conventions
@@ -93,10 +94,9 @@ find_package(catkin REQUIRED COMPONENTS
 ##     and list every .cfg file to be processed
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#   cfg/DynReconf1.cfg
-#   cfg/DynReconf2.cfg
-# )
+ generate_dynamic_reconfigure_options(
+   cfg/Recon.cfg
+ )
 
 ###################################
 ## catkin specific configuration ##
@@ -158,11 +158,11 @@ include_directories(
 #SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${GCC_COVERAGE_LINK_FLAGS}")
 #add_definitions(${GCC_COVERAGE_COMPILE_FLAGS})
 
-add_executable(launcher src/launcher.cpp src/Robot.cpp src/Endpoint.cpp src/Nav.cpp)
+add_executable(launcher src/launcher.cpp src/Robot.cpp src/Endpoint.cpp src/Nav.cpp src/pid.cpp)
 #target_compile_options(launcher PRIVATE -lwiringPi -lcrypt -lm -lrt)
+add_dependencie(launcher ${PROJECT_NAME}_gencfg)
 target_link_libraries(launcher ${catkin_LIBRARIES})
 target_link_libraries(launcher wiringPi)
-#add_dependencies(launcher launcher_generate_messages_cpp)
 
 
 ## Specify libraries to link a library or executable target against

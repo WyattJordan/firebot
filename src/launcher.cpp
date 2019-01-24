@@ -49,9 +49,7 @@ int main(int argc, char **argv){
 	std::cout<<"\nnow go traverse\n";//*/
 	std::thread thread1;
 
-	thread1 = std::thread(boost::bind(&Robot::i2c, &rob));
-//	thread1 = std::thread(boost::bind(&Robot::serial, &rob));
-	//thread1 = std::thread(boost::bind(&Robot::spi, &rob));
+//	thread1 = std::thread(boost::bind(&Robot::i2c, &rob));
 	
 	vector<EndPoint>* tmp = ways ? ptr->getWays() : ptr->getMap();  
 	ptr->setRun(run);
@@ -76,6 +74,10 @@ int main(int argc, char **argv){
 	thread1 = std::thread(bind(&Nav::publishMapAndWays,ptr,x,y));
 	}
 */
+	while(1){
+		std::cout<<"running\n";
+		sleep(2);
+	}
 	ros::spin();
 	return 0;
 }
