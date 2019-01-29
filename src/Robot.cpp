@@ -5,18 +5,14 @@
 #include "Robot.h"
 #include "Nav.h"
 #include "pid.h"
+#include <dynamic_reconfigure/server.h>
+#include <firebot/ReconConfig.h>
+
 #include <string>
 #include <iostream>
 #include <fstream>
 #include <wiringPi.h>
 
-/* for serial
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <termios.h>*/
 #include <chrono>
 using std::string;
 
@@ -47,6 +43,18 @@ Robot::Robot() : posePID(0,0,0,0,0,0){ // also calls pose constructor
 	D11 = 255;
 	power2pwm();
 } 
+
+void Robot::recon(firebot::ReconConfig &config, uint32_t level){ 
+	failed_reads = config.left;
+	std::cout<<"RECONFIGURED!\n\n";
+	/*ROS_INFO("Reconfigure request (Kp,Ki,Kd,Min,Max: %f %f %f %f %f",
+			config.double_param,config.double_param,
+			config.double_param,config.double_param,
+			config.double_param,config.double_param);
+			*/
+			
+}
+
 void Robot::loadMapAndWayPoints(int lvl){
 	if(lvl == 3){
 		Nav tmp("lvl3_map.txt", "dummy");  //root is catkin ws
@@ -56,6 +64,15 @@ void Robot::loadMapAndWayPoints(int lvl){
 		Nav tmp("/home/wyatt/cat_ws/src/firebot/lvl1_map.txt", 
 				"/home/wyatt/cat_ws/src/firebot/wayPoints.txt");	
 		beSmart = tmp;
+	}
+}
+
+void Robot::driveLoop(){
+	while(1){
+		std::cout<<"running\n";
+		contactDrive();
+		std::cout<<"ran\n\n";
+		usleep(100*1000); // ms * 1000
 	}
 }
 

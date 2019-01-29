@@ -13,6 +13,8 @@
 #include <string>
 #include "pid.h"
 
+#include <firebot/ReconConfig.h>
+
 #define addrDrive 17  // I2C slave addresses
 #define addrArm   16
 using std::string;
@@ -26,6 +28,8 @@ class Robot{
 
 	public:
 		Robot();
+		void driveLoop();
+		void recon(firebot::ReconConfig &config, uint32_t level);
 		Nav* getNavPtr();
 		void lidarCallback(); // runs everytime a new lidar scan comes in
 		void loadMapAndWayPoints(int lvl);

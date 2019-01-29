@@ -3,19 +3,26 @@
 
 const byte leftpinA = 2;//A pin -> the interrupt pin 2
 const byte leftpinB = 4;//B pin -> the digital pin 4
+
+const byte rightpinA = 3;//A pin -> the interrupt pin 3
+const byte rightpinB = 5;//B pin -> the digital pin 5
+
+const byte leftDirPin  = 6; 
+const byte rightDirPin = 7;
+const byte leftDrivePin  = 10;
+const byte rightDrivePin = 11;
+
+
 byte leftPinALast;
 int leftDuration;//the number of the pulses
 boolean leftDirection;//the rotation direction
 
-const byte rightpinA = 3;//A pin -> the interrupt pin 3
-const byte rightpinB = 5;//B pin -> the digital pin 5
 byte rightPinALast;
 int rightDuration;//the number of the pulses
 boolean rightDirection;//the rotation direction
 
 unsigned char lPWM, rPWM;
-const byte leftDrivePin  = 10;
-const byte rightDrivePin = 11;
+
 char sendbuff [100];
 char  getBuff [100];
 float time2;
@@ -37,9 +44,11 @@ void setup() {
   contactCount = -1; // counts down to 0
   
   // drive
-  lPWM = rPWM = 20; // stopped
+  lPWM = rPWM = 127; // stopped
   pinMode(leftDrivePin, OUTPUT);
   pinMode(rightDrivePin, OUTPUT);
+  pinMode(rightDirPin,OUTPUT);
+  pinMode( leftDirPin,OUTPUT);
   analogWrite(leftDrivePin, lPWM);
   analogWrite(rightDrivePin, rPWM);
       
@@ -83,7 +92,9 @@ void sendData(){
       Wire.write(lowByte(rightDuration));
       rightDuration = 0;
       analogWrite(leftDrivePin, lPWM);
+      digitalWrite(leftDirPin, lPWM < 127 ? HIGH : LOW);
       analogWrite(rightDrivePin, rPWM);
+      digitalWrite(rightDirPin, lPWM < 127 ? HIGH : LOW);
     }
     contactCount--;
     time2 = millis();

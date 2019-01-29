@@ -19,6 +19,17 @@
 #include <ros/console.h>
 #include <unistd.h>
 
+// for dynamic reconfigure
+#include <dynamic_reconfigure/server.h>
+#include <firebot/ReconConfig.h>
+void callback(firebot::ReconConfig &config, uint32_t level){
+	/*ROS_INFO("Reconfigure request (Kp,Ki,Kd,Min,Max: %f %f %f %f %f",
+			config.double_param,config.double_param,
+			config.double_param,config.double_param,
+			config.double_param,config.double_param);
+			*/
+}
+
 int main(int argc, char **argv){
 	ros::init(argc,argv,"robot");
 
@@ -32,6 +43,13 @@ int main(int argc, char **argv){
 	ROS_INFO("running main launcher, going to create robot\n");
 	Robot rob;
 	rob.loadMapAndWayPoints(1); // working dir is the catkin workspace
+
+	dynamic_reconfigure::Server<firebot::ReconConfig> server;
+	dynamic_reconfigure::Server<firebot::ReconConfig>::CallbackType f;
+	// callback recquires a function then an instance of the class (here Robot)
+	f = boost::bind(&Robot::recon, &rob, _1, _2);
+	server.setCallback(f);
+
 
 	std::shared_ptr<Nav> ptr(rob.getNavPtr());
 	std::cout<<"outputting map graph\n";
@@ -48,7 +66,10 @@ int main(int argc, char **argv){
 	}	
 */
 	std::cout<<"\nnow go traverse\n";//*/
-	std::thread thread1;
+	std::thread thread1, driveLoop;
+	
+	rob.openI2C();
+	driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
 
 //	thread1 = std::thread(boost::bind(&Robot::i2c, &rob));
 	
@@ -75,13 +96,6 @@ int main(int argc, char **argv){
 	thread1 = std::thread(bind(&Nav::publishMapAndWays,ptr,x,y));
 	}
 */
-	rob.openI2C();
-	while(1){
-		std::cout<<"running\n";
-		rob.contactDrive();
-		std::cout<<"ran\n\n";
-		usleep(10*1000); // ms * 1000
-	}
 	ros::spin();
 	return 0;
 }

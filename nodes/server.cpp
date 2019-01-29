@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 
 #include <dynamic_reconfigure/server.h>
-#include <dynamic_tutorials/TutorialsConfig.h>
+#include <firebot/ReconConfig.h>
 
 void callback(firebot::ReconConfig &config, uint32_t level) {
   ROS_INFO("Reconfigure Request: %d %f %s %s %d", 
