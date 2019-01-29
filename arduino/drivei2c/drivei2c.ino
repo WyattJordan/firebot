@@ -37,7 +37,7 @@ void setup() {
   contactCount = -1; // counts down to 0
   
   // drive
-  lPWM = rPWM = 127; // stopped
+  lPWM = rPWM = 20; // stopped
   pinMode(leftDrivePin, OUTPUT);
   pinMode(rightDrivePin, OUTPUT);
   analogWrite(leftDrivePin, lPWM);

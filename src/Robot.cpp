@@ -39,6 +39,7 @@ Robot::Robot() : posePID(0,0,0,0,0,0){ // also calls pose constructor
 	left255 = right255 = 0;
 	usingi2c = false;
 	lDrive = rDrive = 0;
+	lPWM = rPWM = 50;
 	D3 = 0;
 	D6 = 40;
 	D9 = 127;
@@ -76,6 +77,8 @@ void Robot::openI2C(){
 	  }
    }
 	ROS_INFO("Successfully opened I2C port");
+	std::cout<<"fd = "<<fd<<"\n";
+
 }
 
 // waits for i2c to be available
@@ -105,13 +108,14 @@ bool Robot::contactArms(){
 void Robot::quei2c(int size, unsigned char *q){
 	for(int i=0; i<size; i++){
 		unsigned char send[1] = {q[i]};
+		std::cout<<" sending que with fd = " << fd<<"\n";
 		if ((write(fd, &send, 1)) != 1) {         // send a byte   
-		      printf("error writing to i2c slave in Robot::contactDrive\n");
+		      printf("error writing to i2c slave in Robot::quei2c\n");
 		      exit(1);
 		   }
 
 		 if (read(fd, send, 1) != 1) {            // Read a byte 
-		      printf("Unable to read from slave in Robot::contactDrive\n");
+		      printf("Unable to read from slave in Robot::quei2c\n");
 		      failed_reads++;
 	   }
 
@@ -133,6 +137,7 @@ bool Robot::contactDrive(){
 	// 		odroid sends l/r and lPWM/rPWM
 	// 		arduino sends upper and lower bytes of int count
 	unsigned char que[4] = {'l',lPWM,'r',rPWM};
+	std::cout<<"going to quei2c for contact drive\n" ;
 	quei2c(4,que);
 	usingi2c = false;
 
@@ -142,7 +147,7 @@ bool Robot::contactDrive(){
 	if(lEnc == 255 || rEnc == 255) return false; // very rarely it fails
 
 	// debug code
-	/*if(abs(lEnc)>maxleft) maxleft = lEnc;
+	if(abs(lEnc)>maxleft) maxleft = lEnc;
 	if(abs(rEnc)>maxright) maxright = rEnc;
 	if(lEnc == 255) left255++;
 	if(rEnc == 255) right255++;
