@@ -27,6 +27,7 @@ using std::string;
 #include <sys/stat.h>
 #include <unistd.h>
 
+//using namespace std::literals ;
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 Robot::Robot() : posePID(0,0,0,0,0,0){ // also calls pose constructor
@@ -68,11 +69,16 @@ void Robot::loadMapAndWayPoints(int lvl){
 }
 
 void Robot::driveLoop(){
+	auto when_started = std::chrono::high_resolution_clock::now();
+	auto period = std::chrono::milliseconds(10);
+	auto target = when_started + period;
 	while(1){
 		std::cout<<"running\n";
 		contactDrive();
+		std::this_thread::sleep_until(target);
+		target += period;
 		std::cout<<"ran\n\n";
-		usleep(100*1000); // ms * 1000
+		//usleep(100*1000); // ms * 1000
 	}
 }
 

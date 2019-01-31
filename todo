@@ -1,16 +1,15 @@
+On this computer:
+	figure out why ctags jump to declaration not working
+	dynamic reconfigure
+	PID updating constants	
+
+DONE:
+
 figure out why path between 4 and 10 doesn't work
 run all possible combinations for finding a path (make sure all work)
 
-1. Make room reconfigure funcitions (upper and lower) edit waypoint neighbor connections
-2. Test findPath()
-3. Program Arduino to take motor power inputs (also setup all Arduino pin connections)
-4. Program Arduino to output encoder values (do odometry math on Odroid or Arduino??)
-	if on Odroid 
-		check update rates (needs to be very fast)
+ Make room reconfigure funcitions (upper and lower) edit waypoint neighbor connections
 
-	if on Arduino
-		Odroid needs to be able to send location updates based on LIDAR
+Test findPath()
 
-5. Get SSH setup on Odroid
-6. 
-
+Get SSH setup on Odroid
