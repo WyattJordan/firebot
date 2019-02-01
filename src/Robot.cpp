@@ -13,6 +13,7 @@
 #include <fstream>
 #include <wiringPi.h>
 
+#include <boost/thread/thread.hpp>
 #include <chrono>
 using std::string;
 
@@ -69,14 +70,31 @@ void Robot::loadMapAndWayPoints(int lvl){
 }
 
 void Robot::driveLoop(){
-	auto when_started = std::chrono::high_resolution_clock::now();
-	auto period = std::chrono::milliseconds(10);
-	auto target = when_started + period;
+	//std::chrono::high_resolution_clock::time_point 
+	//	time_pt = std::chrono::high_resolution_clock::now();
+
+	//std::chrono::high_resolution_clock::time_point clk;
+	
+	//using namespace boost;
+    //using namespace boost::chrono;
+boost::chrono::system_clock::time_point time_limit =
+	   	boost::chrono::system_clock::now() + boost::chrono::milliseconds(10);
+	boost::this_thread::sleep_until(time_limit);
+
+	/*std::chrono::duration<int,std::milli> tp_ms (std::chrono::duration<int,std::milli>(10));
+	std::chrono::system_clock::time_point t(tp_ms);
+	*/
+	
+	//std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+//	auto var(std::chrono::time_point<std::chrono::high_resolution_clock, std::chrono::duration(int64_t, std::milli));
+	//auto period = std::chrono::milliseconds(10);
+	//auto target = time_pt + period;
 	while(1){
 		std::cout<<"running\n";
 		contactDrive();
-		std::this_thread::sleep_until(target);
-		target += period;
+	//	boost::this_thread::sleep_until(t);
+	//	target += period;
 		std::cout<<"ran\n\n";
 		//usleep(100*1000); // ms * 1000
 	}
