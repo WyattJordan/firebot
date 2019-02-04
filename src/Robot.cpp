@@ -37,7 +37,8 @@ Robot::Robot() : posePID(0,0,0,0,0,0){ // also calls pose constructor
 	left255 = right255 = 0;
 	usingi2c = false;
 	lDrive = rDrive = 0;
-	lforward = rforward = 'f';
+	lforward = 'a';
+	rforward = 'c';
 	lPWM = rPWM = 200;
 	D3 = 0;
 	D6 = 40;
@@ -113,8 +114,8 @@ void Robot::power2pwm(){
 	std::cout<<"making pwms with lDrive = "<<lDrive<<" rDrive = "<<rDrive<<"\n";
 	lPWM = lDrive > 0 ? lDrive*255.0 : -1*lDrive*255.0;
 	rPWM = rDrive > 0 ? rDrive*255.0 : -1*rDrive*255.0;
-	lforward = lDrive > 0 ? 'f' : 'b';
-	rforward = rDrive > 0 ? 'f' : 'b';
+	lforward = lDrive > 0 ? 'a' : 'b'; // directions set by char for each motor
+	rforward = rDrive > 0 ? 'c' : 'd';
 	std::cout<<"made pwms lPWM= "<<(int)lPWM<<" rPWm= "<<(int)rPWM<<"\n";
 	std::cout<<"lforward: "<<lforward<<"  rforward: "<<rforward<<"\n";
 }
@@ -124,6 +125,7 @@ void Robot::openI2C(){
    const char *fileName = "/dev/i2c-1";         // Name of the port we will be using
    int count = 0;
     while ((fd = open(fileName, O_RDWR)) < 0 && count < 10) {   // Open port for reading and writing
+	    sleep(1);
       printf("Failed to open i2c port, did you set sudo??\n trying again...");
 	  if (count == 10) {
 		ROS_ERROR(" Could not open I2C port, aborting mission\n");

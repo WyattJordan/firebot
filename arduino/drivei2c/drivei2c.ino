@@ -45,7 +45,7 @@ void setup() {
   encCount = motCount = -1; // counts down to 0
   
   // drive
-  lPWM = rPWM = 30; // crawling forward
+  lPWM = rPWM = 0; // crawling forward
   lforward = rforward = true;
   pinMode(leftDrivePin, OUTPUT);
   pinMode(rightDrivePin, OUTPUT);
@@ -74,11 +74,12 @@ void loop() {
 void getData(int num){
   getBuff[0] = Wire.read();
   if(getBuff[0] == '1'){ encCount = 4;} // starts 4 byte enc interaction
-  if(getBuff[0] == 'f' || getBuff[0] == 'r'){ motCount = 4;} // starts 3 byte motor interaction
+  if(getBuff[0] == 'a' || getBuff[0] == 'b'){ motCount = 4;} // starts 3 byte motor interaction
   
-  if(motCount == 4) lforward = getBuff[0] == 'f' ? true : false;
+  // leftmotor is a/b and right is c/d (first char is forrward)
+  if(motCount == 4) lforward = getBuff[0] == 'a' ? true : false;
   if(motCount == 3) lPWM = getBuff[0];
-  if(motCount == 2) rforward = getBuff[0] == 'f' ? true : false;
+  if(motCount == 2) rforward = getBuff[0] == 'c' ? true : false;
   if(motCount == 1) rPWM = getBuff[0];
   
   

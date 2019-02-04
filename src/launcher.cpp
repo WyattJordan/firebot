@@ -55,7 +55,7 @@ int main(int argc, char **argv){
 	std::cout<<"outputting map graph\n";
 	ptr->outputGraph(*ptr->getMap());
 	std::cout<<"outputting ways graph\n";
-	ptr->outputGraph(*ptr->getWays());
+	//ptr->outputGraph(*ptr->getWays());
 
 	// code fore testing path planning
 /*	std::cout<<"getting path between " << x <<" and "<<y<<"\n";

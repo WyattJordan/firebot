@@ -1,4 +1,8 @@
 <launch>
+<!--launch-prefix="sudo" -->
 
-<node pkg="firebot" type="launcher" name="N_name_from_launcher" output="screen" launch-prefix="sudo" />
+<!-- <node pkg = "firebot" type="set_sudo" name="set_from_launcher" output="screen" />
+-->
+
+<node pkg="firebot" type="launcher" name="N_name_from_launcher" launch-prefix="sudo -S" />
 </launch>

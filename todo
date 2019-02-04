@@ -1,10 +1,16 @@
 On this computer:
-	figure out why ctags jump to declaration not working
-	dynamic reconfigure
-	PID updating constants	
+	get wifi working:
+		main problem: modprobe rtl8192cu_common fails
+		use lsmod to see all kernel modules
+		following this github fix:
+		https://github.com/pvaret/rtl8192cu-fixes.git
+		installing the fixes is failing (dkms error)
+	
+	odom() calculations
 
 DONE:
 
+dynamic reconfigure
 figure out why path between 4 and 10 doesn't work
 run all possible combinations for finding a path (make sure all work)
 
