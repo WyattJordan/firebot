@@ -32,12 +32,13 @@ using std::string;
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 Robot::Robot() : posePID(0,0,0,0,0,0){ // also calls pose constructor
-	failed_reads = contacts = 0;
+	failed_reads = failed_writes = contacts = 0;
 	maxleft = maxright = 0;
 	left255 = right255 = 0;
 	usingi2c = false;
 	lDrive = rDrive = 0;
-	lPWM = rPWM = 50;
+	lforward = rforward = 'f';
+	lPWM = rPWM = 200;
 	D3 = 0;
 	D6 = 40;
 	D9 = 127;
@@ -47,14 +48,21 @@ Robot::Robot() : posePID(0,0,0,0,0,0){ // also calls pose constructor
 } 
 
 void Robot::recon(firebot::ReconConfig &config, uint32_t level){ 
-	failed_reads = config.left;
+	lDrive = config.left;
+	rDrive = config.right;
+	power2pwm();
+	setPose = config.setpose;
+	runPID  = config.runpid;
+	// do these need to be member variables? probs not
+	kp_ = config.kp;
+	ki_ = config.ki;
+	kd_ = config.kd;
+	max_ = config.max;
+	min_ = config.min;
+
+	posePID = PID(10.0, kp_, ki_, kd_, max_, min_);	
 	std::cout<<"RECONFIGURED!\n\n";
-	/*ROS_INFO("Reconfigure request (Kp,Ki,Kd,Min,Max: %f %f %f %f %f",
-			config.double_param,config.double_param,
-			config.double_param,config.double_param,
-			config.double_param,config.double_param);
-			*/
-			
+		
 }
 
 void Robot::loadMapAndWayPoints(int lvl){
@@ -69,23 +77,46 @@ void Robot::loadMapAndWayPoints(int lvl){
 	}
 }
 
+void Robot::calculateOdom(){
+
+}
+
 void Robot::driveLoop(){
+	std::cout<<"setting first motors....\n";
+	setMotors();
+	usleep(10*1000);
+	std::cout<<"entering loop \n";
 	while(1){
+		// get encoders, do PID math, set motors, delay dt
 	boost::chrono::system_clock::time_point time_limit =
-	   	boost::chrono::system_clock::now() + boost::chrono::milliseconds(10);
-	boost::this_thread::sleep_until(time_limit);
+	   	boost::chrono::system_clock::now() + boost::chrono::milliseconds(500);
 
 		std::cout<<"running\n";
-		contactDrive();
-		std::cout<<"ran\n\n";
+		getEncoders();
+		calculateOdom();
+		int measured = 9;
+		setPose = 10;
+		if(runPID){
+			float adj = posePID.calculate(setPose, measured);
+			//lDrive += adj;
+			//rDrive -= adj;	
+		}
+		power2pwm();
+		setMotors(); std::cout<<"ran\n\n";
 		//usleep(100*1000); // ms * 1000 dummy wait
+		boost::this_thread::sleep_until(time_limit);
 	}
 }
 
 // scales -1:1 to 0:255
 void Robot::power2pwm(){
-	lPWM = (unsigned char) lDrive*127+127;
-	rPWM = (unsigned char) rDrive*127+127;
+	std::cout<<"making pwms with lDrive = "<<lDrive<<" rDrive = "<<rDrive<<"\n";
+	lPWM = lDrive > 0 ? lDrive*255.0 : -1*lDrive*255.0;
+	rPWM = rDrive > 0 ? rDrive*255.0 : -1*rDrive*255.0;
+	lforward = lDrive > 0 ? 'f' : 'b';
+	rforward = rDrive > 0 ? 'f' : 'b';
+	std::cout<<"made pwms lPWM= "<<(int)lPWM<<" rPWm= "<<(int)rPWM<<"\n";
+	std::cout<<"lforward: "<<lforward<<"  rforward: "<<rforward<<"\n";
 }
 
 // tries to open the I2C port and set fd, repeates 10 times if failing
@@ -96,7 +127,7 @@ void Robot::openI2C(){
       printf("Failed to open i2c port, did you set sudo??\n trying again...");
 	  if (count == 10) {
 		ROS_ERROR(" Could not open I2C port, aborting mission\n");
-	    exit(1);
+	    //exit(1);
 	  }
    }
 	ROS_INFO("Successfully opened I2C port");
@@ -131,24 +162,73 @@ bool Robot::contactArms(){
 void Robot::quei2c(int size, unsigned char *q){
 	for(int i=0; i<size; i++){
 		unsigned char send[1] = {q[i]};
-		std::cout<<" sending que with fd = " << fd<<"\n";
+		//std::cout<<" sending que with fd = " << fd<<"\n";
 		if ((write(fd, &send, 1)) != 1) {         // send a byte   
 		      printf("error writing to i2c slave in Robot::quei2c\n");
-		      exit(1);
+		      failed_writes++;
+		      //exit(1);
 		   }
-
+		contacts++;
 		 if (read(fd, send, 1) != 1) {            // Read a byte 
 		      printf("Unable to read from slave in Robot::quei2c\n");
 		      failed_reads++;
-	   }
+		   }
+		contacts++;
 
 	 q[i] = send[0];
 	}
 
 }
+
+// send PWM signals to Arduino
+bool Robot::setMotors(){
+	std::cout<<"running set motors\n";
+	std::cout<<"lPWM = "<<(int) lPWM<<" rPWM = "<<(int) rPWM<<"\n";
+	checki2c();
+	if (ioctl(fd, I2C_SLAVE, addrDrive) < 0) {     
+	   // Set the port options and set the address of the device we wish to speak to
+	   ROS_ERROR("Unable to open port, someone else using it?");
+	   return false;
+	   }
+	unsigned char que[4] = {lforward, lPWM, rforward, rPWM};
+	quei2c(4,que);
+	usingi2c = false;
+	if(que[1] == lPWM && que[3] == rPWM) return true;
+	ROS_ERROR("Robot::setMotors miscommunication");
+	return false;
+}
+
+bool Robot::getEncoders(){
+	checki2c();
+	if (ioctl(fd, I2C_SLAVE, addrDrive) < 0) {     
+	   // Set the port options and set the address of the device we wish to speak to
+	   ROS_ERROR("Unable to open port, someone else using it?");
+	   return false;
+	   }
+	unsigned char que[4] = {'1','2','3','4'};
+	quei2c(4,que);
+	usingi2c = false;
+
+	lEnc = (que[0] << 8) | que[1]; // left is first, high byte is first
+	rEnc = (que[2] << 8) | que[3];
+	
+	if(lEnc == 255 || rEnc == 255) return false; // very rarely it fails
+
+	// debug code
+	if(abs(lEnc)>maxleft) maxleft = lEnc;
+	if(abs(rEnc)>maxright) maxright = rEnc;
+	if(lEnc == 255) left255++;
+	if(rEnc == 255) right255++;
+	std::cout<<"lEnc = "<<lEnc<<"  maxleft = " <<maxleft <<" 255 count = "<<left255<<"\n";
+	std::cout<<"rEnc = "<<rEnc<<"  maxright = "<<maxright<<" 255 count = "<<right255<<"\n";
+	std::cout<<"Failed reads: "<<failed_reads<<" and Failed writes: "<<
+		failed_writes<<" out of "<<contacts<<"\n";// */
+	return true;
+}
+
 // sends the drive pwm levels and gets the encoder counts
 bool Robot::contactDrive(){
-	contacts++;
+	/*contacts++;
 	checki2c();
 	if (ioctl(fd, I2C_SLAVE, addrDrive) < 0) {     
 	   // Set the port options and set the address of the device we wish to speak to

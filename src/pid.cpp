@@ -26,9 +26,9 @@ class PIDImpl
         double _integral;
 };
 
-PID::PID( double dt, double max, double min, double Kp, double Kd, double Ki )
+PID::PID( double dt, double max, double min, double kp, double kd, double ki )
 {
-    pimpl = new PIDImpl(dt,max,min,Kp,Kd,Ki);
+    pimpl = new PIDImpl(dt,max,min,kp,kd,ki);
 }
 double PID::calculate( double setpoint, double pv )
 {

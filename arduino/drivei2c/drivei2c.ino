@@ -22,11 +22,12 @@ int rightDuration;//the number of the pulses
 boolean rightDirection;//the rotation direction
 
 unsigned char lPWM, rPWM;
+boolean lforward, rforward;
 
 char sendbuff [100];
 char  getBuff [100];
 float time2;
-int contactCount;
+int encCount, motCount;
 void setup() {
   // I2C
   Wire.begin(17); 
@@ -35,23 +36,26 @@ void setup() {
   
   // encoders
   pinMode(LED_BUILTIN, OUTPUT);
-  leftDirection = true;//default -> Forward
+  leftDirection = true; //default -> Forward
   rightDirection = true;//default -> Forward
   pinMode( leftpinB,INPUT);
   pinMode(rightpinB,INPUT);
   attachInterrupt(0, leftwheelSpeed, CHANGE);//int.0 (pin2)
   attachInterrupt(1, rightwheelSpeed,CHANGE);//int.1 (pin3)
-  contactCount = -1; // counts down to 0
+  encCount = motCount = -1; // counts down to 0
   
   // drive
-  lPWM = rPWM = 127; // stopped
+  lPWM = rPWM = 30; // crawling forward
+  lforward = rforward = true;
   pinMode(leftDrivePin, OUTPUT);
   pinMode(rightDrivePin, OUTPUT);
   pinMode(rightDirPin,OUTPUT);
   pinMode( leftDirPin,OUTPUT);
   analogWrite(leftDrivePin, lPWM);
   analogWrite(rightDrivePin, rPWM);
-      
+  digitalWrite(leftDirPin, HIGH);
+  digitalWrite(rightDirPin, HIGH);  
+  
   for(int i=0; i<3; i++){
     digitalWrite(LED_BUILTIN, LOW);
     delay(100);
@@ -65,40 +69,63 @@ void loop() {
   /*if(millis() - time2 > 1000){
     digitalWrite(LED_BUILTIN, LOW);
   }*/
- 
 }
 
 void getData(int num){
   getBuff[0] = Wire.read();
-  if(getBuff[0] == 'l'){ contactCount = 4;} // starts 4 byte interaction
-  if(contactCount == 3) lPWM = getBuff[0];
-  if(contactCount == 1) rPWM = getBuff[0];
+  if(getBuff[0] == '1'){ encCount = 4;} // starts 4 byte enc interaction
+  if(getBuff[0] == 'f' || getBuff[0] == 'r'){ motCount = 4;} // starts 3 byte motor interaction
+  
+  if(motCount == 4) lforward = getBuff[0] == 'f' ? true : false;
+  if(motCount == 3) lPWM = getBuff[0];
+  if(motCount == 2) rforward = getBuff[0] == 'f' ? true : false;
+  if(motCount == 1) rPWM = getBuff[0];
+  
+  
 }
 
 void sendData(){
-  if(contactCount > 0){
+  
+  if(encCount > 0){
     // incoming bytes should be ['l',lPWM,'r',rPWM], send back enc vals
-    if(contactCount == 4){
+    if(encCount == 4){
       Wire.write(highByte(leftDuration));
     }
-    else if(contactCount == 3){
+    else if(encCount == 3){
       Wire.write(lowByte(leftDuration));
       leftDuration = 0;
     }
-    else if(contactCount == 2){
+    else if(encCount == 2){
       Wire.write(highByte(rightDuration));    
     }
-    else if(contactCount == 1){
+    else if(encCount == 1){
       Wire.write(lowByte(rightDuration));
       rightDuration = 0;
-      analogWrite(leftDrivePin, lPWM);
-      digitalWrite(leftDirPin, lPWM < 127 ? HIGH : LOW);
-      analogWrite(rightDrivePin, rPWM);
-      digitalWrite(rightDirPin, lPWM < 127 ? HIGH : LOW);
     }
-    contactCount--;
+    encCount--;
     time2 = millis();
     digitalWrite(LED_BUILTIN, HIGH);
+  }
+  else if(motCount>0){
+    // incoming bytes should be ['m',lPWM,rPWM], send back nothing
+    if(motCount == 4){
+        
+    }
+    if(motCount == 3){
+      Wire.write(lPWM); // send back for verification
+      analogWrite(leftDrivePin, lPWM);
+      digitalWrite(leftDirPin, lforward ? HIGH : LOW);
+    }
+    if(motCount == 2){
+      
+    }
+    if(motCount == 1){
+      Wire.write(rPWM); // send back for verification
+      analogWrite(rightDrivePin, rPWM);
+      digitalWrite(rightDirPin, rforward ? HIGH : LOW);
+    }
+    motCount--; 
+    
   }
 }
 

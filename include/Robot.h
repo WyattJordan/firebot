@@ -36,20 +36,29 @@ class Robot{
 		void i2c();
 		void openI2C();
 		bool contactDrive();
+		bool getEncoders();
+		bool setMotors();
 		bool contactArms();
 		string tmp;
-		int failed_reads, contacts, left255, right255;
+		int failed_reads, failed_writes, contacts, left255, right255;
 
 	private:
 		Nav beSmart;
 		PID posePID;
+		float setPose, error;
+	       	double kp_, ki_, kd_, min_, max_, dt_; 
 		int fd; // file descriptor for I2C port
 		float lDrive, rDrive;     // drive power levels -1:1
+		
 		unsigned char lPWM, rPWM; // drive PWMs 0:255
 		unsigned char D3, D6, D9, D10, D11; // PWMs 0:255 for arms
+		char lforward, rforward;
 		int16_t lEnc, rEnc;       // enc counts 0:65535
 		bool usingi2c;            // avoid conflicting contacts	
+		bool runPID;
 		int maxleft, maxright;
+
+		void calculateOdom();
 		void power2pwm();
 		void checki2c();
 		void quei2c(int size, unsigned char *q);
