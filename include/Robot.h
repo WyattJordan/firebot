@@ -17,6 +17,8 @@
 
 #define addrDrive 17  // I2C slave addresses
 #define addrArm   16
+#define WheelLCM  13.75 
+#define WheelRCM  12.3 
 using std::string;
 static void pabort(const char *s)
 {
@@ -46,6 +48,8 @@ class Robot{
 		Nav beSmart;
 		PID posePID;
 		float setPose, error;
+		float odomPose, odomX, odomY;
+		float locXinR, locYinR, locPinR;
 	       	double kp_, ki_, kd_, min_, max_, dt_; 
 		int fd; // file descriptor for I2C port
 		float lDrive, rDrive;     // drive power levels -1:1

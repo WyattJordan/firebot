@@ -78,7 +78,11 @@ void Robot::loadMapAndWayPoints(int lvl){
 	}
 }
 
+// increment locX, locY, locP with the new encoder vals
 void Robot::calculateOdom(){
+	/*locXinR += WheelRCM * (lEnc + rEnc) / 2.0;
+	loc
+	*/
 
 }
 
