@@ -5,7 +5,7 @@
 #include "Robot.h"
 #include "Nav.h"
 #include "pid.h"
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include <dynamic_reconfigure/server.h>
 #include <firebot/ReconConfig.h>
 
