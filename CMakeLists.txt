@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(firebot)
 set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
+find_package(catkin REQUIRED cmake_modules)
+find_package(Eigen REQUIRED)
 add_compile_options(-std=c++11)
 add_custom_command(
 	OUTPUT . 
@@ -112,6 +114,7 @@ catkin_package(
 #  LIBRARIES firebot
 #  CATKIN_DEPENDS roscpp rospy std_msgs
 #  DEPENDS system_lib
+	DEPENDS Eigen
 )
 
 ###########
@@ -123,7 +126,8 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
-#  ~/wiringPi/
+  ${Eigen_INCLUDE_DIRS}
+  ~/wiringPi/
 )
 
 ## Declare a C++ library

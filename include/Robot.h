@@ -56,7 +56,7 @@ class Robot{
 		
 		unsigned char lPWM, rPWM; // drive PWMs 0:255
 		unsigned char D3, D6, D9, D10, D11; // PWMs 0:255 for arms
-		char lforward, rforward;
+		unsigned char lforward, rforward;
 		int16_t lEnc, rEnc;       // enc counts 0:65535
 		bool usingi2c;            // avoid conflicting contacts	
 		bool runPID;
