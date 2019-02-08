@@ -35,9 +35,7 @@ class Robot{
 		Nav* getNavPtr();
 		void lidarCallback(); // runs everytime a new lidar scan comes in
 		void loadMapAndWayPoints(int lvl);
-		void i2c();
 		void openI2C();
-		bool contactDrive();
 		bool getEncoders();
 		bool setMotors();
 		bool contactArms();
