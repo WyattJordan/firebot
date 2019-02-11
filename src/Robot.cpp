@@ -37,9 +37,10 @@ Robot::Robot() : posePID(0,0,0,0,0,0){ // also calls pose constructor
 	maxleft = maxright = 0;
 	left255 = right255 = 0;
 	usingi2c = false;
+	runPID = false;
 	lDrive = rDrive = 0;
-	lforward = 'a';
-	rforward = 'c';
+	lForward = 'a';
+	rForward = 'c';
 	lPWM = rPWM = 200;
 	D3 = 0;
 	D6 = 40;
@@ -47,6 +48,8 @@ Robot::Robot() : posePID(0,0,0,0,0,0){ // also calls pose constructor
 	D10 = 180;
 	D11 = 255;
 	power2pwm();
+
+	rob2world << 1, 0, 0,   0, 1, 0,   0, 0, 1; // as if theta = 0
 } 
 
 void Robot::recon(firebot::ReconConfig &config, uint32_t level){ 
@@ -67,23 +70,24 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 		
 }
 
-void Robot::loadMapAndWayPoints(int lvl){
-	if(lvl == 3){
-		Nav tmp("lvl3_map.txt", "dummy");  //root is catkin ws
-		beSmart = tmp;
-	}	
-	else {
-		Nav tmp("/home/wyatt/cat_ws/src/firebot/lvl1_map.txt", 
-				"/home/wyatt/cat_ws/src/firebot/wayPoints.txt");	
-		beSmart = tmp;
-	}
+// Increment locX, locY, locP with the new encoder vals
+void Robot::calculateOdom(){
+	robotstep << WheelRCM / 2.0 * (lEnc + rEnc),              /* robot move in x */
+			  	 0,                                           /* robot cant move in its own y */
+				 WheelRCM / (2.0 * WheelLCM) * (lEnc - rEnc); /* robot rotation */
+	calculateTransform(odomloc(3) + robotstep(3)/2.0);	      // find transform using half the step	
+	worldstep = rob2world*robotstep; 
+	odomloc += worldstep;
 }
 
-// increment locX, locY, locP with the new encoder vals
-void Robot::calculateOdom(){
-	/*locXinR += WheelRCM * (lEnc + rEnc) / 2.0;
-	loc
-	*/
+// Given the robot's pose relative to the world calculate rob2world.
+void Robot::calculateTransform(float theta){
+	rob2world.topLeftCorner(2,2) << cos(theta), -sin(theta),
+									sin(theta),  cos(theta);
+}
+void Robot::debugLoop(){
+
+
 
 }
 
@@ -104,8 +108,8 @@ void Robot::driveLoop(){
 		setPose = 10;
 		if(runPID){
 			float adj = posePID.calculate(setPose, measured);
-			//lDrive += adj;
-			//rDrive -= adj;	
+			lDrive += adj;
+			rDrive -= adj;	
 		}
 		power2pwm();
 		setMotors(); std::cout<<"ran\n\n";
@@ -119,10 +123,10 @@ void Robot::power2pwm(){
 	std::cout<<"making pwms with lDrive = "<<lDrive<<" rDrive = "<<rDrive<<"\n";
 	lPWM = lDrive > 0 ? lDrive*255.0 : -1*lDrive*255.0;
 	rPWM = rDrive > 0 ? rDrive*255.0 : -1*rDrive*255.0;
-	lforward = lDrive > 0 ? 'a' : 'b'; // directions set by char for each motor
-	rforward = rDrive > 0 ? 'c' : 'd';
+	lForward = lDrive > 0 ? 'a' : 'b'; // directions set by char for each motor
+	rForward = rDrive > 0 ? 'c' : 'd';
 	std::cout<<"made pwms lPWM= "<<(int)lPWM<<" rPWm= "<<(int)rPWM<<"\n";
-	std::cout<<"lforward: "<<lforward<<"  rforward: "<<rforward<<"\n";
+	std::cout<<"lforward: "<<lForward<<"  rforward: "<<rForward<<"\n";
 }
 
 // tries to open the I2C port and set fd, repeates 10 times if failing
@@ -197,7 +201,7 @@ bool Robot::setMotors(){
 	   ROS_ERROR("Unable to open port, someone else using it?");
 	   return false;
 	   }
-	unsigned char que[4] = {lforward, lPWM, rforward, rPWM};
+	unsigned char que[4] = {lForward, lPWM, rForward, rPWM};
 	quei2c(4,que);
 	usingi2c = false;
 	if(que[1] == lPWM && que[3] == rPWM) return true;
@@ -233,4 +237,3 @@ bool Robot::getEncoders(){
 	return true;
 }
 
-Nav* Robot::getNavPtr(){ return &beSmart;}

@@ -1,6 +1,5 @@
 /* nav.cpp
  *
- *
  */
 #include "Nav.h"
 #include "Endpoint.h"
@@ -27,7 +26,17 @@ using std::atof;
 Nav::Nav(){}
 
 // This is the main constructor, initialize variables here
-Nav::Nav(string mapfile, string wayfile){  
+Nav::Nav(int lvl){  
+	string mapfile, wayfile;
+	if(lvl == 3){
+		mapfile = "";
+	    wayfile = "";  //root is catkin ws
+	}	
+	else {
+		mapfile = "/home/wyatt/cat_ws/src/firebot/lvl1_map.txt"; 
+		wayfile = "/home/wyatt/cat_ws/src/firebot/wayPoints.txt";	
+	}
+
 	smallRoomConf = bigRoomConf = false;
 	vector<int> none;
 	none.resize(0);
@@ -270,6 +279,114 @@ void Nav::publishMapAndWays(float Rx, float Ry){
 	publishGraph(Rx, Ry, "way", wayPoints, wayLine, wayMark);
 		
 }
+void Nav::populatMarks(string which, string NS, string frame){
+	visualization_msgs::MarkerArray tmp;
+	vector<EndPoint> *pts;
+	if(which == "map") { pts = &mapPoints; }
+	if(which == "way") { pts = &wayPoints; }
+
+	// = map ? &mapPoints : &wayPoints;
+	tmp.markers.resize(2*pts->size());
+	
+
+	//if(map) {mapMarks = tmp;}
+	//else    {wayMarks = tmp;}
+}
+visualization_msgs::MarkerArray Nav::makeMarks(vector<EndPoint> &pts, color lncol, color markcol,
+		string NS, string frame){
+	visualization_msgs::MarkerArray marks;
+	marks.markers.resize(2*pts.size());
+	// add vertical arrows at pt locations
+	for(int i=0; i<pts.size(); i++){
+		marks.markers[i].header.frame_id = frame;
+		marks.markers[i].ns = NS; 
+		marks.markers[i].id = i; //pts[i].getID();
+		marks.markers[i].type = visualization_msgs::Marker::ARROW;
+		marks.markers[i].action = visualization_msgs::Marker::ADD;
+		
+		marks.markers[i].points.resize(2);
+		marks.markers[i].points[0].x = pts[i].getx();
+		marks.markers[i].points[0].y = pts[i].gety();
+		marks.markers[i].points[0].z = 0;
+		marks.markers[i].points[1].x = pts[i].getx();
+		marks.markers[i].points[1].y = pts[i].gety();
+		marks.markers[i].points[1].z = 10; // 10cm tall 
+
+		marks.markers[i].scale.x = 3; 
+		marks.markers[i].scale.y = 3;
+		marks.markers[i].scale.z = 3;
+		//bool visible = std::find(expectedIDs.begin(), expectedIDs.end(), 
+				//pts[i].getID()) != expectedIDs.end();
+		marks.markers[i].color.a = 1.0;	
+		marks.markers[i].color.r = pts[i].isVisible() ? 0.0 : markcol.r;	
+		marks.markers[i].color.g = pts[i].isVisible() ? 1.0 : markcol.g;
+		marks.markers[i].color.b = pts[i].isVisible() ? 0.0 : markcol.b;	
+
+		// show text ID above marker with id += 1000
+		int idx = i+pts.size();
+		marks.markers[idx].header.frame_id = frame;
+		marks.markers[idx].id = i+1000;
+		marks.markers[idx].ns = NS;
+		marks.markers[idx].text = NS=="way" ? std::to_string(pts[i].getID()) : "";
+		marks.markers[idx].type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+		marks.markers[idx].action = visualization_msgs::Marker::ADD;
+		marks.markers[idx].scale.x = 3;
+		marks.markers[idx].scale.y = 3;
+		marks.markers[idx].scale.z = 8.0; // text height	
+		marks.markers[idx].pose.position.x = pts[i].getx();
+		marks.markers[idx].pose.position.y = pts[i].gety();
+		marks.markers[idx].pose.position.z = 15;
+		marks.markers[idx].pose.orientation.x = 0;
+		marks.markers[idx].pose.orientation.y = 0;
+		marks.markers[idx].pose.orientation.z = 0;
+		marks.markers[idx].pose.orientation.w = 1;
+		marks.markers[idx].color.a = 1.0;  // white
+		marks.markers[idx].color.r = 1; 
+		marks.markers[idx].color.g = 1; 
+		marks.markers[idx].color.b = 1; 
+		//sleep(1); rvizMap.publish(marks); //uncomment to see point growth from closest to robot
+	}
+
+	// Now add the lines 
+	visualization_msgs::Marker mark;
+	mark.type = visualization_msgs::Marker::LINE_STRIP;
+	mark.header.frame_id = frame;
+	mark.ns = NS;
+	mark.color.a = 1;
+	mark.color.r = lncol.r; 
+	mark.color.g = lncol.g;
+	mark.color.b = lncol.b;
+	mark.scale.x = 3;
+	mark.points.resize(2);
+	mark.points[0].z = 0;
+	mark.points[1].z = 0;
+
+	EndPoint ep1;
+	vector<bool> accountedForIDs(pts.size()*10, false); // index is ID
+	int id;		
+
+	// LINE_STRIP is defined by n points, here always n = 2
+	for(int i=0; i<pts.size(); i++){ 
+		mark.points[0].x = pts[i].getx(); // add the ith point to the line
+		mark.points[0].y = pts[i].gety();
+
+		// loop through all the ith point's neighbors adding 	
+		// and then the main MarkerArray them to the LINE_STRIP
+		for(int k=0; k<pts[i].getNumNeighbors(); k++){
+			
+			if(getNeighbor(pts[i].getID(), k, ep1, pts) &&
+				       	!accountedForIDs[ep1.getID()]){
+				mark.points[1].x = ep1.getx();
+				mark.points[1].y = ep1.gety();
+				mark.id = pts[i].getID() * 10000 + k; 
+				marks.markers.push_back(mark);	
+			}
+		}		
+		accountedForIDs[pts[i].getID()] = true;
+	}
+
+}
+
 
 void Nav::publishGraph(float Rx, float Ry, string NS,
 	   	vector<EndPoint> &pts, color lncol, color  markcol){
@@ -421,7 +538,7 @@ vector<int> Nav::findPath(int start, int end, vector<EndPoint> &pts){
 	int last = 0; // index of last valid path in paths since the vector is a large constant size
 	int index;    
 	if(start == end) return finalpath; // check for same point or not in list
-	if(getPoint(start,pts).getID()==-1 || getPoint(end,pts).getID()==-1) return finalpath;
+	if(getPoint(start,pts).getID()<0 || getPoint(end,pts).getID()<0) return finalpath;
 	while(!done){
 		done = true;
 
@@ -451,7 +568,7 @@ vector<int> Nav::findPath(int start, int end, vector<EndPoint> &pts){
 		std::cout<<"----------------------------"<<" record = "<<record<<"\n";
 	//	*/
 
-		if(last>90) ROS_ERROR("More paths encountered than expected!\n");
+		if(last>90) ROS_ERROR("More paths encountered than expected! increase size? Nav.cpp ln 460\n");
 		int len = last+1; // last is going to change as new paths are added
 		for(int p=0; p<len; p++){
 			if(paths[p].size()>0 /*&& dists[p] < record*/) { // if not deleted and still viable 
@@ -535,7 +652,7 @@ float Nav::getDistance(EndPoint &ep1, EndPoint &ep2){
 }
 
 // prints the map point info to console
-void Nav::outputGraph(vector<EndPoint> pts){
+void Nav::outputGraph(vector<EndPoint> &pts){
 	EndPoint ep;
 	std::cout<<"outputGraph with size: "<<pts.size()<<"\n";
 	std::cout<<"////////////////////////////////////////////////////\n";

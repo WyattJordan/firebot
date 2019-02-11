@@ -22,13 +22,6 @@
 // for dynamic reconfigure
 #include <dynamic_reconfigure/server.h>
 #include <firebot/ReconConfig.h>
-void callback(firebot::ReconConfig &config, uint32_t level){
-	/*ROS_INFO("Reconfigure request (Kp,Ki,Kd,Min,Max: %f %f %f %f %f",
-			config.double_param,config.double_param,
-			config.double_param,config.double_param,
-			config.double_param,config.double_param);
-			*/
-}
 
 int main(int argc, char **argv){
 	ros::init(argc,argv,"robot");
@@ -42,24 +35,23 @@ int main(int argc, char **argv){
 
 	ROS_INFO("running main launcher, going to create robot\n");
 	Robot rob;
-	rob.loadMapAndWayPoints(1); // working dir is the catkin workspace
 
+	// load the dynamic reconfigure server
 	dynamic_reconfigure::Server<firebot::ReconConfig> server;
 	dynamic_reconfigure::Server<firebot::ReconConfig>::CallbackType f;
 	// callback recquires a function then an instance of the class (here Robot)
 	f = boost::bind(&Robot::recon, &rob, _1, _2);
 	server.setCallback(f);
 
-
-	std::shared_ptr<Nav> ptr(rob.getNavPtr());
-	std::cout<<"outputting map graph\n";
-	ptr->outputGraph(*ptr->getMap());
+	// load the maps and navigation algos output maps to console
+	Nav nav(1); // level 1	
+	nav.outputGraph(*nav.getMap());
 	std::cout<<"outputting ways graph\n";
-	//ptr->outputGraph(*ptr->getWays());
+	//navoutputGraph(*navgetWays());
 
-	// code fore testing path planning
+	// code for testing path planning
 /*	std::cout<<"getting path between " << x <<" and "<<y<<"\n";
-	vector<int> path = ptr->findPath(x, y, *ptr->getWays());
+	vector<int> path = navfindPath(x, y, *navgetWays());
 	std::cout<<"path is: \n";
 	for(int i=0; i<path.size(); i++){
 		std::cout<<path[i]<<"\n";
@@ -67,24 +59,22 @@ int main(int argc, char **argv){
 */
 	std::cout<<"\nnow go traverse\n";//*/
 	std::thread thread1, driveLoop;
-	
 	rob.openI2C();
 	driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
-
 //	thread1 = std::thread(boost::bind(&Robot::i2c, &rob));
 	
-	vector<EndPoint>* tmp = ways ? ptr->getWays() : ptr->getMap();  
-	ptr->setRun(run);
+	vector<EndPoint>* tmp = ways ? nav.getWays() : nav.getMap();  
+	nav.setRun(run);
 
-	ptr->setBigRoomUpper(big);
-	ptr->setSmallRoomUpper(small);
+	nav.setBigRoomUpper(big);
+	nav.setSmallRoomUpper(small);
 	//std::cout<<"before findExpected\n";
-	//ptr->outputGraph(*ptr->getMap());
+	//navoutputGraph(*navgetMap());
 
 	if(ways){ 
 		std::cout<<"using waypoints!\n";}
 	else{
-		//ptr->findExpected(x,y,*tmp); 
+		//navfindExpected(x,y,*tmp); 
 		std::cout<<"finding expected\n";
 	}
 /*
