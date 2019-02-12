@@ -56,7 +56,7 @@ int main(int argc, char **argv){
 	}	
 */
 	cout<<"\now go traverse\n";//*/
-	std::thread thread1, driveLoop;
+	std::thread thread1, driveLoop, publishNavLoop;
 //	rob.openI2C();
 	driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
 	

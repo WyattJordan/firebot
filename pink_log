@@ -1,0 +1,19 @@
+-------------------- Hard Drive Notes-------------------- 
+Heavily advanced the pink marked odroid with the pink drive
+until the kernel update for the wifi to work 
+
+Once the Wifi worked made a copy, good thing because the USB ports all
+stopped working on the pink drive.
+
+Copied the backup back to the pink drive. Started developing on the 
+plain drive which had broken packages. Reverted the kernel expecting 
+the to fix the wifi but break the packages but both worked! 
+
+
+Feb 11th.
+Made a copy of the plain drive to the pink.
+
+
+-------------------- Odroid Notes-------------------- 
+Pink Odroid originally used a lot with the arduinos and I2C connections.
+GPIO ports definitely work on the pink, might need to check the plain.
