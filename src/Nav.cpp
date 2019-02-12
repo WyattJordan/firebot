@@ -27,19 +27,18 @@ using std::cout;
 Nav::Nav(){}
 
 // This is the main constructor, initialize variables here
-Nav::Nav(int lvl){  
+Nav::Nav(int lvl, ros::Publisher* pub){  
 	smallRoomConf_ = bigRoomConf_ = false;
 	vector<int> none;
 	none.resize(0);
 	badPt_ = EndPoint(-1, -1, -1, none);
 	mapPoints_.resize(0);
 	wayPoints_.resize(0);
+	markerPub_ = pub;
 	cmapLine_ = {0.9, 0.5, 0.0};
 	cmapMark_ = {1.0, 0.1, 0.1};
 	cwayLine_ = {0.1, 0.9, 0.9};
 	cwayMark_ = {0.8, 0.1, 0.9};
-	ros::NodeHandle n;
-	ros::Publisher rvizMap = n.advertise<visualization_msgs::MarkerArray>("NavMarkers",1000);
 	
 	// the file loading into an Endpoint vector should be made into it's own function
 	// though this does require identical formatting in the file fields
@@ -49,8 +48,8 @@ Nav::Nav(int lvl){
 	    wayfile = "";  //root is catkin ws
 	}	
 	else {
-		mapfile = "/home/wyatt/cat_ws/src/firebot/lvl1_map.txt"; 
-		wayfile = "/home/wyatt/cat_ws/src/firebot/wayPoints_.txt";	
+		mapfile = "/home/eli/cat_ws/src/firebot/load/lvl1_map.txt"; 
+		wayfile = "/home/eli/cat_ws/src/firebot/load/wayPoints.txt";	
 	}
 
    
@@ -105,12 +104,13 @@ Nav::Nav(int lvl){
 
 // Robot.cpp drive loop sets the bool flags at set rates
 void Nav::publishLoop(){
+	cout<<"Nav going to publish\n";
 	if(pubWays_){
-		markerPub_.publish(wayMarks_);
+		markerPub_->publish(wayMarks_);
 		pubWays_ = false;
 	}
 	if(pubMap_){
-		markerPub_.publish(mapMarks_);
+		markerPub_->publish(mapMarks_);
 		pubMap_ = false;
 	}
 }
@@ -153,12 +153,15 @@ void Nav::setBigRoomUpper(bool up){
 		removePoint(17,wayPoints_);
 	}
 	else{
+		cout<<"gettting pt\n";
 		getPoint(17,mapPoints_).setNeighbors(1,16);
+		cout<<"removing pt\n";
 		removePoint(20,mapPoints_);
 
 		getPoint(4,wayPoints_).setNeighbors(2,3,5);
 		getPoint(16,wayPoints_).setNeighbors(2,15,17);
 	}	
+	cout<<"set big room upper\n";
 }
 
 // Determines which map points are visible to the robot given 
@@ -678,7 +681,7 @@ void Nav::outputGraph(vector<EndPoint> &pts){
 
 // gets a point given an ID, assumes in order initially then searches 
 EndPoint& Nav::getPoint(int id, vector<EndPoint> &pts){
-	if(pts[id].getID() == id) return pts[id];
+	if(pts.size() > 0 && pts[id].getID() == id) return pts[id];
 	for(int i=0; i<pts.size(); i++){
 		if(pts[i].getID() == id) return pts[i];
 	}
@@ -686,13 +689,14 @@ EndPoint& Nav::getPoint(int id, vector<EndPoint> &pts){
 }
 
 // remove a point with a given ID
-void Nav::removePoint(int id, vector<EndPoint> &pts){
+bool Nav::removePoint(int id, vector<EndPoint> &pts){
 	for(int i=0; i<pts.size(); i++){
 		if(pts[i].getID() == id){
 			pts.erase(pts.begin() + i);
-			break;
+			return true;
 		}
 	}
+	return false;
 }
 
 float Nav::getDistance(EndPoint &ep1, EndPoint &ep2){

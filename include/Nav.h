@@ -17,8 +17,9 @@ class Nav{
 	public:
 		bool pubWays_, pubMap_;
 		Nav();
-		Nav(int lvl); // read map and way from file given level
+		Nav(int lvl, ros::Publisher *pub); // read map and way from file given level
 		void findExpected(float Rx, float Ry, vector<EndPoint> &pts);
+		void publishLoop();
 		void publishBot(float Rx, float Ry);
 		void publishMapAndWays(float Rx, float Ry);
 		void setSmallRoomUpper(bool up);
@@ -33,7 +34,7 @@ class Nav{
 		EndPoint& getPoint(int id, vector<EndPoint> &pts);
 		EndPoint& getBadPoint();
 		float getDistance(EndPoint &ep1, EndPoint &ep2);
-		void removePoint(int id, vector<EndPoint> &pts);
+		bool removePoint(int id, vector<EndPoint> &pts);
 		void setRun(bool t);
 		void outputGraph(vector<EndPoint> &pts);
 		void run();
@@ -47,10 +48,9 @@ class Nav{
 		bool smallRoomConf_, bigRoomConf_, runBool_;
 		vector<int> expectedIDs_;
 		visualization_msgs::MarkerArray mapMarks_, wayMarks_;
-		ros::Publisher markerPub_;
+		ros::Publisher *markerPub_;
 		color cmapLine_, cmapMark_, cwayLine_, cwayMark_;
 		EndPoint badPt_;
-		void publishLoop();
 
 		void populateMarks(string which, string NS, string frame,
 			visualization_msgs::MarkerArray &marks, color lncol, color markcol);

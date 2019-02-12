@@ -6,6 +6,7 @@
 #include "Nav.h"
 #include "pid.h"
 #include <Eigen/Core>
+#include <Eigen/Dense>
 #include <dynamic_reconfigure/server.h>
 #include <firebot/ReconConfig.h>
 
@@ -30,7 +31,7 @@ using std::string;
 #include <unistd.h>
 
 using std::cout;
-
+using namespace Eigen;
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 Robot::Robot() : posePID_(0,0,0,0,0,0){ // also calls pose constructor
@@ -38,20 +39,29 @@ Robot::Robot() : posePID_(0,0,0,0,0,0){ // also calls pose constructor
 	maxleft_ = maxright_ = 0;
 	left255 = right255 = 0;
 	usingi2c_ = false;
+	i2c_ = false;
 	runPID_ = false;
 	lDrive_ = rDrive_ = 0;
 	lForward_ = 'a';
 	rForward_ = 'c';
 	lPWM_ = rPWM_ = 200;
+	lEnc_ = rEnc_ = 0;
 	ms_ = 20;
+
 	D3_ = 0;
 	D6_ = 40;
 	D9_ = 127;
 	D10_ = 180;
 	D11_ = 255;
 	power2pwm();
-
+	srand(time(NULL));
+	
+	// initialize vectors, if not it won't compile!
 	rob2world_ << 1, 0, 0,   0, 1, 0,   0, 0, 1; // as if theta = 0
+	robotstep_ << 0,0,0;
+	worldstep_ << 0,0,0;
+	odomloc_   << 0,0,0;
+	
 } 
 
 void Robot::setNav(Nav* nv){
@@ -63,9 +73,10 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 	wayUpdateRate_ = config.wayrate;
 	lDrive_ = config.left;
 	rDrive_ = config.right;
+	i2c_ = config.i2c;
 	power2pwm();
-	setPose_ = config.setpose;
 	runPID_  = config.runpid;
+	setPose_ = config.setpose;
 	// do these need to be member variables? probs not
 	kp_ = config.kp;
 	ki_ = config.ki;
@@ -80,18 +91,30 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 
 // Increment locX, locY, locP with the new encoder vals
 void Robot::calculateOdom(){
-	robotstep_ << WheelRCM / 2.0 * (lEnc_ + rEnc_),              /* robot move in x */
-			  	 0,                                           /* robot cant move in its own y */
-				 WheelRCM / (2.0 * WheelLCM) * (lEnc_ - rEnc_); /* robot rotation */
-	calculateTransform(odomloc_(3) + robotstep_(3)/2.0);	      // find transform using half the step	
+	float x = WheelRCM / 2.0 * (lEnc_ + rEnc_);
+	float y = 0;
+	float p = WheelRCM / (2.0 * WheelLCM) * (lEnc_ - rEnc_);
+	cout<<"trying to set vals\n";
+	robotstep_ <<  x, y, p;
+	cout<<"set vals\n";
+	float theta = odomloc_(2) + robotstep_(2)/2.0; // this isn't matlab!
+	cout<<"goint to trans\n";
+	calculateTransform(theta);	      // find transform using half the step	
 	worldstep_ = rob2world_*robotstep_; 
 	odomloc_ += worldstep_;
 }
 
 // Given the robot's pose relative to the world calculate rob2world_.
 void Robot::calculateTransform(float theta){
+	/*Matrix2f tmp;
+	       tmp	<< cos(theta), -sin(theta),
+			 sin(theta),  cos(theta);
+	cout<<"done trans 1\n";
+	*/
 	rob2world_.topLeftCorner(2,2) << cos(theta), -sin(theta),
-									sin(theta),  cos(theta);
+			 sin(theta),  cos(theta);
+	cout<<"done trans 3\n";
+
 }
 
 void Robot::debugLoop(){
@@ -106,23 +129,31 @@ void Robot::driveLoop(){
 	cout<<"entering loop \n";
 	int mapCount, wayCount;
 	mapCount = wayCount = 0;
+	i2c_ = false;
 	while(1){
 		// get encoders, do PID math, set motors, delay dt
 	boost::chrono::system_clock::time_point time_limit =
 	   	boost::chrono::system_clock::now() + boost::chrono::milliseconds(ms_);
 
-		cout<<"running\n";
-		getEncoders();
+		cout<<"running, i2c = "<<i2c_<<"\n";
+		if(i2c_) {getEncoders();}
+		else {
+			lEnc_ = 100 * lDrive_ ;//+ rand()%10;
+			rEnc_ = 100 * rDrive_ ;//+ rand()%10;		
+		}
+		cout<<"done getting/making enc vals, doing odom...\n";
 		calculateOdom();
 		int measured = 9;
 		setPose_ = 10;
+		cout<<"running pid = "<<runPID_ <<"\n";
 		if(runPID_){
 			float adj = posePID_.calculate(setPose_, measured);
 			lDrive_ += adj;
 			rDrive_ -= adj;	
 		}
 		power2pwm();
-		setMotors(); cout<<"ran\n\n";
+		if(i2c_) setMotors();
+	       	cout<<"ran\n\n";
 		//usleep(100*1000); // ms * 1000 dummy wait
 		if(mapUpdateRate_ > 0 && mapCount++ >= 1000 / (ms_ * mapUpdateRate_)) 
 			nav_->pubMap_  = true;

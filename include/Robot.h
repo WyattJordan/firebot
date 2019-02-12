@@ -50,8 +50,9 @@ class Robot{
 		unsigned char lPWM_, rPWM_; // drive PWMs 0:255
 		unsigned char D3_, D6_, D9_, D10_, D11_; // PWMs 0:255 for arms
 		unsigned char lForward_, rForward_;
-		int16_t lEnc_, rEnc_;       // enc counts 
-		bool usingi2c_;            // avoid conflicting contacts	
+		int16_t lEnc_, rEnc_;   // enc counts 
+		bool usingi2c_;         // avoid conflicting contacts	
+		bool i2c_; 		// is odroid connected to circuit (for testing w/o bot)
 		bool runPID_;
 		int maxleft_, maxright_;
 		int ms_; // ms delay between odom updates, fastest thread

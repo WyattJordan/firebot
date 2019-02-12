@@ -39,7 +39,10 @@ int main(int argc, char **argv){
 	server.setCallback(f);
 
 	// load the maps, output maps to console
-	Nav nav(1); // level 1	
+	ros::NodeHandle n;
+	ros::Publisher navPub = n.advertise<visualization_msgs::MarkerArray>("NavMarkers",1000);
+	
+	Nav nav(1, &navPub); // level 1	
 	nav.outputMap();
 	nav.outputWays();
 	//nav.outputGraph(*nav.getMap());
@@ -59,10 +62,10 @@ int main(int argc, char **argv){
 	std::thread thread1, driveLoop, publishNavLoop;
 //	rob.openI2C();
 	driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
+	publishNavLoop = std::thread(boost::bind(&Nav::publishLoop, &nav));	
 	
 //	vector<EndPoint>* tmp = ways ? nav.getWays() : nav.getMap();  
 	nav.setRun(run);
-
 	nav.setBigRoomUpper(big);
 	nav.setSmallRoomUpper(small);
 	//cout<<"before findExpected\n";
