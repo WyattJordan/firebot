@@ -4,6 +4,8 @@
  */
 #pragma once
 #include "Endpoint.h"
+#include "ros/ros.h"
+#include <visualization_msgs/MarkerArray.h>
 #include <string>
 using std::string;
 
@@ -13,15 +15,20 @@ struct color{
 
 class Nav{
 	public:
+		bool pubWays_, pubMap_;
 		Nav();
 		Nav(int lvl); // read map and way from file given level
 		void findExpected(float Rx, float Ry, vector<EndPoint> &pts);
 		void publishBot(float Rx, float Ry);
 		void publishMapAndWays(float Rx, float Ry);
-		void publishGraph(float Rx, float Ry, string NS, vector<EndPoint> &pts, color lncol, color  markcol);
 		void setSmallRoomUpper(bool up);
 		void setBigRoomUpper(bool up);
 		vector<int> findPath(int start, int end, vector<EndPoint> &pts);
+
+		void outputWays();
+		void outputMap();
+		void makeMapMarks(string NS, string frame);
+		void makeWayMarks(string NS, string frame);
 
 		EndPoint& getPoint(int id, vector<EndPoint> &pts);
 		EndPoint& getBadPoint();
@@ -34,21 +41,28 @@ class Nav{
 		vector<EndPoint>* getWays();
 
 	private:
-		EndPoint safeZone, candle1, candle2; // key location markers
-		vector<EndPoint> mapPoints;
-		vector<EndPoint> wayPoints;
-		bool smallRoomConf, bigRoomConf, runBool;
-		vector<int> expectedIDs;
-		visualization_msgs::MarkerArray mapMarks, wayMarks;
+		EndPoint safeZone_, candle1_, candle2_; // key location markers
+		vector<EndPoint> mapPoints_;
+		vector<EndPoint> wayPoints_;
+		bool smallRoomConf_, bigRoomConf_, runBool_;
+		vector<int> expectedIDs_;
+		visualization_msgs::MarkerArray mapMarks_, wayMarks_;
+		ros::Publisher markerPub_;
+		color cmapLine_, cmapMark_, cwayLine_, cwayMark_;
+		EndPoint badPt_;
+		void publishLoop();
 
+		void populateMarks(string which, string NS, string frame,
+			visualization_msgs::MarkerArray &marks, color lncol, color markcol);
 
+		void publishGraph(float Rx, float Ry, string NS, 
+			vector<EndPoint> &pts, color lncol, color  markcol);
 
 		bool getNeighbor(int startID, int neighI, EndPoint &neigh, vector<EndPoint> &pts);
-		void eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry, vector<EndPoint> &pts);
-		EndPoint badPt;
-
+		void eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx,
+			float Ry, vector<EndPoint> &pts);
 
 		// save the generated markerarray for any vec of Endpoints
-		visualization_msgs::MarkerArray makeMarks(vector<EndPoint> &pts, color lncol, 
+		void makeMarks(vector<EndPoint> &pts, color lncol, 
 				color markcol, string NS, string frame);	
 };

@@ -35,27 +35,31 @@ class Robot{
 		bool getEncoders();
 		bool setMotors();
 		bool contactArms();
+		void setNav(Nav* nv);
 		string tmp;
 		int failed_reads, failed_writes, contacts, left255, right255;
 
 	private:
-		PID posePID;
-		float setPose, error;
+		Nav *nav_;
+		PID posePID_;
+		float setPose_, error_;
 		double kp_, ki_, kd_, min_, max_, dt_; 
 		int fd; // file descriptor for I2C port
-		float lDrive, rDrive;     // drive power levels -1:1
+		float lDrive_, rDrive_;     // drive power levels -1:1
 		
-		unsigned char lPWM, rPWM; // drive PWMs 0:255
-		unsigned char D3, D6, D9, D10, D11; // PWMs 0:255 for arms
-		unsigned char lForward, rForward;
-		int16_t lEnc, rEnc;       // enc counts 
-		bool usingi2c;            // avoid conflicting contacts	
-		bool runPID;
-		int maxleft, maxright;
+		unsigned char lPWM_, rPWM_; // drive PWMs 0:255
+		unsigned char D3_, D6_, D9_, D10_, D11_; // PWMs 0:255 for arms
+		unsigned char lForward_, rForward_;
+		int16_t lEnc_, rEnc_;       // enc counts 
+		bool usingi2c_;            // avoid conflicting contacts	
+		bool runPID_;
+		int maxleft_, maxright_;
+		int ms_; // ms delay between odom updates, fastest thread
+		int wayUpdateRate_, mapUpdateRate_;
 
 		// odometry vars;
-		Matrix3f rob2world;	// rotation matrix calculated given pose
-		Vector3f robotstep, worldstep, odomloc; // distance changes in robot + world frames
+		Matrix3f rob2world_;	// rotation matrix calculated given pose
+		Vector3f robotstep_, worldstep_, odomloc_; // distance changes in robot + world frames
 		void calculateTransform(float theta);
 
 		void debugLoop();

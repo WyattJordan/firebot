@@ -9,19 +9,14 @@
  * run {x, y} ways {big, small}
  */
 
-#include <iostream> 
-#include "Robot.h"
-#include <thread>     // 3 for thread and sharedptr
-#include <functional>
-#include <memory>
 #include "ros/ros.h"
-#include <pthread.h>
 #include <ros/console.h>
-#include <unistd.h>
-
-// for dynamic reconfigure
-#include <dynamic_reconfigure/server.h>
+#include "Robot.h"
 #include <firebot/ReconConfig.h>
+#include <dynamic_reconfigure/server.h>
+#include <thread>     // 3 for thread and sharedptr
+#include <iostream> 
+using std::cout;
 
 int main(int argc, char **argv){
 	ros::init(argc,argv,"robot");
@@ -43,39 +38,41 @@ int main(int argc, char **argv){
 	f = boost::bind(&Robot::recon, &rob, _1, _2);
 	server.setCallback(f);
 
-	// load the maps and navigation algos output maps to console
+	// load the maps, output maps to console
 	Nav nav(1); // level 1	
-	nav.outputGraph(*nav.getMap());
-	std::cout<<"outputting ways graph\n";
-	//navoutputGraph(*navgetWays());
+	nav.outputMap();
+	nav.outputWays();
+	//nav.outputGraph(*nav.getMap());
+	cout<<"outputting ways graph\n";
+	rob.setNav(&nav); // give the robot the nav object for interacting with it
+	//navoutputGraph(*nav.getWays());
 
 	// code for testing path planning
-/*	std::cout<<"getting path between " << x <<" and "<<y<<"\n";
+/*	cout<<"getting path between " << x <<" and "<<y<<"\n";
 	vector<int> path = navfindPath(x, y, *navgetWays());
-	std::cout<<"path is: \n";
+	cout<<"path is: \n";
 	for(int i=0; i<path.size(); i++){
-		std::cout<<path[i]<<"\n";
+		cout<<path[i]<<"\n";
 	}	
 */
-	std::cout<<"\nnow go traverse\n";//*/
+	cout<<"\now go traverse\n";//*/
 	std::thread thread1, driveLoop;
-	rob.openI2C();
+//	rob.openI2C();
 	driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
-//	thread1 = std::thread(boost::bind(&Robot::i2c, &rob));
 	
-	vector<EndPoint>* tmp = ways ? nav.getWays() : nav.getMap();  
+//	vector<EndPoint>* tmp = ways ? nav.getWays() : nav.getMap();  
 	nav.setRun(run);
 
 	nav.setBigRoomUpper(big);
 	nav.setSmallRoomUpper(small);
-	//std::cout<<"before findExpected\n";
+	//cout<<"before findExpected\n";
 	//navoutputGraph(*navgetMap());
 
 	if(ways){ 
-		std::cout<<"using waypoints!\n";}
+		cout<<"using waypoints!\n";}
 	else{
 		//navfindExpected(x,y,*tmp); 
-		std::cout<<"finding expected\n";
+		cout<<"finding expected\n";
 	}
 /*
 	if(run){

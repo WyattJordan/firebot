@@ -20,6 +20,7 @@
 #include <algorithm>
 using std::vector;
 using std::atof;
+using std::cout;
 
 #define LARGENUM 99999999
 // don't use default constuctor, it must load the map and way files
@@ -27,26 +28,32 @@ Nav::Nav(){}
 
 // This is the main constructor, initialize variables here
 Nav::Nav(int lvl){  
-	string mapfile, wayfile;
+	smallRoomConf_ = bigRoomConf_ = false;
+	vector<int> none;
+	none.resize(0);
+	badPt_ = EndPoint(-1, -1, -1, none);
+	mapPoints_.resize(0);
+	wayPoints_.resize(0);
+	cmapLine_ = {0.9, 0.5, 0.0};
+	cmapMark_ = {1.0, 0.1, 0.1};
+	cwayLine_ = {0.1, 0.9, 0.9};
+	cwayMark_ = {0.8, 0.1, 0.9};
+	ros::NodeHandle n;
+	ros::Publisher rvizMap = n.advertise<visualization_msgs::MarkerArray>("NavMarkers",1000);
+	
+	// the file loading into an Endpoint vector should be made into it's own function
+	// though this does require identical formatting in the file fields
+ 	string mapfile, wayfile;
 	if(lvl == 3){
 		mapfile = "";
 	    wayfile = "";  //root is catkin ws
 	}	
 	else {
 		mapfile = "/home/wyatt/cat_ws/src/firebot/lvl1_map.txt"; 
-		wayfile = "/home/wyatt/cat_ws/src/firebot/wayPoints.txt";	
+		wayfile = "/home/wyatt/cat_ws/src/firebot/wayPoints_.txt";	
 	}
 
-	smallRoomConf = bigRoomConf = false;
-	vector<int> none;
-	none.resize(0);
-	badPt = EndPoint(-1, -1, -1, none);
-	mapPoints.resize(0);
-	wayPoints.resize(0);
-
-	// the file loading into an Endpoint vector should be made into it's own function
-	// though this does require identical formatting in the file fields
-        
+   
 	std::ifstream file;
 	file.open(mapfile.c_str());
 	string line = "";
@@ -54,7 +61,7 @@ Nav::Nav(int lvl){
 	vector<string> nums;
 	if (file.is_open()){
                 while(getline(file, line, ',')){
-                        nums.push_back(line); //std::cout<<line<<"\n";
+                        nums.push_back(line); //cout<<line<<"\n";
                 }
                 file.close();
         }
@@ -68,16 +75,16 @@ Nav::Nav(int lvl){
 		if(nums[6].compare("x") != 0) temp.push_back(std::atof(nums[6].c_str())); 
 		EndPoint tmp(std::atof(nums[0].c_str()), std::atof(nums[1].c_str()),
 		    std::atof(nums[2].c_str()),temp);
-		mapPoints.push_back(tmp);
+		mapPoints_.push_back(tmp);
 		for(int i=0; i<7; i++) nums.erase(nums.begin()+0);
 	}
 
 	nums.resize(0);
 	file.open(wayfile.c_str());
-	std::cout<<"outputting "<<wayfile<<"\n";
+	cout<<"outputting "<<wayfile<<"\n";
         if (file.is_open()){
                 while(getline(file, line, ',')){
-                        nums.push_back(line); //std::cout<<line<<"\n";
+                        nums.push_back(line); //cout<<line<<"\n";
                 }
                 file.close();
         }
@@ -91,54 +98,66 @@ Nav::Nav(int lvl){
 		if(nums[6].compare("x") != 0) temp.push_back(std::atof(nums[6].c_str())); 
 		EndPoint tmp(std::atof(nums[0].c_str()), std::atof(nums[1].c_str()),
 		    std::atof(nums[3].c_str()),temp); // nums[2] is radius set to 10 constant
-		wayPoints.push_back(tmp);
+		wayPoints_.push_back(tmp);
 		for(int i=0; i<7; i++) nums.erase(nums.begin()+0);
+	}
+}
+
+// Robot.cpp drive loop sets the bool flags at set rates
+void Nav::publishLoop(){
+	if(pubWays_){
+		markerPub_.publish(wayMarks_);
+		pubWays_ = false;
+	}
+	if(pubMap_){
+		markerPub_.publish(mapMarks_);
+		pubMap_ = false;
 	}
 }
 
 // Sets the door configuration for the small room, if up == true the 
 // door is on the higher side (larger y coordinate) 
 void Nav::setSmallRoomUpper(bool up){
-	std::cout<<"setting small room upper\n";	
+	cout<<"setting small room upper\n";	
 	if(up){
-		getPoint(18,mapPoints).setNeighbors(1,12);		
-		getPoint(13,mapPoints).setNeighbors(1,14);
-		getPoint(11,mapPoints).setNeighbors(2,12,14);
-		getPoint(14,mapPoints).setNeighbors(2,13,11);
-		removePoint(19,mapPoints);
+		getPoint(18,mapPoints_).setNeighbors(1,12);		
+		getPoint(13,mapPoints_).setNeighbors(1,14);
+		getPoint(11,mapPoints_).setNeighbors(2,12,14);
+		getPoint(14,mapPoints_).setNeighbors(2,13,11);
+		removePoint(19,mapPoints_);
 
-		getPoint(12,wayPoints).setNeighbors(1,11);
-		getPoint(13,wayPoints).setNeighbors(2,5,15);
+		getPoint(12,wayPoints_).setNeighbors(1,11);
+		getPoint(13,wayPoints_).setNeighbors(2,5,15);
 		}
 	else{
-		getPoint(11,mapPoints).setNeighbors(1,12);
-		getPoint(19,mapPoints).setNeighbors(1,14);
-		getPoint(12,mapPoints).setNeighbors(2,11,13);
-		getPoint(13,mapPoints).setNeighbors(2,12,14);
-		removePoint(18,mapPoints);
+		getPoint(11,mapPoints_).setNeighbors(1,12);
+		getPoint(19,mapPoints_).setNeighbors(1,14);
+		getPoint(12,mapPoints_).setNeighbors(2,11,13);
+		getPoint(13,mapPoints_).setNeighbors(2,12,14);
+		removePoint(18,mapPoints_);
 
-		getPoint(11,wayPoints).setNeighbors(1,12);
-		getPoint(10,wayPoints).setNeighbors(2,9,14);
+		getPoint(11,wayPoints_).setNeighbors(1,12);
+		getPoint(10,wayPoints_).setNeighbors(2,9,14);
 	}
 }
 
 // Sets the door configuration for the larger room, if up == true the door is
 // in the higher location (larger y coordinate)
 void Nav::setBigRoomUpper(bool up){
-	std::cout<<"setting big room upper\n";	
+	cout<<"setting big room upper\n";	
 	if(up){
-		getPoint(17,mapPoints).setNeighbors(1,20);
-		getPoint(16,mapPoints).setNeighbors(1,15);
+		getPoint(17,mapPoints_).setNeighbors(1,20);
+		getPoint(16,mapPoints_).setNeighbors(1,15);
 
-		getPoint(3,wayPoints).setNeighbors(2,2,4);
-		removePoint(17,wayPoints);
+		getPoint(3,wayPoints_).setNeighbors(2,2,4);
+		removePoint(17,wayPoints_);
 	}
 	else{
-		getPoint(17,mapPoints).setNeighbors(1,16);
-		removePoint(20,mapPoints);
+		getPoint(17,mapPoints_).setNeighbors(1,16);
+		removePoint(20,mapPoints_);
 
-		getPoint(4,wayPoints).setNeighbors(2,3,5);
-		getPoint(16,wayPoints).setNeighbors(2,15,17);
+		getPoint(4,wayPoints_).setNeighbors(2,3,5);
+		getPoint(16,wayPoints_).setNeighbors(2,15,17);
 	}	
 }
 
@@ -181,7 +200,7 @@ void Nav::findExpected(float Rx, float Ry, vector<EndPoint> &pts){
 // Given endpoints for a wall and robot location, sets all points "visible" and "done" 
 // values accordingly.
 void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry, vector<EndPoint> &pts){
-	//std::cout<<"elim from "<<ep1.getID()<<" to "<<ep2.getID()<<"\n";
+	//cout<<"elim from "<<ep1.getID()<<" to "<<ep2.getID()<<"\n";
 	for(EndPoint &p : pts){
 		if(!p.getDone()){
 
@@ -226,18 +245,18 @@ bool Nav::getNeighbor(int startID, int neighI, EndPoint &neigh, vector<EndPoint>
 	if(start.getID()!=-1){ 
 		neigh = getPoint(start.getNeighborID(neighI), pts);
 		if(neigh.getID()==-1){
-			neigh = badPt;
+			neigh = badPt_;
 			return false;
 		}
 		return true;
 	}
 	else{
-		neigh = badPt;
+		neigh = badPt_;
 		return false;
 	}
 }
 
-// Move the robot around the map and publish what mapPoints it can see
+// Move the robot around the map and publish what mapPoints_ it can see
 void Nav::run(){
 	color mapLine = {1.0, 0.5, 0.5};
 	color mapMark = {1.0, 1.0, 1.0};
@@ -247,57 +266,43 @@ void Nav::run(){
 	float iter = 100;
 	for( int i = 0; i<iter; i++){
 		x = 230.0/iter * i; publishGraph(x,y, "test", 
-				mapPoints, mapLine, mapMark);
+				mapPoints_, mapLine, mapMark);
 	}	
 	x = 230;
 	for( int i = 0; i<iter; i++){
 		y = 230.0/iter * i; publishGraph(x,y, "test", 
-				mapPoints, mapLine, mapMark);
+				mapPoints_, mapLine, mapMark);
 	}	
 	y = 230;
 	for( int i = 0; i<iter; i++){
 		x = 230.0/iter * (iter - i); publishGraph(x,y, "test", 
-				mapPoints, mapLine, mapMark);
+				mapPoints_, mapLine, mapMark);
 	}	
 	x = 30;
 	for( int i = 0; i<iter; i++){
 		y = 230.0/iter * (iter - i); publishGraph(x,y, "test", 
-				mapPoints, mapLine, mapMark);
+				mapPoints_, mapLine, mapMark);
 	}	
 	
 }
 
 void Nav::publishMapAndWays(float Rx, float Ry){
-	//findExpected(Rx, Ry, mapPoints);
-	color mapLine = {0.9, 0.5, 0.0};
-	color mapMark = {1.0, 0.1, 0.1};
-	color wayLine = {0.1, 0.9, 0.9};
-	color wayMark = {0.8, 0.1, 0.9};
-
-
-	publishGraph(Rx, Ry, "map", mapPoints, mapLine, mapMark);
-	publishGraph(Rx, Ry, "way", wayPoints, wayLine, wayMark);
+	//findExpected(Rx, Ry, mapPoints_);
+	publishGraph(Rx, Ry, "map", mapPoints_, cmapLine_, cmapMark_);
+	publishGraph(Rx, Ry, "way", wayPoints_, cwayLine_, cwayMark_);
 		
 }
-void Nav::populatMarks(string which, string NS, string frame){
-	visualization_msgs::MarkerArray tmp;
-	vector<EndPoint> *pts;
-	if(which == "map") { pts = &mapPoints; }
-	if(which == "way") { pts = &wayPoints; }
 
-	// = map ? &mapPoints : &wayPoints;
-	tmp.markers.resize(2*pts->size());
+// populate MarkerArray members (run by the makeMapMarks() and makeWayMarks()) 
+void Nav::populateMarks(string which, string NS, string frame,
+	   	visualization_msgs::MarkerArray &marks, color lncol, color markcol){
+	vector<EndPoint>* pts;
+	if(which == "map") { pts = &mapPoints_; }
+	if(which == "way") { pts = &wayPoints_; }
+	marks.markers.resize(2 * (pts->size()));
 	
-
-	//if(map) {mapMarks = tmp;}
-	//else    {wayMarks = tmp;}
-}
-visualization_msgs::MarkerArray Nav::makeMarks(vector<EndPoint> &pts, color lncol, color markcol,
-		string NS, string frame){
-	visualization_msgs::MarkerArray marks;
-	marks.markers.resize(2*pts.size());
 	// add vertical arrows at pt locations
-	for(int i=0; i<pts.size(); i++){
+	for(int i=0; i<pts->size(); i++){
 		marks.markers[i].header.frame_id = frame;
 		marks.markers[i].ns = NS; 
 		marks.markers[i].id = i; //pts[i].getID();
@@ -305,36 +310,34 @@ visualization_msgs::MarkerArray Nav::makeMarks(vector<EndPoint> &pts, color lnco
 		marks.markers[i].action = visualization_msgs::Marker::ADD;
 		
 		marks.markers[i].points.resize(2);
-		marks.markers[i].points[0].x = pts[i].getx();
-		marks.markers[i].points[0].y = pts[i].gety();
+		marks.markers[i].points[0].x = (*pts)[i].getx();
+		marks.markers[i].points[0].y = (*pts)[i].gety();
 		marks.markers[i].points[0].z = 0;
-		marks.markers[i].points[1].x = pts[i].getx();
-		marks.markers[i].points[1].y = pts[i].gety();
+		marks.markers[i].points[1].x = (*pts)[i].getx();
+		marks.markers[i].points[1].y = (*pts)[i].gety();
 		marks.markers[i].points[1].z = 10; // 10cm tall 
 
 		marks.markers[i].scale.x = 3; 
 		marks.markers[i].scale.y = 3;
 		marks.markers[i].scale.z = 3;
-		//bool visible = std::find(expectedIDs.begin(), expectedIDs.end(), 
-				//pts[i].getID()) != expectedIDs.end();
 		marks.markers[i].color.a = 1.0;	
-		marks.markers[i].color.r = pts[i].isVisible() ? 0.0 : markcol.r;	
-		marks.markers[i].color.g = pts[i].isVisible() ? 1.0 : markcol.g;
-		marks.markers[i].color.b = pts[i].isVisible() ? 0.0 : markcol.b;	
+		marks.markers[i].color.r = (*pts)[i].isVisible() ? 0.0 : markcol.r;	
+		marks.markers[i].color.g = (*pts)[i].isVisible() ? 1.0 : markcol.g;
+		marks.markers[i].color.b = (*pts)[i].isVisible() ? 0.0 : markcol.b;	
 
 		// show text ID above marker with id += 1000
-		int idx = i+pts.size();
+		int idx = i+pts->size();
 		marks.markers[idx].header.frame_id = frame;
 		marks.markers[idx].id = i+1000;
 		marks.markers[idx].ns = NS;
-		marks.markers[idx].text = NS=="way" ? std::to_string(pts[i].getID()) : "";
+		marks.markers[idx].text = NS=="way" ? std::to_string((*pts)[i].getID()) : "";
 		marks.markers[idx].type = visualization_msgs::Marker::TEXT_VIEW_FACING;
 		marks.markers[idx].action = visualization_msgs::Marker::ADD;
 		marks.markers[idx].scale.x = 3;
 		marks.markers[idx].scale.y = 3;
 		marks.markers[idx].scale.z = 8.0; // text height	
-		marks.markers[idx].pose.position.x = pts[i].getx();
-		marks.markers[idx].pose.position.y = pts[i].gety();
+		marks.markers[idx].pose.position.x = (*pts)[i].getx();
+		marks.markers[idx].pose.position.y = (*pts)[i].gety();
 		marks.markers[idx].pose.position.z = 15;
 		marks.markers[idx].pose.orientation.x = 0;
 		marks.markers[idx].pose.orientation.y = 0;
@@ -362,29 +365,28 @@ visualization_msgs::MarkerArray Nav::makeMarks(vector<EndPoint> &pts, color lnco
 	mark.points[1].z = 0;
 
 	EndPoint ep1;
-	vector<bool> accountedForIDs(pts.size()*10, false); // index is ID
+	vector<bool> accountedForIDs(pts->size()*10, false); // index is ID
 	int id;		
 
-	// LINE_STRIP is defined by n points, here always n = 2
-	for(int i=0; i<pts.size(); i++){ 
-		mark.points[0].x = pts[i].getx(); // add the ith point to the line
-		mark.points[0].y = pts[i].gety();
+	// LINE_STRIP is defined by n points, here n always = 2
+	for(int i=0; i<pts->size(); i++){ 
+		mark.points[0].x = (*pts)[i].getx(); // add the ith point to the line
+		mark.points[0].y = (*pts)[i].gety();
 
 		// loop through all the ith point's neighbors adding 	
 		// and then the main MarkerArray them to the LINE_STRIP
-		for(int k=0; k<pts[i].getNumNeighbors(); k++){
+		for(int k=0; k<(*pts)[i].getNumNeighbors(); k++){
 			
-			if(getNeighbor(pts[i].getID(), k, ep1, pts) &&
+			if(getNeighbor((*pts)[i].getID(), k, ep1, *pts) &&
 				       	!accountedForIDs[ep1.getID()]){
 				mark.points[1].x = ep1.getx();
 				mark.points[1].y = ep1.gety();
-				mark.id = pts[i].getID() * 10000 + k; 
+				mark.id = (*pts)[i].getID() * 10000 + k; 
 				marks.markers.push_back(mark);	
 			}
 		}		
-		accountedForIDs[pts[i].getID()] = true;
+		accountedForIDs[(*pts)[i].getID()] = true;
 	}
-
 }
 
 
@@ -500,14 +502,14 @@ void Nav::publishGraph(float Rx, float Ry, string NS,
 	}
 
 	auto end = std::chrono::steady_clock::now();
-	std::cout<<"time to draw: "<<std::chrono::duration_cast
+	cout<<"time to draw: "<<std::chrono::duration_cast
 		<std::chrono::milliseconds>(end-start).count()<<"\n";
 
 	rvizMap.publish(marks);	
 
 	// If running continually have a small delay otherwise 
 	struct timespec req = {0};
-	if(runBool){
+	if(runBool_){
 		int milli = 40;
 		req.tv_sec = 0;
 		req.tv_nsec = milli * 1000000L;
@@ -517,7 +519,7 @@ void Nav::publishGraph(float Rx, float Ry, string NS,
 
 	rvizMap.publish(marks);	
 	
-	if(runBool){nanosleep(&req, (struct timespec *)NULL);}
+	if(runBool_){nanosleep(&req, (struct timespec *)NULL);}
 	else{ sleep(5);}
 
 	rvizMap.publish(marks);	
@@ -543,43 +545,44 @@ vector<int> Nav::findPath(int start, int end, vector<EndPoint> &pts){
 		done = true;
 
 		// debugging output code, leave here for when it inevitable breaks
-	//	/*
+		/*
 		for(int k=0; k<9; k++){
 			for(int i=0; i<=last; i++){
 				if(k==0){
 					for(int tmp = 999; tmp>dists[i]; tmp/=10){
-						std::cout<<" ";
+						cout<<" ";
 						//tmp*=10;
 					}	
-					std::cout<<(int) dists[i];
+					cout<<(int) dists[i];
 				}
 				else{
 					int id = -1;
 					if(k<paths[i].size()){ id = paths[i][k];}
-					if(id == -1){ std::cout<<"   _";} 
+					if(id == -1){ cout<<"   _";} 
 					else{
-						if(id<10){std::cout<<" ";}
-						std::cout<<"  "<<id;
+						if(id<10){cout<<" ";}
+						cout<<"  "<<id;
 					}
 				}
 			}
-			std::cout<< "\n";
+			cout<< "\n";
 		}
-		std::cout<<"----------------------------"<<" record = "<<record<<"\n";
-	//	*/
+		cout<<"----------------------------"<<" record = "<<record<<"\n";
+		//	*/
 
 		if(last>90) ROS_ERROR("More paths encountered than expected! increase size? Nav.cpp ln 460\n");
 		int len = last+1; // last is going to change as new paths are added
 		for(int p=0; p<len; p++){
-			if(paths[p].size()>0 /*&& dists[p] < record*/) { // if not deleted and still viable 
+			if(paths[p].size()>0 /*&& dists[p] < record*/) { // if !deleted and still viable 
 				tail = getPoint(paths[p].back(), pts);
 				vector<int> neighs = tail.getNeighborList();  	
 
 				vector<int> todelete;
 				bool usefirst = true;
 				for(int i=0; i<neighs.size(); i++){
+					// parenthesis added so like x || (y && z), might break it...
 					if(paths[p].size() < 2 || 
-							paths[p].size() > 1 && neighs[i] != paths[p][paths[p].size() - 2]){ // no retracing
+							(paths[p].size() > 1 && neighs[i] != paths[p][paths[p].size() - 2])){ // no retracing
 
 						if(usefirst) {
 							index = p;
@@ -605,29 +608,28 @@ vector<int> Nav::findPath(int start, int end, vector<EndPoint> &pts){
 							if( dists[index] < record) { 
 								record = dists[index]; 
 								finalpath = paths[index];	
-						///* // output the connected valid path 		
-								std::cout<<"connected a valid loop record = "<<record<<" loop : ";
-								
+						/* // debug output the connected valid path 		
+								cout<<"connected a valid loop record = "<<record<<" loop : ";
 								for(int t=0; t<finalpath.size(); t++){
-									std::cout<<"  "<<finalpath[t];
+									cout<<"  "<<finalpath[t];
 								}
-								std::cout<<"\n";
+								cout<<"\n";
 								for(int t=0; t<finalpath.size()-1; t++){
-									std::cout<<"  "<<getDistance(getPoint(finalpath[t],pts),
+									cout<<"  "<<getDistance(getPoint(finalpath[t],pts),
 										   	getPoint(finalpath[t+1], pts));
 								}
-								std::cout<<"\n";
-					//	*/
+								cout<<"\n";
+						//	*/
 
 							}
 						}
 						else if(closed){
 							todelete.push_back(index);
-						//	std::cout<<"closed at index "<<index<<"\n";
+						//	cout<<"closed at index "<<index<<"\n";
 						}
 						else if(dists[index]>record){
 							todelete.push_back(index);
-						//	std::cout<<"above record at index "<<index<<"\n";
+						//	cout<<"above record at index "<<index<<"\n";
 						}
 						else{
 							done = false; // still a valid path being built, keep going
@@ -647,34 +649,32 @@ vector<int> Nav::findPath(int start, int end, vector<EndPoint> &pts){
 	return finalpath;
 }
 
-float Nav::getDistance(EndPoint &ep1, EndPoint &ep2){
-	return pow(pow(ep1.getx() - ep2.getx(),2) + pow(ep1.gety() - ep2.gety(),2), 0.5);
-}
 
-// prints the map point info to console
+// prints the info for a vec<EndPoint> to console
 void Nav::outputGraph(vector<EndPoint> &pts){
 	EndPoint ep;
-	std::cout<<"outputGraph with size: "<<pts.size()<<"\n";
-	std::cout<<"////////////////////////////////////////////////////\n";
+	cout<<"outputGraph with size: "<<pts.size()<<"\n";
+	cout<<"////////////////////////////////////////////////////\n";
 	for(int i=0; i<pts.size(); i++){
-		std::cout<<" id: "<<pts[i].getID();
-		std::cout<<"\tx: "<<pts[i].getx();
-		std::cout<<"\ty: "<<pts[i].gety();
-		std::cout<<"\tNEIGH: "<< pts[i].getNumNeighbors();
+		cout<<" id: "<<pts[i].getID();
+		cout<<"\tx: "<<pts[i].getx();
+		cout<<"\ty: "<<pts[i].gety();
+		cout<<"\tNEIGH: "<< pts[i].getNumNeighbors();
 		for(int k=0; k<pts[i].getNumNeighbors(); k++){
 			// for some reason this check needs to be here...
 			bool check = getNeighbor(pts[i].getID(), k, ep, pts);
 			if(check){
-				std::cout<<"\tn: "<< ep.getID();
+				cout<<"\tn: "<< ep.getID();
 			}
 			else{
-				std::cout<<"\tn: N";
+				cout<<"\tn: N";
 			}
 		}
-		std::cout<<"\n";
+		cout<<"\n";
 	}
-	std::cout<<"////////////////////////////////////////////////////\n";
+	cout<<"////////////////////////////////////////////////////\n";
 }
+
 
 // gets a point given an ID, assumes in order initially then searches 
 EndPoint& Nav::getPoint(int id, vector<EndPoint> &pts){
@@ -682,7 +682,7 @@ EndPoint& Nav::getPoint(int id, vector<EndPoint> &pts){
 	for(int i=0; i<pts.size(); i++){
 		if(pts[i].getID() == id) return pts[i];
 	}
-	return badPt;
+	return badPt_ ;
 }
 
 // remove a point with a given ID
@@ -695,6 +695,17 @@ void Nav::removePoint(int id, vector<EndPoint> &pts){
 	}
 }
 
-void Nav::setRun(bool t){ runBool = t;}
-vector<EndPoint>* Nav::getMap() {return &mapPoints;}
-vector<EndPoint>* Nav::getWays(){return &wayPoints;}
+float Nav::getDistance(EndPoint &ep1, EndPoint &ep2){
+	return pow(pow(ep1.getx() - ep2.getx(),2) + pow(ep1.gety() - ep2.gety(),2), 0.5);
+}
+
+void Nav::makeMapMarks(string NS, string frame){
+	populateMarks("map", NS, frame, mapMarks_, cmapLine_, cmapMark_); }
+void Nav::makeWayMarks(string NS, string frame){
+	populateMarks("way", NS, frame, wayMarks_, cwayLine_, cwayMark_); }
+
+void Nav::outputWays(){ outputGraph(wayPoints_);	}
+void Nav::outputMap(){ outputGraph(mapPoints_);	}
+void Nav::setRun(bool t){ runBool_ = t;}
+vector<EndPoint>* Nav::getMap() {return &mapPoints_;}
+vector<EndPoint>* Nav::getWays(){return &wayPoints_;}

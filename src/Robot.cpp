@@ -29,35 +29,43 @@ using std::string;
 #include <sys/stat.h>
 #include <unistd.h>
 
-//using namespace std::literals ;
+using std::cout;
+
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
-Robot::Robot() : posePID(0,0,0,0,0,0){ // also calls pose constructor
+Robot::Robot() : posePID_(0,0,0,0,0,0){ // also calls pose constructor
 	failed_reads = failed_writes = contacts = 0;
-	maxleft = maxright = 0;
+	maxleft_ = maxright_ = 0;
 	left255 = right255 = 0;
-	usingi2c = false;
-	runPID = false;
-	lDrive = rDrive = 0;
-	lForward = 'a';
-	rForward = 'c';
-	lPWM = rPWM = 200;
-	D3 = 0;
-	D6 = 40;
-	D9 = 127;
-	D10 = 180;
-	D11 = 255;
+	usingi2c_ = false;
+	runPID_ = false;
+	lDrive_ = rDrive_ = 0;
+	lForward_ = 'a';
+	rForward_ = 'c';
+	lPWM_ = rPWM_ = 200;
+	ms_ = 20;
+	D3_ = 0;
+	D6_ = 40;
+	D9_ = 127;
+	D10_ = 180;
+	D11_ = 255;
 	power2pwm();
 
-	rob2world << 1, 0, 0,   0, 1, 0,   0, 0, 1; // as if theta = 0
+	rob2world_ << 1, 0, 0,   0, 1, 0,   0, 0, 1; // as if theta = 0
 } 
 
+void Robot::setNav(Nav* nv){
+	nav_ = nv;
+}
+
 void Robot::recon(firebot::ReconConfig &config, uint32_t level){ 
-	lDrive = config.left;
-	rDrive = config.right;
+	mapUpdateRate_ = config.maprate;
+	wayUpdateRate_ = config.wayrate;
+	lDrive_ = config.left;
+	rDrive_ = config.right;
 	power2pwm();
-	setPose = config.setpose;
-	runPID  = config.runpid;
+	setPose_ = config.setpose;
+	runPID_  = config.runpid;
 	// do these need to be member variables? probs not
 	kp_ = config.kp;
 	ki_ = config.ki;
@@ -65,68 +73,81 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 	max_ = config.max;
 	min_ = config.min;
 
-	posePID = PID(10.0, kp_, ki_, kd_, max_, min_);	
-	std::cout<<"RECONFIGURED!\n\n";
+	posePID_ = PID(ms_, kp_, ki_, kd_, max_, min_);	
+	cout<<"RECONFIGURED!\n\n";
 		
 }
 
 // Increment locX, locY, locP with the new encoder vals
 void Robot::calculateOdom(){
-	robotstep << WheelRCM / 2.0 * (lEnc + rEnc),              /* robot move in x */
+	robotstep_ << WheelRCM / 2.0 * (lEnc_ + rEnc_),              /* robot move in x */
 			  	 0,                                           /* robot cant move in its own y */
-				 WheelRCM / (2.0 * WheelLCM) * (lEnc - rEnc); /* robot rotation */
-	calculateTransform(odomloc(3) + robotstep(3)/2.0);	      // find transform using half the step	
-	worldstep = rob2world*robotstep; 
-	odomloc += worldstep;
+				 WheelRCM / (2.0 * WheelLCM) * (lEnc_ - rEnc_); /* robot rotation */
+	calculateTransform(odomloc_(3) + robotstep_(3)/2.0);	      // find transform using half the step	
+	worldstep_ = rob2world_*robotstep_; 
+	odomloc_ += worldstep_;
 }
 
-// Given the robot's pose relative to the world calculate rob2world.
+// Given the robot's pose relative to the world calculate rob2world_.
 void Robot::calculateTransform(float theta){
-	rob2world.topLeftCorner(2,2) << cos(theta), -sin(theta),
+	rob2world_.topLeftCorner(2,2) << cos(theta), -sin(theta),
 									sin(theta),  cos(theta);
 }
-void Robot::debugLoop(){
 
+void Robot::debugLoop(){
 
 
 }
 
 void Robot::driveLoop(){
-	std::cout<<"setting first motors....\n";
+	cout<<"setting first motors....\n";
 	setMotors();
-	usleep(10*1000);
-	std::cout<<"entering loop \n";
+	usleep(5*ms_*1000); // sleep 5 loops before starting
+	cout<<"entering loop \n";
+	int mapCount, wayCount;
+	mapCount = wayCount = 0;
 	while(1){
 		// get encoders, do PID math, set motors, delay dt
 	boost::chrono::system_clock::time_point time_limit =
-	   	boost::chrono::system_clock::now() + boost::chrono::milliseconds(500);
+	   	boost::chrono::system_clock::now() + boost::chrono::milliseconds(ms_);
 
-		std::cout<<"running\n";
+		cout<<"running\n";
 		getEncoders();
 		calculateOdom();
 		int measured = 9;
-		setPose = 10;
-		if(runPID){
-			float adj = posePID.calculate(setPose, measured);
-			lDrive += adj;
-			rDrive -= adj;	
+		setPose_ = 10;
+		if(runPID_){
+			float adj = posePID_.calculate(setPose_, measured);
+			lDrive_ += adj;
+			rDrive_ -= adj;	
 		}
 		power2pwm();
-		setMotors(); std::cout<<"ran\n\n";
+		setMotors(); cout<<"ran\n\n";
 		//usleep(100*1000); // ms * 1000 dummy wait
+		if(mapUpdateRate_ > 0 && mapCount++ >= 1000 / (ms_ * mapUpdateRate_)) 
+			nav_->pubMap_  = true;
+		if(wayUpdateRate_ > 0 && wayCount++ >= 1000 / (ms_ * wayUpdateRate_))
+			nav_->pubWays_ = true;
+
+		auto start = std::chrono::steady_clock::now(); // measure length of time remaining
 		boost::this_thread::sleep_until(time_limit);
+		auto end = std::chrono::steady_clock::now();
+		cout<<"driveLoop running in "<< ms_ <<" ms with "<<
+		std::chrono::duration_cast <std::chrono::milliseconds>(end-start).count()<<"ms and "<<
+		std::chrono::duration_cast <std::chrono::microseconds>(end-start).count()<<
+		"us (hopefully) leftover\n";
 	}
 }
 
 // scales -1:1 to 0:255
 void Robot::power2pwm(){
-	std::cout<<"making pwms with lDrive = "<<lDrive<<" rDrive = "<<rDrive<<"\n";
-	lPWM = lDrive > 0 ? lDrive*255.0 : -1*lDrive*255.0;
-	rPWM = rDrive > 0 ? rDrive*255.0 : -1*rDrive*255.0;
-	lForward = lDrive > 0 ? 'a' : 'b'; // directions set by char for each motor
-	rForward = rDrive > 0 ? 'c' : 'd';
-	std::cout<<"made pwms lPWM= "<<(int)lPWM<<" rPWm= "<<(int)rPWM<<"\n";
-	std::cout<<"lforward: "<<lForward<<"  rforward: "<<rForward<<"\n";
+	//cout<<"making pwms with lDrive_ = "<<lDrive_<<" rDrive_ = "<<rDrive_<<"\n";
+	lPWM_ = lDrive_ > 0 ? lDrive_*255.0 : -1*lDrive_*255.0;
+	rPWM_ = rDrive_ > 0 ? rDrive_*255.0 : -1*rDrive_*255.0;
+	lForward_ = lDrive_ > 0 ? 'a' : 'b'; // directions set by char for each motor
+	rForward_ = rDrive_ > 0 ? 'c' : 'd';
+	//cout<<"made pwms lPWM_= "<<(int)lPWM_<<" rPWm= "<<(int)rPWM_<<"\n";
+	//cout<<"lforward: "<<lForward_<<"  rforward: "<<rForward_<<"\n";
 }
 
 // tries to open the I2C port and set fd, repeates 10 times if failing
@@ -142,14 +163,14 @@ void Robot::openI2C(){
 	  }
    }
 	ROS_INFO("Successfully opened I2C port");
-	std::cout<<"fd = "<<fd<<"\n";
+	cout<<"fd = "<<fd<<"\n";
 
 }
 
 // waits for i2c to be available
 void Robot::checki2c(){
-	while(usingi2c){ /* put a delay here?*/ }
-	usingi2c = true;
+	while(usingi2c_){ /* put a delay here?*/ }
+	usingi2c_ = true;
 }
 
 bool Robot::contactArms(){
@@ -161,10 +182,10 @@ bool Robot::contactArms(){
 	   }
 
 	// sets all PWM values for pins D3, D6, D9, D10, and D11
-	unsigned char que[6] = {'a', D3, D6, D9, D10, D11 };
+	unsigned char que[6] = {'a', D3_, D6_, D9_, D10_, D11_ };
 	quei2c(6, que);
 
-	usingi2c = false;
+	usingi2c_ = false;
 	return true;
 }
 
@@ -173,7 +194,7 @@ bool Robot::contactArms(){
 void Robot::quei2c(int size, unsigned char *q){
 	for(int i=0; i<size; i++){
 		unsigned char send[1] = {q[i]};
-		//std::cout<<" sending que with fd = " << fd<<"\n";
+		//cout<<" sending que with fd = " << fd<<"\n";
 		if ((write(fd, &send, 1)) != 1) {         // send a byte   
 		      printf("error writing to i2c slave in Robot::quei2c\n");
 		      failed_writes++;
@@ -193,18 +214,18 @@ void Robot::quei2c(int size, unsigned char *q){
 
 // send PWM signals to Arduino
 bool Robot::setMotors(){
-	std::cout<<"running set motors\n";
-	std::cout<<"lPWM = "<<(int) lPWM<<" rPWM = "<<(int) rPWM<<"\n";
+	cout<<"running set motors\n";
+	cout<<"lPWM_ = "<<(int) lPWM_<<" rPWM_ = "<<(int) rPWM_<<"\n";
 	checki2c();
 	if (ioctl(fd, I2C_SLAVE, addrDrive) < 0) {     
 	   // Set the port options and set the address of the device we wish to speak to
 	   ROS_ERROR("Unable to open port, someone else using it?");
 	   return false;
 	   }
-	unsigned char que[4] = {lForward, lPWM, rForward, rPWM};
+	unsigned char que[4] = {lForward_, lPWM_, rForward_, rPWM_};
 	quei2c(4,que);
-	usingi2c = false;
-	if(que[1] == lPWM && que[3] == rPWM) return true;
+	usingi2c_ = false;
+	if(que[1] == lPWM_ && que[3] == rPWM_) return true;
 	ROS_ERROR("Robot::setMotors miscommunication");
 	return false;
 }
@@ -218,21 +239,22 @@ bool Robot::getEncoders(){
 	   }
 	unsigned char que[4] = {'1','2','3','4'};
 	quei2c(4,que);
-	usingi2c = false;
+	usingi2c_ = false;
 
-	lEnc = (que[0] << 8) | que[1]; // left is first, high byte is first
-	rEnc = (que[2] << 8) | que[3];
+	lEnc_ = (que[0] << 8) | que[1]; // left is first, high byte is first
+	rEnc_ = (que[2] << 8) | que[3];
 	
-	if(lEnc == 255 || rEnc == 255) return false; // very rarely it fails
+	if(lEnc_ == 255 || rEnc_ == 255) return false; // very rarely it fails
 
 	// debug code
-	if(abs(lEnc)>maxleft) maxleft = lEnc;
-	if(abs(rEnc)>maxright) maxright = rEnc;
-	if(lEnc == 255) left255++;
-	if(rEnc == 255) right255++;
-	std::cout<<"lEnc = "<<lEnc<<"  maxleft = " <<maxleft <<" 255 count = "<<left255<<"\n";
-	std::cout<<"rEnc = "<<rEnc<<"  maxright = "<<maxright<<" 255 count = "<<right255<<"\n";
-	std::cout<<"Failed reads: "<<failed_reads<<" and Failed writes: "<<
+	/*
+	if(abs(lEnc_)>maxleft_) maxleft_ = lEnc_;
+	if(abs(rEnc_)>maxright_) maxright_ = rEnc_;
+	if(lEnc_ == 255) left255++; // sometimes failed reads return 255
+	if(rEnc_ == 255) right255++;
+	cout<<"lEnc_ = "<<lEnc_<<"  maxleft_ = " <<maxleft_ <<" 255 count = "<<left255<<"\n";
+	cout<<"rEnc_ = "<<rEnc_<<"  maxright_ = "<<maxright_<<" 255 count = "<<right255<<"\n";
+	cout<<"Failed reads: "<<failed_reads<<" and Failed writes: "<<
 		failed_writes<<" out of "<<contacts<<"\n";// */
 	return true;
 }
