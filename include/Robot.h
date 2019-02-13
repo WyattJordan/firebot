@@ -53,6 +53,7 @@ class Robot{
 		int16_t lEnc_, rEnc_;   // enc counts 
 		bool usingi2c_;         // avoid conflicting contacts	
 		bool i2c_; 		// is odroid connected to circuit (for testing w/o bot)
+		bool debugDrive_;
 		bool runPID_;
 		int maxleft_, maxright_;
 		int ms_; // ms delay between odom updates, fastest thread

@@ -39,6 +39,7 @@ Robot::Robot() : posePID_(0,0,0,0,0,0){ // also calls pose constructor
 	maxleft_ = maxright_ = 0;
 	left255 = right255 = 0;
 	usingi2c_ = false;
+	debugDrive_ = false;
 	i2c_ = false;
 	runPID_ = false;
 	lDrive_ = rDrive_ = 0;
@@ -74,6 +75,7 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 	lDrive_ = config.left;
 	rDrive_ = config.right;
 	i2c_ = config.i2c;
+	debugDrive_ = config.debugdrive;
 	power2pwm();
 	runPID_  = config.runpid;
 	setPose_ = config.setpose;
@@ -94,11 +96,8 @@ void Robot::calculateOdom(){
 	float x = WheelRCM / 2.0 * (lEnc_ + rEnc_);
 	float y = 0;
 	float p = WheelRCM / (2.0 * WheelLCM) * (lEnc_ - rEnc_);
-	cout<<"trying to set vals\n";
 	robotstep_ <<  x, y, p;
-	cout<<"set vals\n";
 	float theta = odomloc_(2) + robotstep_(2)/2.0; // this isn't matlab!
-	cout<<"goint to trans\n";
 	calculateTransform(theta);	      // find transform using half the step	
 	worldstep_ = rob2world_*robotstep_; 
 	odomloc_ += worldstep_;
@@ -106,14 +105,8 @@ void Robot::calculateOdom(){
 
 // Given the robot's pose relative to the world calculate rob2world_.
 void Robot::calculateTransform(float theta){
-	/*Matrix2f tmp;
-	       tmp	<< cos(theta), -sin(theta),
-			 sin(theta),  cos(theta);
-	cout<<"done trans 1\n";
-	*/
 	rob2world_.topLeftCorner(2,2) << cos(theta), -sin(theta),
 			 sin(theta),  cos(theta);
-	cout<<"done trans 3\n";
 
 }
 
@@ -130,22 +123,23 @@ void Robot::driveLoop(){
 	int mapCount, wayCount;
 	mapCount = wayCount = 0;
 	i2c_ = false;
+
 	while(1){
 		// get encoders, do PID math, set motors, delay dt
 	boost::chrono::system_clock::time_point time_limit =
 	   	boost::chrono::system_clock::now() + boost::chrono::milliseconds(ms_);
 
-		cout<<"running, i2c = "<<i2c_<<"\n";
+		if(debugDrive_) cout<<"running, i2c = "<<i2c_<<"\n";
 		if(i2c_) {getEncoders();}
 		else {
 			lEnc_ = 100 * lDrive_ ;//+ rand()%10;
 			rEnc_ = 100 * rDrive_ ;//+ rand()%10;		
 		}
-		cout<<"done getting/making enc vals, doing odom...\n";
+		if(debugDrive_) cout<<"got/made enc vals, doing odom...\n";
 		calculateOdom();
 		int measured = 9;
 		setPose_ = 10;
-		cout<<"running pid = "<<runPID_ <<"\n";
+		if(debugDrive_) cout<<"running pid = "<<runPID_ <<"\n";
 		if(runPID_){
 			float adj = posePID_.calculate(setPose_, measured);
 			lDrive_ += adj;
@@ -153,17 +147,28 @@ void Robot::driveLoop(){
 		}
 		power2pwm();
 		if(i2c_) setMotors();
-	       	cout<<"ran\n\n";
-		//usleep(100*1000); // ms * 1000 dummy wait
-		if(mapUpdateRate_ > 0 && mapCount++ >= 1000 / (ms_ * mapUpdateRate_)) 
+	       	if(debugDrive_) cout<<"ran\n\n";
+		mapCount++;
+		wayCount++;
+	
+		//int minlvl = 1000 / (ms_ * mapUpdateRate_) ;
+		//cout<<"mapcount = "<<mapCount<<"updatemap = "<<mapUpdateRate_<<"  with lvl = "<<minlvl<<"\n";
+
+		if(mapUpdateRate_ > 0 && mapCount >= 1000 / (ms_ * mapUpdateRate_)) {
+			cout<<"pubbing map\n";
 			nav_->pubMap_  = true;
-		if(wayUpdateRate_ > 0 && wayCount++ >= 1000 / (ms_ * wayUpdateRate_))
+			mapCount = 0;
+		}
+		if(wayUpdateRate_ > 0 && wayCount >= 1000 / (ms_ * wayUpdateRate_)){
 			nav_->pubWays_ = true;
+			wayCount = 0;
+		}
 
 		auto start = std::chrono::steady_clock::now(); // measure length of time remaining
 		boost::this_thread::sleep_until(time_limit);
 		auto end = std::chrono::steady_clock::now();
-		cout<<"driveLoop running in "<< ms_ <<" ms with "<<
+		if(debugDrive_)
+		       	cout<<"driveLoop running in "<< ms_ <<" ms with "<<
 		std::chrono::duration_cast <std::chrono::milliseconds>(end-start).count()<<"ms and "<<
 		std::chrono::duration_cast <std::chrono::microseconds>(end-start).count()<<
 		"us (hopefully) leftover\n";

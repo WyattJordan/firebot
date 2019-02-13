@@ -108,10 +108,12 @@ void Nav::publishLoop(){
 	if(pubWays_){
 		markerPub_->publish(wayMarks_);
 		pubWays_ = false;
+		cout<<"published ways "<<wayMarks_.markers.size()<<"\n";
 	}
 	if(pubMap_){
 		markerPub_->publish(mapMarks_);
 		pubMap_ = false;
+		cout<<"published map "<<mapMarks_.markers.size()<<"\n";
 	}
 }
 
