@@ -4,6 +4,7 @@
 #include "Nav.h"
 #include "Endpoint.h"
 #include "ros/ros.h"
+#include "Eigen/Core"
 #include <ros/console.h> 
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
@@ -21,6 +22,7 @@
 using std::vector;
 using std::atof;
 using std::cout;
+using namespace Eigen;
 
 #define LARGENUM 99999999
 // don't use default constuctor, it must load the map and way files
@@ -29,6 +31,7 @@ Nav::Nav(){}
 // This is the main constructor, initialize variables here
 Nav::Nav(int lvl, ros::Publisher* pub){  
 	smallRoomConf_ = bigRoomConf_ = false;
+	pubMap_ = pubWays_ = pubRob_ = false;
 	vector<int> none;
 	none.resize(0);
 	badPt_ = EndPoint(-1, -1, -1, none);
@@ -102,18 +105,31 @@ Nav::Nav(int lvl, ros::Publisher* pub){
 	}
 }
 
+void Nav::setOdomLoc(Vector3f &od){
+	navOdomCpy_ = od;
+}
+
+void Nav::initRobotMark(){
+
+}
+
 // Robot.cpp drive loop sets the bool flags at set rates
 void Nav::publishLoop(){
-	cout<<"Nav going to publish\n";
-	if(pubWays_){
-		markerPub_->publish(wayMarks_);
-		pubWays_ = false;
-		cout<<"published ways "<<wayMarks_.markers.size()<<"\n";
-	}
-	if(pubMap_){
-		markerPub_->publish(mapMarks_);
-		pubMap_ = false;
-		cout<<"published map "<<mapMarks_.markers.size()<<"\n";
+	while(1){
+		if(pubWays_ || pubMap_){
+		// 	cout<<"pubbing ways: "<<pubWays_<<" with size "<<wayMarks_.markers.size()<<
+		//		" and map: "<<pubMap_<<" with size "<<mapMarks_.markers.size()<<"\n";
+			if(pubMap_){
+				markerPub_->publish(wayMarks_);
+				pubWays_ = false;
+				cout<<"published ways "<<wayMarks_.markers.size()<<"\n";
+			}
+			if(pubMap_){
+				markerPub_->publish(mapMarks_);
+				pubMap_ = false;
+				cout<<"published map "<<mapMarks_.markers.size()<<"\n";
+			}
+		}
 	}
 }
 
@@ -260,7 +276,7 @@ bool Nav::getNeighbor(int startID, int neighI, EndPoint &neigh, vector<EndPoint>
 		return false;
 	}
 }
-
+/*
 // Move the robot around the map and publish what mapPoints_ it can see
 void Nav::run(){
 	color mapLine = {1.0, 0.5, 0.5};
@@ -290,18 +306,17 @@ void Nav::run(){
 	}	
 	
 }
-
-void Nav::publishMapAndWays(float Rx, float Ry){
-	//findExpected(Rx, Ry, mapPoints_);
-	publishGraph(Rx, Ry, "map", mapPoints_, cmapLine_, cmapMark_);
-	publishGraph(Rx, Ry, "way", wayPoints_, cwayLine_, cwayMark_);
-		
+*/
+void Nav::publishMapAndWays(){
+	markerPub_->publish(mapMarks_);
+	markerPub_->publish(wayMarks_);
 }
 
 // populate MarkerArray members (run by the makeMapMarks() and makeWayMarks()) 
 void Nav::populateMarks(string which, string NS, string frame,
 	   	visualization_msgs::MarkerArray &marks, color lncol, color markcol){
 	vector<EndPoint>* pts;
+	cout<<"populating in Nav for :"<<which<<"\n";
 	if(which == "map") { pts = &mapPoints_; }
 	if(which == "way") { pts = &wayPoints_; }
 	marks.markers.resize(2 * (pts->size()));
@@ -392,9 +407,13 @@ void Nav::populateMarks(string which, string NS, string frame,
 		}		
 		accountedForIDs[(*pts)[i].getID()] = true;
 	}
+	if(which == "map") mapMarks_ = marks;
+	if(which == "way") wayMarks_ = marks;
+	
+	
 }
 
-
+/*
 void Nav::publishGraph(float Rx, float Ry, string NS,
 	   	vector<EndPoint> &pts, color lncol, color  markcol){
 	auto start = std::chrono::steady_clock::now();
@@ -529,7 +548,7 @@ void Nav::publishGraph(float Rx, float Ry, string NS,
 
 	rvizMap.publish(marks);	
 } 
-
+*/
 // Returns list of ids from start to end that represent the shortest
 // path between two waypoints
 vector<int> Nav::findPath(int start, int end, vector<EndPoint> &pts){

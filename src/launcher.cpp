@@ -62,6 +62,9 @@ int main(int argc, char **argv){
 	std::thread thread1, driveLoop, publishNavLoop;
 //	rob.openI2C();
 	driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
+
+	nav.makeMapMarks("marker_ns","map2");
+	nav.makeWayMarks("ways_ns","map2");
 	publishNavLoop = std::thread(boost::bind(&Nav::publishLoop, &nav));	
 	
 //	vector<EndPoint>* tmp = ways ? nav.getWays() : nav.getMap();  

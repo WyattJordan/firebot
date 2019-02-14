@@ -6,7 +6,7 @@
 #include "Nav.h"
 #include "pid.h"
 #include <Eigen/Core>
-#include <Eigen/Dense>
+//#include <Eigen/Dense>
 #include <dynamic_reconfigure/server.h>
 #include <firebot/ReconConfig.h>
 
@@ -120,8 +120,8 @@ void Robot::driveLoop(){
 	setMotors();
 	usleep(5*ms_*1000); // sleep 5 loops before starting
 	cout<<"entering loop \n";
-	int mapCount, wayCount;
-	mapCount = wayCount = 0;
+	int mapCount, wayCount, robCount;
+	mapCount = wayCount = robCount = 0;
 	i2c_ = false;
 
 	while(1){
@@ -148,14 +148,10 @@ void Robot::driveLoop(){
 		power2pwm();
 		if(i2c_) setMotors();
 	       	if(debugDrive_) cout<<"ran\n\n";
-		mapCount++;
-		wayCount++;
-	
-		//int minlvl = 1000 / (ms_ * mapUpdateRate_) ;
-		//cout<<"mapcount = "<<mapCount<<"updatemap = "<<mapUpdateRate_<<"  with lvl = "<<minlvl<<"\n";
 
+		// set flags for publishing markers and robot
+		mapCount++; wayCount++; robCount++;
 		if(mapUpdateRate_ > 0 && mapCount >= 1000 / (ms_ * mapUpdateRate_)) {
-			cout<<"pubbing map\n";
 			nav_->pubMap_  = true;
 			mapCount = 0;
 		}
@@ -163,6 +159,12 @@ void Robot::driveLoop(){
 			nav_->pubWays_ = true;
 			wayCount = 0;
 		}
+		if(robUpdateRate_ > 0 && robCount >= 1000 / (ms_ * robUpdateRate_)){
+			nav_->setOdomLoc(odomloc_); // give the Nav class the odom loc
+			nav_->pubRob_ = true;
+			robCount = 0;
+		}
+
 
 		auto start = std::chrono::steady_clock::now(); // measure length of time remaining
 		boost::this_thread::sleep_until(time_limit);

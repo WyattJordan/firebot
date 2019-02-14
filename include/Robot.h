@@ -57,7 +57,7 @@ class Robot{
 		bool runPID_;
 		int maxleft_, maxright_;
 		int ms_; // ms delay between odom updates, fastest thread
-		int wayUpdateRate_, mapUpdateRate_;
+		int wayUpdateRate_, mapUpdateRate_, robUpdateRate_;
 
 		// odometry vars;
 		Matrix3f rob2world_;	// rotation matrix calculated given pose

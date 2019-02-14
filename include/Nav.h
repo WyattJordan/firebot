@@ -5,9 +5,11 @@
 #pragma once
 #include "Endpoint.h"
 #include "ros/ros.h"
+#include "Eigen/Core"
 #include <visualization_msgs/MarkerArray.h>
 #include <string>
 using std::string;
+using namespace Eigen;
 
 struct color{
 	float r,g,b;
@@ -15,13 +17,14 @@ struct color{
 
 class Nav{
 	public:
-		bool pubWays_, pubMap_;
+		bool pubWays_, pubMap_, pubRob_;
 		Nav();
 		Nav(int lvl, ros::Publisher *pub); // read map and way from file given level
+		void initRobotMark();
 		void findExpected(float Rx, float Ry, vector<EndPoint> &pts);
 		void publishLoop();
-		void publishBot(float Rx, float Ry);
-		void publishMapAndWays(float Rx, float Ry);
+		void publishMapAndWays();
+		void setOdomLoc(Vector3f &od);
 		void setSmallRoomUpper(bool up);
 		void setBigRoomUpper(bool up);
 		vector<int> findPath(int start, int end, vector<EndPoint> &pts);
@@ -51,6 +54,7 @@ class Nav{
 		ros::Publisher *markerPub_;
 		color cmapLine_, cmapMark_, cwayLine_, cwayMark_;
 		EndPoint badPt_;
+		Vector3f navOdomCpy_;
 
 		void populateMarks(string which, string NS, string frame,
 			visualization_msgs::MarkerArray &marks, color lncol, color markcol);
