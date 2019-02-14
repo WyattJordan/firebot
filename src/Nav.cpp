@@ -42,81 +42,19 @@ Nav::Nav(int lvl, ros::Publisher* pub){
 	cmapMark_ = {1.0, 0.1, 0.1};
 	cwayLine_ = {0.1, 0.9, 0.9};
 	cwayMark_ = {0.8, 0.1, 0.9};
-	
-	// the file loading into an Endpoint vector should be made into it's own function
-	// though this does require identical formatting in the file fields
- 	string mapfile, wayfile;
-	if(lvl == 3){
-		mapfile = "";
-	    wayfile = "";  //root is catkin ws
-	}	
-	else {
-		mapfile = "/home/eli/cat_ws/src/firebot/load/lvl1_map.txt"; 
-		wayfile = "/home/eli/cat_ws/src/firebot/load/wayPoints.txt";	
-	}
+	worldFrame_ = "map2";
 
-   
-	std::ifstream file;
-	file.open(mapfile.c_str());
-	string line = "";
-
-	vector<string> nums;
-	if (file.is_open()){
-                while(getline(file, line, ',')){
-                        nums.push_back(line); //cout<<line<<"\n";
-                }
-                file.close();
-        }
-	else{ ROS_ERROR("WARNING: map file not found!\n"); }
-
-	vector<int> temp;
-	while(nums.size()>=7){
-		temp.resize(0);
-		// nums[3] and nums[4] are definite and potential corner types, ignored here	
-		if(nums[5].compare("x") != 0) temp.push_back(std::atof(nums[5].c_str())); 
-		if(nums[6].compare("x") != 0) temp.push_back(std::atof(nums[6].c_str())); 
-		EndPoint tmp(std::atof(nums[0].c_str()), std::atof(nums[1].c_str()),
-		    std::atof(nums[2].c_str()),temp);
-		mapPoints_.push_back(tmp);
-		for(int i=0; i<7; i++) nums.erase(nums.begin()+0);
-	}
-
-	nums.resize(0);
-	file.open(wayfile.c_str());
-	cout<<"outputting "<<wayfile<<"\n";
-        if (file.is_open()){
-                while(getline(file, line, ',')){
-                        nums.push_back(line); //cout<<line<<"\n";
-                }
-                file.close();
-        }
-	else{ ROS_ERROR("WARNING: way file not found!\n"); }
-
-	while(nums.size()>=7){
-		vector<int> temp;
-		// nums[3] is radius here unused 
-		if(nums[4].compare("x") != 0) temp.push_back(std::atof(nums[4].c_str())); 
-		if(nums[5].compare("x") != 0) temp.push_back(std::atof(nums[5].c_str())); 
-		if(nums[6].compare("x") != 0) temp.push_back(std::atof(nums[6].c_str())); 
-		EndPoint tmp(std::atof(nums[0].c_str()), std::atof(nums[1].c_str()),
-		    std::atof(nums[3].c_str()),temp); // nums[2] is radius set to 10 constant
-		wayPoints_.push_back(tmp);
-		for(int i=0; i<7; i++) nums.erase(nums.begin()+0);
-	}
+	loadFiles(lvl);	
+	initRobotMarks();
 }
-
 void Nav::setOdomLoc(Vector3f &od){
 	navOdomCpy_ = od;
-}
-
-void Nav::initRobotMark(){
-
 }
 
 // Robot.cpp drive loop sets the bool flags at set rates
 void Nav::publishLoop(){
 	while(1){
-		if(pubWays_ || pubMap_){
+		if(pubWays_ || pubMap_ || pubRob_){
 		// 	cout<<"pubbing ways: "<<pubWays_<<" with size "<<wayMarks_.markers.size()<<
 		//		" and map: "<<pubMap_<<" with size "<<mapMarks_.markers.size()<<"\n";
 			if(pubMap_){
@@ -129,6 +67,13 @@ void Nav::publishLoop(){
 				pubMap_ = false;
 				cout<<"published map "<<mapMarks_.markers.size()<<"\n";
 			}
+			if(pubRob_){
+				calcRobotMarks(); // rob obj passed in odomloc, set mark vals
+				markerPub_->publish(robMarks_);
+				pubRob_ = false;
+				cout<<"published robot\n";
+			}
+
 		}
 	}
 }
@@ -261,8 +206,8 @@ void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry, vector<E
 
 // Given a point ID and a neighbor index returns true if a neighbor exists and that neigh
 // is in pts<> and copies that neighbor to the reference neigh
-bool Nav::getNeighbor(int startID, int neighI, EndPoint &neigh, vector<EndPoint> &pts){ 
-	EndPoint start = getPoint(startID, pts);
+bool Nav::getNeighbor(int ID, int neighI, EndPoint &neigh, vector<EndPoint> &pts){ 
+	EndPoint start = getPoint(ID, pts);
 	if(start.getID()!=-1){ 
 		neigh = getPoint(start.getNeighborID(neighI), pts);
 		if(neigh.getID()==-1){
@@ -276,44 +221,9 @@ bool Nav::getNeighbor(int startID, int neighI, EndPoint &neigh, vector<EndPoint>
 		return false;
 	}
 }
-/*
-// Move the robot around the map and publish what mapPoints_ it can see
-void Nav::run(){
-	color mapLine = {1.0, 0.5, 0.5};
-	color mapMark = {1.0, 1.0, 1.0};
-	float x,y;
-	y = 30;
-	unsigned int sleep = 10000;
-	float iter = 100;
-	for( int i = 0; i<iter; i++){
-		x = 230.0/iter * i; publishGraph(x,y, "test", 
-				mapPoints_, mapLine, mapMark);
-	}	
-	x = 230;
-	for( int i = 0; i<iter; i++){
-		y = 230.0/iter * i; publishGraph(x,y, "test", 
-				mapPoints_, mapLine, mapMark);
-	}	
-	y = 230;
-	for( int i = 0; i<iter; i++){
-		x = 230.0/iter * (iter - i); publishGraph(x,y, "test", 
-				mapPoints_, mapLine, mapMark);
-	}	
-	x = 30;
-	for( int i = 0; i<iter; i++){
-		y = 230.0/iter * (iter - i); publishGraph(x,y, "test", 
-				mapPoints_, mapLine, mapMark);
-	}	
-	
-}
-*/
-void Nav::publishMapAndWays(){
-	markerPub_->publish(mapMarks_);
-	markerPub_->publish(wayMarks_);
-}
 
 // populate MarkerArray members (run by the makeMapMarks() and makeWayMarks()) 
-void Nav::populateMarks(string which, string NS, string frame,
+void Nav::populateMarks(string which, string NS,
 	   	visualization_msgs::MarkerArray &marks, color lncol, color markcol){
 	vector<EndPoint>* pts;
 	cout<<"populating in Nav for :"<<which<<"\n";
@@ -323,7 +233,7 @@ void Nav::populateMarks(string which, string NS, string frame,
 	
 	// add vertical arrows at pt locations
 	for(int i=0; i<pts->size(); i++){
-		marks.markers[i].header.frame_id = frame;
+		marks.markers[i].header.frame_id = worldFrame_;
 		marks.markers[i].ns = NS; 
 		marks.markers[i].id = i; //pts[i].getID();
 		marks.markers[i].type = visualization_msgs::Marker::ARROW;
@@ -347,7 +257,7 @@ void Nav::populateMarks(string which, string NS, string frame,
 
 		// show text ID above marker with id += 1000
 		int idx = i+pts->size();
-		marks.markers[idx].header.frame_id = frame;
+		marks.markers[idx].header.frame_id = worldFrame_;
 		marks.markers[idx].id = i+1000;
 		marks.markers[idx].ns = NS;
 		marks.markers[idx].text = NS=="way" ? std::to_string((*pts)[i].getID()) : "";
@@ -373,7 +283,7 @@ void Nav::populateMarks(string which, string NS, string frame,
 	// Now add the lines 
 	visualization_msgs::Marker mark;
 	mark.type = visualization_msgs::Marker::LINE_STRIP;
-	mark.header.frame_id = frame;
+	mark.header.frame_id = worldFrame_;
 	mark.ns = NS;
 	mark.color.a = 1;
 	mark.color.r = lncol.r; 
@@ -413,142 +323,6 @@ void Nav::populateMarks(string which, string NS, string frame,
 	
 }
 
-/*
-void Nav::publishGraph(float Rx, float Ry, string NS,
-	   	vector<EndPoint> &pts, color lncol, color  markcol){
-	auto start = std::chrono::steady_clock::now();
-	string worldFrame = "map2";
-	ros::NodeHandle n;
-	ros::Publisher rvizMap = n.advertise<visualization_msgs::MarkerArray>("map",1000);
-	visualization_msgs::MarkerArray marks;
-	marks.markers.resize(2*pts.size());
-	// add vertical arrows at pt locations
-	for(int i=0; i<pts.size(); i++){
-		marks.markers[i].header.frame_id = worldFrame;
-		marks.markers[i].ns = NS; 
-		marks.markers[i].id = i; //pts[i].getID();
-		marks.markers[i].type = visualization_msgs::Marker::ARROW;
-		marks.markers[i].action = visualization_msgs::Marker::ADD;
-		
-		marks.markers[i].points.resize(2);
-		marks.markers[i].points[0].x = pts[i].getx();
-		marks.markers[i].points[0].y = pts[i].gety();
-		marks.markers[i].points[0].z = 0;
-		marks.markers[i].points[1].x = pts[i].getx();
-		marks.markers[i].points[1].y = pts[i].gety();
-		marks.markers[i].points[1].z = 10; // 10cm tall 
-
-		marks.markers[i].scale.x = 3; 
-		marks.markers[i].scale.y = 3;
-		marks.markers[i].scale.z = 3;
-		//bool visible = std::find(expectedIDs.begin(), expectedIDs.end(), 
-				//pts[i].getID()) != expectedIDs.end();
-		marks.markers[i].color.a = 1.0;	
-		marks.markers[i].color.r = pts[i].isVisible() ? 0.0 : markcol.r;	
-		marks.markers[i].color.g = pts[i].isVisible() ? 1.0 : markcol.g;
-		marks.markers[i].color.b = pts[i].isVisible() ? 0.0 : markcol.b;	
-
-		// show text ID above marker with id += 1000
-		int text = i+pts.size();
-		marks.markers[text].header.frame_id = worldFrame;
-		marks.markers[text].id = i+1000;
-		marks.markers[text].ns = NS;
-		marks.markers[text].text = NS=="way" ? std::to_string(pts[i].getID()) : "";
-		marks.markers[text].type = visualization_msgs::Marker::TEXT_VIEW_FACING;
-		marks.markers[text].action = visualization_msgs::Marker::ADD;
-		marks.markers[text].scale.x = 3;
-		marks.markers[text].scale.y = 3;
-		marks.markers[text].scale.z = 8.0; // text height	
-		marks.markers[text].pose.position.x = pts[i].getx();
-		marks.markers[text].pose.position.y = pts[i].gety();
-		marks.markers[text].pose.position.z = 15;
-		marks.markers[text].pose.orientation.x = 0;
-		marks.markers[text].pose.orientation.y = 0;
-		marks.markers[text].pose.orientation.z = 0;
-		marks.markers[text].pose.orientation.w = 1;
-		marks.markers[text].color.a = 1.0; 
-		marks.markers[text].color.r = 1; 
-		marks.markers[text].color.g = 1; 
-		marks.markers[text].color.b = 1; 
-		//sleep(1); rvizMap.publish(marks); //uncomment to see point growth from closest to robot
-	}
-
-	// add robot sphere
-	visualization_msgs::Marker robot;
-	robot = marks.markers[0];
-	robot.ns = NS;
-	robot.id = 9999;
-	robot.type = visualization_msgs::Marker::SPHERE;
-	robot.pose.position.x = Rx;
-	robot.pose.position.y = Ry;
-	robot.pose.position.z = 5;
-	robot.scale.x = 10;	
-	robot.scale.y = 10;	
-	robot.scale.z = 10;	
-	robot.color.g = 1;
-	robot.color.b = 1;
-	marks.markers.push_back(robot);
-
-	// add horizontal lines on floor
-	visualization_msgs::Marker mark;
-	mark.type = visualization_msgs::Marker::LINE_STRIP;
-	mark.header.frame_id = worldFrame;
-	mark.ns = NS;
-	mark.color.a = 1;
-	mark.color.r = lncol.r;
-	mark.color.g = lncol.g;
-	mark.color.b = lncol.b;
-	mark.scale.x = 3;
-	mark.points.resize(2);
-	mark.points[0].z = 0;
-
-	mark.points[1].z = 0;
-
-	EndPoint ep1;
-	vector<bool> accountedForIDs(pts.size()*10, false); // index is ID
-	int id;		
-
-	for(int i=0; i<pts.size(); i++){ // loop thru points to find connections
-		mark.points[0].x = pts[i].getx();
-		mark.points[0].y = pts[i].gety();
-
-		for(int k=0; k<pts[i].getNumNeighbors(); k++){
-			
-			if(getNeighbor(pts[i].getID(), k, ep1, pts) &&
-				       	!accountedForIDs[ep1.getID()]){
-				mark.points[1].x = ep1.getx();
-				mark.points[1].y = ep1.gety();
-				mark.id = pts[i].getID() * 10000 + k; 
-				marks.markers.push_back(mark);	
-			}
-		}		
-		accountedForIDs[pts[i].getID()] = true;
-	}
-
-	auto end = std::chrono::steady_clock::now();
-	cout<<"time to draw: "<<std::chrono::duration_cast
-		<std::chrono::milliseconds>(end-start).count()<<"\n";
-
-	rvizMap.publish(marks);	
-
-	// If running continually have a small delay otherwise 
-	struct timespec req = {0};
-	if(runBool_){
-		int milli = 40;
-		req.tv_sec = 0;
-		req.tv_nsec = milli * 1000000L;
-		nanosleep(&req, (struct timespec *)NULL);
-	}
-	else{ sleep(3);}
-
-	rvizMap.publish(marks);	
-	
-	if(runBool_){nanosleep(&req, (struct timespec *)NULL);}
-	else{ sleep(5);}
-
-	rvizMap.publish(marks);	
-} 
-*/
 // Returns list of ids from start to end that represent the shortest
 // path between two waypoints
 vector<int> Nav::findPath(int start, int end, vector<EndPoint> &pts){
@@ -724,13 +498,175 @@ float Nav::getDistance(EndPoint &ep1, EndPoint &ep2){
 	return pow(pow(ep1.getx() - ep2.getx(),2) + pow(ep1.gety() - ep2.gety(),2), 0.5);
 }
 
-void Nav::makeMapMarks(string NS, string frame){
-	populateMarks("map", NS, frame, mapMarks_, cmapLine_, cmapMark_); }
-void Nav::makeWayMarks(string NS, string frame){
-	populateMarks("way", NS, frame, wayMarks_, cwayLine_, cwayMark_); }
+void Nav::publishMapAndWays(){
+	markerPub_->publish(mapMarks_);
+	markerPub_->publish(wayMarks_);
+}
+
+void Nav::makeMapMarks(string NS){
+	populateMarks("map", NS, mapMarks_, cmapLine_, cmapMark_); }
+void Nav::makeWayMarks(string NS){
+	populateMarks("way", NS, wayMarks_, cwayLine_, cwayMark_); }
 
 void Nav::outputWays(){ outputGraph(wayPoints_);	}
-void Nav::outputMap(){ outputGraph(mapPoints_);	}
-void Nav::setRun(bool t){ runBool_ = t;}
-vector<EndPoint>* Nav::getMap() {return &mapPoints_;}
-vector<EndPoint>* Nav::getWays(){return &wayPoints_;}
+void Nav::outputMap(){  outputGraph(mapPoints_);	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void Nav::loadFiles(int lvl){
+	// the file loading into an Endpoint vector should be made into it's own function
+	// though this does require identical formatting in the file fields
+ 	string mapfile, wayfile;
+	if(lvl == 3){
+		mapfile = "";
+	    wayfile = "";  //root is catkin ws
+	}	
+	else {
+		mapfile = "/home/eli/cat_ws/src/firebot/load/lvl1_map.txt"; 
+		wayfile = "/home/eli/cat_ws/src/firebot/load/wayPoints.txt";	
+	}
+
+   
+	std::ifstream file;
+	file.open(mapfile.c_str());
+	string line = "";
+
+	vector<string> nums;
+	if (file.is_open()){
+                while(getline(file, line, ',')){
+                        nums.push_back(line); //cout<<line<<"\n";
+                }
+                file.close();
+        }
+	else{ ROS_ERROR("WARNING: map file not found!\n"); }
+
+	vector<int> temp;
+	while(nums.size()>=7){
+		temp.resize(0);
+		// nums[3] and nums[4] are definite and potential corner types, ignored here	
+		if(nums[5].compare("x") != 0) temp.push_back(std::atof(nums[5].c_str())); 
+		if(nums[6].compare("x") != 0) temp.push_back(std::atof(nums[6].c_str())); 
+		EndPoint tmp(std::atof(nums[0].c_str()), std::atof(nums[1].c_str()),
+		    std::atof(nums[2].c_str()),temp);
+		mapPoints_.push_back(tmp);
+		for(int i=0; i<7; i++) nums.erase(nums.begin()+0);
+	}
+
+	nums.resize(0);
+	file.open(wayfile.c_str());
+	cout<<"outputting "<<wayfile<<"\n";
+        if (file.is_open()){
+                while(getline(file, line, ',')){
+                        nums.push_back(line); //cout<<line<<"\n";
+                }
+                file.close();
+        }
+	else{ ROS_ERROR("WARNING: way file not found!\n"); }
+
+	while(nums.size()>=7){
+		vector<int> temp;
+		// nums[3] is radius here unused 
+		if(nums[4].compare("x") != 0) temp.push_back(std::atof(nums[4].c_str())); 
+		if(nums[5].compare("x") != 0) temp.push_back(std::atof(nums[5].c_str())); 
+		if(nums[6].compare("x") != 0) temp.push_back(std::atof(nums[6].c_str())); 
+		EndPoint tmp(std::atof(nums[0].c_str()), std::atof(nums[1].c_str()),
+		    std::atof(nums[3].c_str()),temp); // nums[2] is radius set to 10 constant
+		wayPoints_.push_back(tmp);
+		for(int i=0; i<7; i++) nums.erase(nums.begin()+0);
+	}
+
+
+}
+
+void Nav::calcRobotMarks(){
+	// REMEMBER: values are in cm!!
+	visualization_msgs::Marker robMarkSphere_, robMarkArr_;	
+	robMarkArr_.header.frame_id = worldFrame_;
+	robMarkArr_.ns = "robot_Arr"; 
+	robMarkArr_.id = 1; 
+	robMarkArr_.type = visualization_msgs::Marker::ARROW;
+	robMarkArr_.action = visualization_msgs::Marker::ADD;
+	robMarkArr_.points.resize(2);
+	robMarkArr_.scale.x = 3; 
+	robMarkArr_.scale.y = 4;
+	robMarkArr_.scale.z = 5;
+
+	robMarkArr_.color.a = 1.0;	
+	robMarkArr_.color.r = 1.0;
+	robMarkArr_.color.g = 0.0;
+	robMarkArr_.color.b = 0.0;
+
+
+	robMarkSphere_.header.frame_id = worldFrame_;
+	robMarkSphere_.ns = "robot_sph"; 
+	robMarkSphere_.id = 1; 
+	robMarkSphere_.type = visualization_msgs::Marker::SPHERE;
+	robMarkSphere_.action = visualization_msgs::Marker::ADD;
+
+	robMarkSphere_.scale.x = 10;
+	robMarkSphere_.scale.y = 10;
+	robMarkSphere_.scale.z = 10;
+
+	robMarkSphere_.color.a = 1.0;
+	robMarkSphere_.color.r = 0.0;
+	robMarkSphere_.color.g = 0.5;
+	robMarkSphere_.color.b = 1.0;
+
+	robMarks_.markers.resize(0);
+	robMarks_.markers.push_back(robMarkArr_);
+	robMarks_.markers.push_back(robMarkSphere_);
+
+	// robMarks_[0] is arrow, [1] is sphere
+	int z = 6;
+	float len = 15.0; // length of the arrow
+	float tipx = navOdomCpy_(0) + len*cos(navOdomCpy_(2)); 
+	float tipy = navOdomCpy_(0) + len*sin(navOdomCpy_(2)); 
+       	robMarks_.markers[0].points[0].x = navOdomCpy_(0);
+	robMarks_.markers[0].points[0].y = navOdomCpy_(1);
+	robMarks_.markers[0].points[0].z = z;
+	robMarks_.markers[0].points[1].x = tipx;
+	robMarks_.markers[0].points[1].y = tipy;
+	robMarks_.markers[0].points[1].z = z; 
+
+
+	robMarks_.markers[1].pose.position.x = navOdomCpy_(0);
+	robMarks_.markers[1].pose.position.y = navOdomCpy_(1);
+	robMarks_.markers[1].pose.position.z = z;
+}
+
+void Nav::initRobotMarks(){
+	visualization_msgs::Marker robMarkSphere_, robMarkArr_;	
+	robMarkArr_.header.frame_id = worldFrame_;
+	robMarkArr_.ns = "robot_Arr"; 
+	robMarkArr_.id = 1; 
+	robMarkArr_.type = visualization_msgs::Marker::ARROW;
+	robMarkArr_.action = visualization_msgs::Marker::ADD;
+	robMarkArr_.points.resize(2);
+	robMarkArr_.scale.x = 0.5; 
+	robMarkArr_.scale.y = 0.9;
+	robMarkArr_.scale.z = 0.5;
+
+	robMarkArr_.color.a = 1.0;	
+	robMarkArr_.color.r = 1.0;
+	robMarkArr_.color.g = 0.0;
+	robMarkArr_.color.b = 0.0;
+
+
+	robMarkSphere_.header.frame_id = worldFrame_;
+	robMarkSphere_.ns = "robot_sph"; 
+	robMarkSphere_.id = 1; 
+	robMarkSphere_.type = visualization_msgs::Marker::SPHERE;
+	robMarkSphere_.action = visualization_msgs::Marker::ADD;
+
+	robMarkSphere_.scale.x = 3;
+	robMarkSphere_.scale.y = 3;
+	robMarkSphere_.scale.z = 3;
+
+	robMarkSphere_.color.r = 0.0;
+	robMarkSphere_.color.g = 0.5;
+	robMarkSphere_.color.b = 1.0;
+
+	robMarks_.markers.resize(0);
+	robMarks_.markers.push_back(robMarkArr_);
+	robMarks_.markers.push_back(robMarkSphere_);
+}
+

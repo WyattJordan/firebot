@@ -72,6 +72,7 @@ void Robot::setNav(Nav* nv){
 void Robot::recon(firebot::ReconConfig &config, uint32_t level){ 
 	mapUpdateRate_ = config.maprate;
 	wayUpdateRate_ = config.wayrate;
+	robUpdateRate_ = config.robrate;
 	lDrive_ = config.left;
 	rDrive_ = config.right;
 	i2c_ = config.i2c;
@@ -137,6 +138,7 @@ void Robot::driveLoop(){
 		}
 		if(debugDrive_) cout<<"got/made enc vals, doing odom...\n";
 		calculateOdom();
+		cout<<"odom location = "<<odomloc_<<"\n";
 		int measured = 9;
 		setPose_ = 10;
 		if(debugDrive_) cout<<"running pid = "<<runPID_ <<"\n";

@@ -17,56 +17,61 @@ struct color{
 
 class Nav{
 	public:
-		bool pubWays_, pubMap_, pubRob_;
-		Nav();
+		bool pubWays_, pubMap_, pubRob_; // flags for publishLoop() set by rob obj
+
+		Nav(); // don't use
 		Nav(int lvl, ros::Publisher *pub); // read map and way from file given level
-		void initRobotMark();
-		void findExpected(float Rx, float Ry, vector<EndPoint> &pts);
-		void publishLoop();
-		void publishMapAndWays();
-		void setOdomLoc(Vector3f &od);
-		void setSmallRoomUpper(bool up);
-		void setBigRoomUpper(bool up);
-		vector<int> findPath(int start, int end, vector<EndPoint> &pts);
 
-		void outputWays();
+		void setOdomLoc(Vector3f &od);	 // rob obj sends data over
+		void setSmallRoomUpper(bool up); // reconfigure the rooms
+		void setBigRoomUpper(bool up);   // "
+
+		void publishLoop(); // calculate marks and publish as flags are set
+		void outputWays();  
 		void outputMap();
-		void makeMapMarks(string NS, string frame);
-		void makeWayMarks(string NS, string frame);
+		void makeMapMarks(string NS);
+		void makeWayMarks(string NS);
+		void publishMapAndWays();
 
+		bool removePoint(int id, vector<EndPoint> &pts);
+		float getDistance(EndPoint &ep1, EndPoint &ep2);
 		EndPoint& getPoint(int id, vector<EndPoint> &pts);
 		EndPoint& getBadPoint();
-		float getDistance(EndPoint &ep1, EndPoint &ep2);
-		bool removePoint(int id, vector<EndPoint> &pts);
-		void setRun(bool t);
-		void outputGraph(vector<EndPoint> &pts);
-		void run();
-		vector<EndPoint>* getMap();
-		vector<EndPoint>* getWays();
-
+		
 	private:
+		bool smallRoomConf_, bigRoomConf_; 	// passed to reconfigure rooms
+		string worldFrame_;		// specify world frame label
+		vector<EndPoint> mapPoints_;	// graph of map corners and key points
+		vector<EndPoint> wayPoints_;	// graph of robot drive-to locations
+		vector<int> expectedIDs_;	// ids of markers expected to be visible
 		EndPoint safeZone_, candle1_, candle2_; // key location markers
-		vector<EndPoint> mapPoints_;
-		vector<EndPoint> wayPoints_;
-		bool smallRoomConf_, bigRoomConf_, runBool_;
-		vector<int> expectedIDs_;
-		visualization_msgs::MarkerArray mapMarks_, wayMarks_;
-		ros::Publisher *markerPub_;
-		color cmapLine_, cmapMark_, cwayLine_, cwayMark_;
-		EndPoint badPt_;
-		Vector3f navOdomCpy_;
+		EndPoint badPt_;		// used when an EndPoint isn't found
+		color cmapLine_, cmapMark_, cwayLine_, cwayMark_; // colors set in constr
 
-		void populateMarks(string which, string NS, string frame,
-			visualization_msgs::MarkerArray &marks, color lncol, color markcol);
+		visualization_msgs::MarkerArray mapMarks_, wayMarks_, robMarks_;// for rviz
+		ros::Publisher *markerPub_; 	// publisher for all MarkerArrays
+		Vector3f navOdomCpy_;		// copy of loc in world frame from odom data
 
-		void publishGraph(float Rx, float Ry, string NS, 
-			vector<EndPoint> &pts, color lncol, color  markcol);
+		void loadFiles(int lvl); // get data from config files
+		void initRobotMarks();   // sets type, ns, frame, color
+		void calcRobotMarks();   // sets the xyz
 
-		bool getNeighbor(int startID, int neighI, EndPoint &neigh, vector<EndPoint> &pts);
+		// cout a graph of endpoints
+		void outputGraph(vector<EndPoint> &pts);
+
+		// copy the neighI'th neighbor of point with id=ID into &neigh, return false if DNE
+		bool getNeighbor(int ID, int neighI, EndPoint &neigh, vector<EndPoint> &pts);
+
+		// given starting ids and pts graph return vec of ids between the two specifying shortest path
+		vector<int> findPath(int start, int end, vector<EndPoint> &pts);
+		
+		// set isVisible for each Endpoint in pts given a robot position
+		void findExpected(float Rx, float Ry, vector<EndPoint> &pts);
+		// removes all points hidden by wall between ep1 and ep2 given a robot position (Rx, Ry)
 		void eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx,
 			float Ry, vector<EndPoint> &pts);
 
-		// save the generated markerarray for any vec of Endpoints
-		void makeMarks(vector<EndPoint> &pts, color lncol, 
-				color markcol, string NS, string frame);	
+		// make the marks for either mapPoints_ or wayPoints_ (specified by which string)
+		void populateMarks(string which, string NS,
+			visualization_msgs::MarkerArray &marks, color lncol, color markcol);
 };

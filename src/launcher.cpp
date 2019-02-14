@@ -45,50 +45,28 @@ int main(int argc, char **argv){
 	Nav nav(1, &navPub); // level 1	
 	nav.outputMap();
 	nav.outputWays();
-	//nav.outputGraph(*nav.getMap());
 	cout<<"outputting ways graph\n";
 	rob.setNav(&nav); // give the robot the nav object for interacting with it
-	//navoutputGraph(*nav.getWays());
 
-	// code for testing path planning
-/*	cout<<"getting path between " << x <<" and "<<y<<"\n";
-	vector<int> path = navfindPath(x, y, *navgetWays());
-	cout<<"path is: \n";
-	for(int i=0; i<path.size(); i++){
-		cout<<path[i]<<"\n";
-	}	
-*/
 	cout<<"\now go traverse\n";//*/
 	std::thread thread1, driveLoop, publishNavLoop;
 //	rob.openI2C();
 	driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
 
-	nav.makeMapMarks("marker_ns","map2");
-	nav.makeWayMarks("ways_ns","map2");
+	nav.makeMapMarks("marker_ns");
+	nav.makeWayMarks("ways_ns");
 	publishNavLoop = std::thread(boost::bind(&Nav::publishLoop, &nav));	
 	
-//	vector<EndPoint>* tmp = ways ? nav.getWays() : nav.getMap();  
-	nav.setRun(run);
 	nav.setBigRoomUpper(big);
 	nav.setSmallRoomUpper(small);
 	//cout<<"before findExpected\n";
-	//navoutputGraph(*navgetMap());
 
 	if(ways){ 
 		cout<<"using waypoints!\n";}
 	else{
-		//navfindExpected(x,y,*tmp); 
 		cout<<"finding expected\n";
 	}
-/*
-	if(run){
-	thread1 = std::thread(bind(&Nav::run, ptr));
-	}
-	else{
-	//thread1 = std::thread(bind(&Nav::publishGraph,ptr,x,y,"map_NS", *tmp));
-	thread1 = std::thread(bind(&Nav::publishMapAndWays,ptr,x,y));
-	}
-*/
+
 	ros::spin();
 	return 0;
 }
