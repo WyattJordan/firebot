@@ -39,9 +39,7 @@ Robot::Robot() : posePID_(0,0,0,0,0,0){ // also calls pose constructor
 	maxleft_ = maxright_ = 0;
 	left255 = right255 = 0;
 	usingi2c_ = false;
-	debugDrive_ = false;
-	i2c_ = false;
-	runPID_ = false;
+	debugDrive_ = i2c_ = runPID_ = step_ = false;
 	lDrive_ = rDrive_ = 0;
 	lForward_ = 'a';
 	rForward_ = 'c';
@@ -76,6 +74,7 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 	lDrive_ = config.left;
 	rDrive_ = config.right;
 	i2c_ = config.i2c;
+	step_ = config.step;
 	debugDrive_ = config.debugdrive;
 	power2pwm();
 	runPID_  = config.runpid;
@@ -94,20 +93,32 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 
 // Increment locX, locY, locP with the new encoder vals
 void Robot::calculateOdom(){
-	float x = WheelRCM / 2.0 * (lEnc_ + rEnc_);
+	float lRad = (PI2 * lEnc_ ) / 663.0; // 663.0 enc counts / rotation
+	float rRad = (PI2 * rEnc_ ) / 663.0; 
+	cout<<"lRad = "<<lRad<<" rRad = "<<rRad<<"\n";
+
+	float x = WheelRCM / 2.0 * (lRad + rRad);
 	float y = 0;
-	float p = WheelRCM / (2.0 * WheelLCM) * (lEnc_ - rEnc_);
+	float p = WheelRCM / (2.0 * WheelLCM) * (rRad - lRad);
 	robotstep_ <<  x, y, p;
+	cout<<"robot step:\n"<<robotstep_<<"\n";
+	cout<<"odomloc_ = \n"<<odomloc_<<"\n";	
 	float theta = odomloc_(2) + robotstep_(2)/2.0; // this isn't matlab!
+
+	cout<<"using theta = "<<theta<<"\n";
 	calculateTransform(theta);	      // find transform using half the step	
+	cout<<"rob2world_ =\n"<<rob2world_<<"\n";
 	worldstep_ = rob2world_*robotstep_; 
 	odomloc_ += worldstep_;
+
+	cout<<"odomloc_ = \n"<<odomloc_<<"\n";	
+	cout<<"done this step!\n";
 }
 
 // Given the robot's pose relative to the world calculate rob2world_.
 void Robot::calculateTransform(float theta){
 	rob2world_.topLeftCorner(2,2) << cos(theta), -sin(theta),
-			 sin(theta),  cos(theta);
+					 sin(theta),  cos(theta);
 
 }
 
@@ -117,13 +128,17 @@ void Robot::debugLoop(){
 }
 
 void Robot::driveLoop(){
-	cout<<"setting first motors....\n";
+	cout<<"reset rviz now\n";
 	setMotors();
-	usleep(5*ms_*1000); // sleep 5 loops before starting
-	cout<<"entering loop \n";
+	//usleep(5*ms_*1000); // sleep 5 loops before starting
+	usleep(5000*1000); // sleep 5 seconds before starting
 	int mapCount, wayCount, robCount;
 	mapCount = wayCount = robCount = 0;
 	i2c_ = false;
+
+	nav_->pubWays_ = true;
+	nav_->pubMap_ = true;
+	nav_->pubRob_ = true;
 
 	while(1){
 		// get encoders, do PID math, set motors, delay dt
@@ -136,9 +151,10 @@ void Robot::driveLoop(){
 			lEnc_ = 100 * lDrive_ ;//+ rand()%10;
 			rEnc_ = 100 * rDrive_ ;//+ rand()%10;		
 		}
+		cout<<"lEnc_ = "<<lEnc_<<"  rEnc_ = "<<rEnc_<<"\n";
+
 		if(debugDrive_) cout<<"got/made enc vals, doing odom...\n";
 		calculateOdom();
-		cout<<"odom location = "<<odomloc_<<"\n";
 		int measured = 9;
 		setPose_ = 10;
 		if(debugDrive_) cout<<"running pid = "<<runPID_ <<"\n";
@@ -166,6 +182,9 @@ void Robot::driveLoop(){
 			nav_->pubRob_ = true;
 			robCount = 0;
 		}
+		usleep(300*1000);
+		//while(!step_){;}
+		step_ = false;
 
 
 		auto start = std::chrono::steady_clock::now(); // measure length of time remaining

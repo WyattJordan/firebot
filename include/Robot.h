@@ -14,8 +14,9 @@
 
 #define addrDrive 17  // I2C slave addresses
 #define addrArm   16
-#define WheelLCM  13.75 
-#define WheelRCM  12.3 
+#define WheelLCM  13.75 // width is 29.2cm outer 24.8cm inner, L is half this value
+#define WheelRCM  6.2  // diameter is 12.4, radius is 6.2cm
+#define PI2	  6.28319
 using std::string;
 using namespace Eigen;
 static void pabort(const char *s)
@@ -53,8 +54,7 @@ class Robot{
 		int16_t lEnc_, rEnc_;   // enc counts 
 		bool usingi2c_;         // avoid conflicting contacts	
 		bool i2c_; 		// is odroid connected to circuit (for testing w/o bot)
-		bool debugDrive_;
-		bool runPID_;
+		bool debugDrive_, runPID_, step_;
 		int maxleft_, maxright_;
 		int ms_; // ms delay between odom updates, fastest thread
 		int wayUpdateRate_, mapUpdateRate_, robUpdateRate_;

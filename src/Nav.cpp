@@ -2,6 +2,7 @@
  *
  */
 #include "Nav.h"
+#include "Robot.h" // for defined measurements
 #include "Endpoint.h"
 #include "ros/ros.h"
 #include "Eigen/Core"
@@ -586,9 +587,9 @@ void Nav::calcRobotMarks(){
 	robMarkArr_.type = visualization_msgs::Marker::ARROW;
 	robMarkArr_.action = visualization_msgs::Marker::ADD;
 	robMarkArr_.points.resize(2);
-	robMarkArr_.scale.x = 3; 
-	robMarkArr_.scale.y = 4;
-	robMarkArr_.scale.z = 5;
+	robMarkArr_.scale.x = 4; 
+	robMarkArr_.scale.y = 5;
+	robMarkArr_.scale.z = 6;
 
 	robMarkArr_.color.a = 1.0;	
 	robMarkArr_.color.r = 1.0;
@@ -602,9 +603,9 @@ void Nav::calcRobotMarks(){
 	robMarkSphere_.type = visualization_msgs::Marker::SPHERE;
 	robMarkSphere_.action = visualization_msgs::Marker::ADD;
 
-	robMarkSphere_.scale.x = 10;
-	robMarkSphere_.scale.y = 10;
-	robMarkSphere_.scale.z = 10;
+	robMarkSphere_.scale.x = WheelLCM*2;
+	robMarkSphere_.scale.y = WheelLCM*2;
+	robMarkSphere_.scale.z = 5;
 
 	robMarkSphere_.color.a = 1.0;
 	robMarkSphere_.color.r = 0.0;
@@ -617,9 +618,9 @@ void Nav::calcRobotMarks(){
 
 	// robMarks_[0] is arrow, [1] is sphere
 	int z = 6;
-	float len = 15.0; // length of the arrow
+	float len = 23.0; // length of the arrow
 	float tipx = navOdomCpy_(0) + len*cos(navOdomCpy_(2)); 
-	float tipy = navOdomCpy_(0) + len*sin(navOdomCpy_(2)); 
+	float tipy = navOdomCpy_(1) + len*sin(navOdomCpy_(2)); 
        	robMarks_.markers[0].points[0].x = navOdomCpy_(0);
 	robMarks_.markers[0].points[0].y = navOdomCpy_(1);
 	robMarks_.markers[0].points[0].z = z;
@@ -631,6 +632,10 @@ void Nav::calcRobotMarks(){
 	robMarks_.markers[1].pose.position.x = navOdomCpy_(0);
 	robMarks_.markers[1].pose.position.y = navOdomCpy_(1);
 	robMarks_.markers[1].pose.position.z = z;
+	robMarks_.markers[1].pose.orientation.x = 0;
+	robMarks_.markers[1].pose.orientation.y = 0;
+	robMarks_.markers[1].pose.orientation.z = navOdomCpy_(2);
+	robMarks_.markers[1].pose.orientation.w = 1;
 }
 
 void Nav::initRobotMarks(){
