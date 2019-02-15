@@ -50,12 +50,12 @@ int main(int argc, char **argv){
 
 	cout<<"\now go traverse\n";//*/
 	std::thread thread1, driveLoop, publishNavLoop;
-//	rob.openI2C();
+	rob.openI2C();
 	driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
 
 	nav.makeMapMarks("marker_ns");
 	nav.makeWayMarks("ways_ns");
-	publishNavLoop = std::thread(boost::bind(&Nav::publishLoop, &nav));	
+//	publishNavLoop = std::thread(boost::bind(&Nav::publishLoop, &nav));	
 	
 	nav.setBigRoomUpper(big);
 	nav.setSmallRoomUpper(small);

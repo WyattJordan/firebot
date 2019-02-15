@@ -108,7 +108,6 @@ void Nav::setSmallRoomUpper(bool up){
 // Sets the door configuration for the larger room, if up == true the door is
 // in the higher location (larger y coordinate)
 void Nav::setBigRoomUpper(bool up){
-	cout<<"setting big room upper\n";	
 	if(up){
 		getPoint(17,mapPoints_).setNeighbors(1,20);
 		getPoint(16,mapPoints_).setNeighbors(1,15);
@@ -117,15 +116,12 @@ void Nav::setBigRoomUpper(bool up){
 		removePoint(17,wayPoints_);
 	}
 	else{
-		cout<<"gettting pt\n";
 		getPoint(17,mapPoints_).setNeighbors(1,16);
-		cout<<"removing pt\n";
 		removePoint(20,mapPoints_);
 
 		getPoint(4,wayPoints_).setNeighbors(2,3,5);
 		getPoint(16,wayPoints_).setNeighbors(2,15,17);
 	}	
-	cout<<"set big room upper\n";
 }
 
 // Determines which map points are visible to the robot given 

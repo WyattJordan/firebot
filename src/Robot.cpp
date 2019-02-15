@@ -39,7 +39,7 @@ Robot::Robot() : posePID_(0,0,0,0,0,0){ // also calls pose constructor
 	maxleft_ = maxright_ = 0;
 	left255 = right255 = 0;
 	usingi2c_ = false;
-	debugDrive_ = i2c_ = runPID_ = step_ = false;
+	debugDrive_ = i2c_ = runPID_ = eStop_ = false;
 	lDrive_ = rDrive_ = 0;
 	lForward_ = 'a';
 	rForward_ = 'c';
@@ -59,7 +59,7 @@ Robot::Robot() : posePID_(0,0,0,0,0,0){ // also calls pose constructor
 	rob2world_ << 1, 0, 0,   0, 1, 0,   0, 0, 1; // as if theta = 0
 	robotstep_ << 0,0,0;
 	worldstep_ << 0,0,0;
-	odomloc_   << 0,0,0;
+	odomWorldLoc_   << 0,0,0;
 	
 } 
 
@@ -74,11 +74,12 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 	lDrive_ = config.left;
 	rDrive_ = config.right;
 	i2c_ = config.i2c;
-	step_ = config.step;
 	debugDrive_ = config.debugdrive;
 	power2pwm();
 	runPID_  = config.runpid;
 	setPose_ = config.setpose;
+	setSpeed_= config.setspeed;
+	eStop_ 	 = config.estop;
 	// do these need to be member variables? probs not
 	kp_ = config.kp;
 	ki_ = config.ki;
@@ -93,26 +94,27 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 
 // Increment locX, locY, locP with the new encoder vals
 void Robot::calculateOdom(){
+	bool debug = false;
 	float lRad = (PI2 * lEnc_ ) / 663.0; // 663.0 enc counts / rotation
 	float rRad = (PI2 * rEnc_ ) / 663.0; 
-	cout<<"lRad = "<<lRad<<" rRad = "<<rRad<<"\n";
+	if(debug) cout<<"lRad = "<<lRad<<" rRad = "<<rRad<<"\n";
 
 	float x = WheelRCM / 2.0 * (lRad + rRad);
 	float y = 0;
 	float p = WheelRCM / (2.0 * WheelLCM) * (rRad - lRad);
 	robotstep_ <<  x, y, p;
-	cout<<"robot step:\n"<<robotstep_<<"\n";
-	cout<<"odomloc_ = \n"<<odomloc_<<"\n";	
-	float theta = odomloc_(2) + robotstep_(2)/2.0; // this isn't matlab!
+	if(debug) cout<<"robot step:\n"<<robotstep_<<"\n";
+	if(debug) cout<<"odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";	
+	float theta = odomWorldLoc_(2) + robotstep_(2)/2.0; // this isn't matlab!
 
-	cout<<"using theta = "<<theta<<"\n";
+	if(debug) cout<<"using theta = "<<theta<<"\n";
 	calculateTransform(theta);	      // find transform using half the step	
-	cout<<"rob2world_ =\n"<<rob2world_<<"\n";
+	if(debug) cout<<"rob2world_ =\n"<<rob2world_<<"\n";
 	worldstep_ = rob2world_*robotstep_; 
-	odomloc_ += worldstep_;
+	odomWorldLoc_ += worldstep_;
 
-	cout<<"odomloc_ = \n"<<odomloc_<<"\n";	
-	cout<<"done this step!\n";
+	if(debug) cout<<"odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";	
+	if(debug) cout<<"done this step!\n";
 }
 
 // Given the robot's pose relative to the world calculate rob2world_.
@@ -128,13 +130,19 @@ void Robot::debugLoop(){
 }
 
 void Robot::driveLoop(){
-	cout<<"reset rviz now\n";
-	setMotors();
+	cout<<"talking to arduino, reset rviz now\n";
+	setMotors(1);
+	usleep(500);
+	setMotors(2);
+	cout<<"set motors\n";
+	getEncoders();
+	cout<<"got encoders\n";
 	//usleep(5*ms_*1000); // sleep 5 loops before starting
 	usleep(5000*1000); // sleep 5 seconds before starting
-	int mapCount, wayCount, robCount;
-	mapCount = wayCount = robCount = 0;
-	i2c_ = false;
+	cout<<"starting driveLoop\n";
+	int mapCount, wayCount, robCount, debugCount;
+	mapCount = wayCount = robCount = debugCount = 0;
+	//i2c_ = false; // allows for actual use vs simulation
 
 	nav_->pubWays_ = true;
 	nav_->pubMap_ = true;
@@ -146,29 +154,38 @@ void Robot::driveLoop(){
 	   	boost::chrono::system_clock::now() + boost::chrono::milliseconds(ms_);
 
 		if(debugDrive_) cout<<"running, i2c = "<<i2c_<<"\n";
-		if(i2c_) {getEncoders();}
-		else {
+		if(i2c_) {getEncoders();} //////////////////////////////////////////////
+		else { // simulate Enc vals based on drive lvls
 			lEnc_ = 100 * lDrive_ ;//+ rand()%10;
 			rEnc_ = 100 * rDrive_ ;//+ rand()%10;		
 		}
-		cout<<"lEnc_ = "<<lEnc_<<"  rEnc_ = "<<rEnc_<<"\n";
+		if(debugDrive_) cout<<"lEnc_ = "<<lEnc_<<"  rEnc_ = "<<rEnc_<<"\n";
 
 		if(debugDrive_) cout<<"got/made enc vals, doing odom...\n";
 		calculateOdom();
-		int measured = 9;
-		setPose_ = 10;
 		if(debugDrive_) cout<<"running pid = "<<runPID_ <<"\n";
 		if(runPID_){
-			float adj = posePID_.calculate(setPose_, measured);
+			float adj = posePID_.calculate(setPose_, odomWorldLoc_(2));
 			lDrive_ += adj;
 			rDrive_ -= adj;	
 		}
 		power2pwm();
-		if(i2c_) setMotors();
+		if(i2c_) {
+			setMotors(1); 
+			usleep(100);
+			setMotors(2); 
+		}
 	       	if(debugDrive_) cout<<"ran\n\n";
 
-		// set flags for publishing markers and robot
-		mapCount++; wayCount++; robCount++;
+		// set flags for debugging and publishing markers and robot
+		mapCount++; wayCount++; robCount++; debugCount++;
+		/*if(debugCount > 100){ // 100 = every 2 seconds
+			debugDrive_ = ;
+		}
+		else if(debugDrive_){
+			debugDrive_ = false;
+		}*/
+
 		if(mapUpdateRate_ > 0 && mapCount >= 1000 / (ms_ * mapUpdateRate_)) {
 			nav_->pubMap_  = true;
 			mapCount = 0;
@@ -178,14 +195,10 @@ void Robot::driveLoop(){
 			wayCount = 0;
 		}
 		if(robUpdateRate_ > 0 && robCount >= 1000 / (ms_ * robUpdateRate_)){
-			nav_->setOdomLoc(odomloc_); // give the Nav class the odom loc
+			nav_->setOdomLoc(odomWorldLoc_); // give the Nav class the odom loc
 			nav_->pubRob_ = true;
 			robCount = 0;
 		}
-		usleep(300*1000);
-		//while(!step_){;}
-		step_ = false;
-
 
 		auto start = std::chrono::steady_clock::now(); // measure length of time remaining
 		boost::this_thread::sleep_until(time_limit);
@@ -272,20 +285,58 @@ void Robot::quei2c(int size, unsigned char *q){
 }
 
 // send PWM signals to Arduino
-bool Robot::setMotors(){
-	cout<<"running set motors\n";
-	cout<<"lPWM_ = "<<(int) lPWM_<<" rPWM_ = "<<(int) rPWM_<<"\n";
+bool Robot::setMotors(int trynum){
+	if(debugDrive_) cout<<"running set motors\n";
+	if(debugDrive_) cout<<"lPWM_ = "<<(int) lPWM_<<" rPWM_ = "<<(int) rPWM_<<"\n";
 	checki2c();
 	if (ioctl(fd, I2C_SLAVE, addrDrive) < 0) {     
 	   // Set the port options and set the address of the device we wish to speak to
-	   ROS_ERROR("Unable to open port, someone else using it?");
+	   ROS_ERROR("Unable to open port, make sure openI2C has run or someone else using it?");
 	   return false;
-	   }
+   	}
+	
+	if(eStop_){
+		lPWM_ = 0;
+		rPWM_ = 0;
+	}
+
 	unsigned char que[4] = {lForward_, lPWM_, rForward_, rPWM_};
-	quei2c(4,que);
-	usingi2c_ = false;
-	if(que[1] == lPWM_ && que[3] == rPWM_) return true;
-	ROS_ERROR("Robot::setMotors miscommunication");
+	if(trynum == 2){
+			que[0] = lForward_ == 'a' ? 'w' : 'x';
+			que[2] = rForward_ == 'c' ? 'y' : 'z';
+		}
+		unsigned char sent[4] = {que[0], lPWM_, que[2], rPWM_};
+
+		quei2c(4,que);
+
+		usingi2c_ = false;
+		if(que[1] == lPWM_ && que[3] == rPWM_) return true;
+		if(1 || trynum == 2){
+		ROS_ERROR("Robot::setMotors miscommunication");
+
+		cout<<"Sent: ["; 
+		for(int i=0; i<4; i++){
+			if(i%2==0){
+				cout<<sent[i]<<",";
+			}
+			else{
+				cout<<(int) sent[i]<<",";
+			}
+		}
+		cout<<" ]";
+		cout<<" Got: ["; 
+		for(int i=0; i<4; i++){
+			if(i%2==0){
+				cout<<que[i]<<",";
+			}
+			else{
+				cout<<(int) que[i]<<",";
+			}
+		}
+		cout<<" ]\n";
+	}
+	/*cout<<"sent lPWM_ = "<<(int) lPWM_<<" and rPWM_ = "<<(int) rPWM_<<
+		" but got "<<(int) que[1]<<" and "<<(int) que[3]<<"\n"; //*/
 	return false;
 }
 

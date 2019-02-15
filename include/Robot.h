@@ -34,7 +34,7 @@ class Robot{
 		void lidarCallback(); // runs everytime a new lidar scan comes in
 		void openI2C();
 		bool getEncoders();
-		bool setMotors();
+		bool setMotors(int trynum);
 		bool contactArms();
 		void setNav(Nav* nv);
 		string tmp;
@@ -43,7 +43,7 @@ class Robot{
 	private:
 		Nav *nav_;
 		PID posePID_;
-		float setPose_, error_;
+		float setPose_, setSpeed_, error_;
 		double kp_, ki_, kd_, min_, max_, dt_; 
 		int fd; // file descriptor for I2C port
 		float lDrive_, rDrive_;     // drive power levels -1:1
@@ -54,14 +54,14 @@ class Robot{
 		int16_t lEnc_, rEnc_;   // enc counts 
 		bool usingi2c_;         // avoid conflicting contacts	
 		bool i2c_; 		// is odroid connected to circuit (for testing w/o bot)
-		bool debugDrive_, runPID_, step_;
+		bool debugDrive_, runPID_, eStop_;
 		int maxleft_, maxright_;
 		int ms_; // ms delay between odom updates, fastest thread
 		int wayUpdateRate_, mapUpdateRate_, robUpdateRate_;
 
 		// odometry vars;
 		Matrix3f rob2world_;	// rotation matrix calculated given pose
-		Vector3f robotstep_, worldstep_, odomloc_; // distance changes in robot + world frames
+		Vector3f robotstep_, worldstep_, odomWorldLoc_; // distance changes in robot + world frames
 		void calculateTransform(float theta);
 
 		void debugLoop();
