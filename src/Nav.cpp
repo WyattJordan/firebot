@@ -9,19 +9,14 @@
 #include <ros/console.h> 
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
-//#include <rviz_visual_tools/rviz_visual_tools.h>
-#include <geometry_msgs/Point.h>
+
 #include <string>
-#include <cstdlib>
 #include <iostream>
 #include <fstream>
 #include <vector>
-//#include <pthread.h>
 #include <time.h>
 #include <chrono>
-#include <algorithm>
 using std::vector;
-using std::atof;
 using std::cout;
 using namespace Eigen;
 
