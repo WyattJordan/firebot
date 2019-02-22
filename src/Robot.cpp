@@ -14,6 +14,7 @@
 #include <iostream>
 #include <fstream>
 #include <wiringPi.h>
+#include <wiringPiI2C.h>
 
 #include <boost/thread/thread.hpp>
 #include <chrono>
@@ -36,6 +37,10 @@ using namespace Eigen;
 
 Robot::Robot() : posePID_(0,0,0,0,0,0){ // also calls pose constructor
 	failed_reads = failed_writes = contacts = 0;
+	Rfails_[0] = 0; 
+	Rfails_[1] = 0; 
+	Rfails_[2] = 0; 
+	Rfails_[3] = 0; 
 	maxleft_ = maxright_ = 0;
 	left255 = right255 = 0;
 	usingi2c_ = false;
@@ -45,13 +50,9 @@ Robot::Robot() : posePID_(0,0,0,0,0,0){ // also calls pose constructor
 	rForward_ = 'c';
 	lPWM_ = rPWM_ = 200;
 	lEnc_ = rEnc_ = 0;
-	ms_ = 20;
+	ms_ = 10;
 
-	D3_ = 0;
-	D6_ = 40;
-	D9_ = 127;
-	D10_ = 180;
-	D11_ = 255;
+	D3_ = 0; D6_ = 40; D9_ = 127; D10_ = 180; D11_ = 255;
 	power2pwm();
 	srand(time(NULL));
 	
@@ -60,7 +61,9 @@ Robot::Robot() : posePID_(0,0,0,0,0,0){ // also calls pose constructor
 	robotstep_ << 0,0,0;
 	worldstep_ << 0,0,0;
 	odomWorldLoc_   << 0,0,0;
-	
+
+	wiringPiSetup();
+	fd_ = wiringPiI2CSetup(0x11);
 } 
 
 void Robot::setNav(Nav* nv){
@@ -71,6 +74,7 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 	mapUpdateRate_ = config.maprate;
 	wayUpdateRate_ = config.wayrate;
 	robUpdateRate_ = config.robrate;
+	ms_ = config.ms;
 	lDrive_ = config.left;
 	rDrive_ = config.right;
 	i2c_ = config.i2c;
@@ -89,7 +93,13 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 
 	posePID_ = PID(ms_, kp_, ki_, kd_, max_, min_);	
 	cout<<"RECONFIGURED!\n\n";
-		
+}
+
+void Robot::piI2C(int size, unsigned char *q){
+	for(int i=size; i<size; i++){
+		wiringPiI2CWrite(fd_,q[i]);
+		q[i] = wiringPiI2CRead(fd_);
+	}
 }
 
 // Increment locX, locY, locP with the new encoder vals
@@ -121,24 +131,19 @@ void Robot::calculateOdom(){
 void Robot::calculateTransform(float theta){
 	rob2world_.topLeftCorner(2,2) << cos(theta), -sin(theta),
 					 sin(theta),  cos(theta);
-
 }
 
 void Robot::debugLoop(){
-
-
 }
 
 void Robot::driveLoop(){
 	cout<<"talking to arduino, reset rviz now\n";
-	setMotors(1);
-	usleep(500);
-	setMotors(2);
+	setMotors(1); usleep(500); setMotors(2);
 	cout<<"set motors\n";
 	getEncoders();
 	cout<<"got encoders\n";
-	//usleep(5*ms_*1000); // sleep 5 loops before starting
-	usleep(5000*1000); // sleep 5 seconds before starting
+	usleep(5*ms_*1000); // sleep 5 loops before starting
+	//usleep(5000*1000); // sleep 5 seconds before starting
 	cout<<"starting driveLoop\n";
 	int mapCount, wayCount, robCount, debugCount;
 	mapCount = wayCount = robCount = debugCount = 0;
@@ -148,23 +153,21 @@ void Robot::driveLoop(){
 	nav_->pubMap_ = true;
 	nav_->pubRob_ = true;
 
+	vector<int> fail_hist;
 	while(1){
 		// get encoders, do PID math, set motors, delay dt
 	boost::chrono::system_clock::time_point time_limit =
 	   	boost::chrono::system_clock::now() + boost::chrono::milliseconds(ms_);
 
-		if(debugDrive_) cout<<"running, i2c = "<<i2c_<<"\n";
-		if(i2c_) {getEncoders();} //////////////////////////////////////////////
+		if(0 && i2c_) {getEncoders();} //////////////////////////////////////////////
 		else { // simulate Enc vals based on drive lvls
 			lEnc_ = 100 * lDrive_ ;//+ rand()%10;
 			rEnc_ = 100 * rDrive_ ;//+ rand()%10;		
 		}
 		if(debugDrive_) cout<<"lEnc_ = "<<lEnc_<<"  rEnc_ = "<<rEnc_<<"\n";
-
-		if(debugDrive_) cout<<"got/made enc vals, doing odom...\n";
 		calculateOdom();
-		if(debugDrive_) cout<<"running pid = "<<runPID_ <<"\n";
 		if(runPID_){
+			if(debugDrive_) cout<<"running pid = "<<runPID_ <<"\n";
 			float adj = posePID_.calculate(setPose_, odomWorldLoc_(2));
 			lDrive_ += adj;
 			rDrive_ -= adj;	
@@ -173,9 +176,15 @@ void Robot::driveLoop(){
 		if(i2c_) {
 			setMotors(1); 
 			usleep(100);
-			setMotors(2); 
+			bool t = true;
+			t = setMotors(2); 
+			if(!t) fail_hist.push_back(-1);
+			else fail_hist.clear();
+			if(fail_hist.size() >= 20){
+				cout<<"too many consecutive failures, exiting\n";
+			}
 		}
-	       	if(debugDrive_) cout<<"ran\n\n";
+	       	if(debugDrive_) cout<<"ran setMotors\n\n";
 
 		// set flags for debugging and publishing markers and robot
 		mapCount++; wayCount++; robCount++; debugCount++;
@@ -210,78 +219,36 @@ void Robot::driveLoop(){
 		"us (hopefully) leftover\n";
 	}
 }
-
-// scales -1:1 to 0:255
-void Robot::power2pwm(){
-	//cout<<"making pwms with lDrive_ = "<<lDrive_<<" rDrive_ = "<<rDrive_<<"\n";
-	lPWM_ = lDrive_ > 0 ? lDrive_*255.0 : -1*lDrive_*255.0;
-	rPWM_ = rDrive_ > 0 ? rDrive_*255.0 : -1*rDrive_*255.0;
-	lForward_ = lDrive_ > 0 ? 'a' : 'b'; // directions set by char for each motor
-	rForward_ = rDrive_ > 0 ? 'c' : 'd';
-	//cout<<"made pwms lPWM_= "<<(int)lPWM_<<" rPWm= "<<(int)rPWM_<<"\n";
-	//cout<<"lforward: "<<lForward_<<"  rforward: "<<rForward_<<"\n";
-}
-
-// tries to open the I2C port and set fd, repeates 10 times if failing
-void Robot::openI2C(){
-   const char *fileName = "/dev/i2c-1";         // Name of the port we will be using
-   int count = 0;
-    while ((fd = open(fileName, O_RDWR)) < 0 && count < 10) {   // Open port for reading and writing
-	    sleep(1);
-      printf("Failed to open i2c port, did you set sudo??\n trying again...");
-	  if (count == 10) {
-		ROS_ERROR(" Could not open I2C port, aborting mission\n");
-	    //exit(1);
-	  }
-   }
-	ROS_INFO("Successfully opened I2C port");
-	cout<<"fd = "<<fd<<"\n";
-
-}
-
-// waits for i2c to be available
-void Robot::checki2c(){
-	while(usingi2c_){ /* put a delay here?*/ }
-	usingi2c_ = true;
-}
-
-bool Robot::contactArms(){
-	checki2c();
-	if (ioctl(fd, I2C_SLAVE, addrDrive) < 0) {     
-	   // Set the port options and set the address of the device we wish to speak to
-	   ROS_ERROR("Unable to open port, someone else using it?");
-	   return false;
-	   }
-
-	// sets all PWM values for pins D3, D6, D9, D10, and D11
-	unsigned char que[6] = {'a', D3_, D6_, D9_, D10_, D11_ };
-	quei2c(6, que);
-
-	usingi2c_ = false;
-	return true;
-}
-
 // sends a byte que to the already selected I2C device 
 // bytes returned from device replace sent messages in the que
 void Robot::quei2c(int size, unsigned char *q){
+	failed_reads = 0;
+	failed_writes = 0;
 	for(int i=0; i<size; i++){
 		unsigned char send[1] = {q[i]};
 		//cout<<" sending que with fd = " << fd<<"\n";
-		if ((write(fd, &send, 1)) != 1) {         // send a byte   
-		      printf("error writing to i2c slave in Robot::quei2c\n");
+		if ((write(fd_, &send, 1)) != 1) {         // send a byte   
+		      //printf("error writing to i2c slave in Robot::quei2c\n");
+		      Rfails_[i]++;
 		      failed_writes++;
-		      //exit(1);
 		   }
 		contacts++;
-		 if (read(fd, send, 1) != 1) {            // Read a byte 
-		      printf("Unable to read from slave in Robot::quei2c\n");
+		 if (read(fd_, send, 1) != 1) {            // Read a byte 
+		      //printf("Unable to read from slave in Robot::quei2c\n");
 		      failed_reads++;
 		   }
 		contacts++;
-
 	 q[i] = send[0];
 	}
-
+	if(failed_writes > 0 || failed_reads > 0) {
+		printf("in Robot::quei2c %d failed writes and %d failed reads\n", failed_writes, failed_reads);
+		if(failed_writes>0){
+			for(int i=0; i<4; i++){
+				cout<<Rfails_[i]<<", "; 
+			}
+			cout<<"\n";
+		}
+	}
 }
 
 // send PWM signals to Arduino
@@ -289,7 +256,7 @@ bool Robot::setMotors(int trynum){
 	if(debugDrive_) cout<<"running set motors\n";
 	if(debugDrive_) cout<<"lPWM_ = "<<(int) lPWM_<<" rPWM_ = "<<(int) rPWM_<<"\n";
 	checki2c();
-	if (ioctl(fd, I2C_SLAVE, addrDrive) < 0) {     
+	if (ioctl(fd_, I2C_SLAVE, addrDrive) < 0) {     
 	   // Set the port options and set the address of the device we wish to speak to
 	   ROS_ERROR("Unable to open port, make sure openI2C has run or someone else using it?");
 	   return false;
@@ -305,13 +272,16 @@ bool Robot::setMotors(int trynum){
 			que[0] = lForward_ == 'a' ? 'w' : 'x';
 			que[2] = rForward_ == 'c' ? 'y' : 'z';
 		}
-		unsigned char sent[4] = {que[0], lPWM_, que[2], rPWM_};
+	unsigned char sent[4] = {que[0], lPWM_, que[2], rPWM_};
 
-		quei2c(4,que);
+	//piI2C(4, que);
+	quei2c(4,que);
 
-		usingi2c_ = false;
-		if(que[1] == lPWM_ && que[3] == rPWM_) return true;
-		if(1 || trynum == 2){
+	usingi2c_ = false;
+	if(que[1] == sent[1] && que[3] == sent[3]
+		&& que[2] == sent[2] && que[0] == sent[0])
+       	{ return true; }
+	if(1 || trynum == 2){
 		ROS_ERROR("Robot::setMotors miscommunication");
 
 		cout<<"Sent: ["; 
@@ -342,7 +312,7 @@ bool Robot::setMotors(int trynum){
 
 bool Robot::getEncoders(){
 	checki2c();
-	if (ioctl(fd, I2C_SLAVE, addrDrive) < 0) {     
+	if (ioctl(fd_, I2C_SLAVE, addrDrive) < 0) {     
 	   // Set the port options and set the address of the device we wish to speak to
 	   ROS_ERROR("Unable to open port, someone else using it?");
 	   return false;
@@ -368,4 +338,59 @@ bool Robot::getEncoders(){
 		failed_writes<<" out of "<<contacts<<"\n";// */
 	return true;
 }
+
+// scales -1:1 to 0:255
+void Robot::power2pwm(){
+	//cout<<"making pwms with lDrive_ = "<<lDrive_<<" rDrive_ = "<<rDrive_<<"\n";
+	lPWM_ = lDrive_ > 0 ? lDrive_*255.0 : -1*lDrive_*255.0;
+	rPWM_ = rDrive_ > 0 ? rDrive_*255.0 : -1*rDrive_*255.0;
+	lForward_ = lDrive_ > 0 ? 'a' : 'b'; // directions set by char for each motor
+	rForward_ = rDrive_ > 0 ? 'c' : 'd';
+	//cout<<"made pwms lPWM_= "<<(int)lPWM_<<" rPWm= "<<(int)rPWM_<<"\n";
+	//cout<<"lforward: "<<lForward_<<"  rforward: "<<rForward_<<"\n";
+}
+
+// tries to open the I2C port and set fd, repeates 10 times if failing
+void Robot::openI2C(){
+//	fd_ = wiringPiI2CSetup(0x11);
+
+	
+   const char *fileName = "/dev/i2c-1";         // Name of the port we will be using
+   int count = 0;
+    while ((fd_ = open(fileName, O_RDWR)) < 0 && count < 10) {   // Open port for reading and writing
+	    sleep(1);
+      printf("Failed to open i2c port, did you set sudo??\n trying again...");
+	  if (count == 10) {
+		ROS_ERROR(" Could not open I2C port, aborting mission\n");
+	    //exit(1);
+	  }
+   }
+	ROS_INFO("Successfully opened I2C port");
+	cout<<"fd = "<<fd_<<"\n";
+	
+
+}
+
+// waits for i2c to be available
+void Robot::checki2c(){
+	while(usingi2c_){ /* put a delay here?*/ }
+	usingi2c_ = true;
+}
+
+bool Robot::contactArms(){
+	checki2c();
+	if (ioctl(fd_, I2C_SLAVE, addrDrive) < 0) {     
+	   // Set the port options and set the address of the device we wish to speak to
+	   ROS_ERROR("Unable to open port, someone else using it?");
+	   return false;
+	   }
+
+	// sets all PWM values for pins D3, D6, D9, D10, and D11
+	unsigned char que[6] = {'a', D3_, D6_, D9_, D10_, D11_ };
+	quei2c(6, que);
+
+	usingi2c_ = false;
+	return true;
+}
+
 

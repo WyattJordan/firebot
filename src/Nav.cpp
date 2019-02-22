@@ -58,21 +58,22 @@ void Nav::publishLoop(){
 		if(pubWays_ || pubMap_ || pubRob_){
 		// 	cout<<"pubbing ways: "<<pubWays_<<" with size "<<wayMarks_.markers.size()<<
 		//		" and map: "<<pubMap_<<" with size "<<mapMarks_.markers.size()<<"\n";
+			cout<<"published ways/map/robot\n";
 			if(pubMap_){
 				markerPub_->publish(wayMarks_);
 				pubWays_ = false;
-				cout<<"published ways "<<wayMarks_.markers.size()<<"\n";
+	//			cout<<"published ways "<<wayMarks_.markers.size()<<"\n";
 			}
 			if(pubMap_){
 				markerPub_->publish(mapMarks_);
 				pubMap_ = false;
-				cout<<"published map "<<mapMarks_.markers.size()<<"\n";
+	//			cout<<"published map "<<mapMarks_.markers.size()<<"\n";
 			}
 			if(pubRob_){
 				calcRobotMarks(); // rob obj passed in odomloc, set mark vals
 				markerPub_->publish(robMarks_);
 				pubRob_ = false;
-				cout<<"published robot\n";
+	//			cout<<"published robot\n";
 			}
 
 		}
