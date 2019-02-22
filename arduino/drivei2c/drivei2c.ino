@@ -60,8 +60,8 @@ void setup() {
   digitalWrite(leftDirPin, HIGH);
   digitalWrite(rightDirPin, HIGH);  
 
-  sDebug = false;
-  if(sDebug) Serial.begin(9600);
+  sDebug = true;
+  if(sDebug) Serial.begin(115200);
   
   for(int i=0; i<3; i++){
     digitalWrite(LED_BUILTIN, LOW);
@@ -73,7 +73,7 @@ void setup() {
 }
 
 void loop() {
-  if(sDebug){
+  if(0 &&sDebug){
         Serial.print("lPWM = ");
         Serial.print(lPWM);
         Serial.print(" rPWM = ");
@@ -180,6 +180,7 @@ void sendData(){
       }
       else{
         Wire.write('r');
+        if(sDebug) {Serial.println("Failed to receive two correctly");}
       }
      
     }
