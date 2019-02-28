@@ -26,6 +26,14 @@ using std::string;
 #include <sys/ioctl.h>
 #include <string.h>
 
+// for serial
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <termios.h>
+
 using std::cout;
 using namespace Eigen;
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
@@ -170,13 +178,16 @@ void Robot::driveLoop(){
 		power2pwm();
 		if(i2c_) {
 			setMotors(1); 
-			usleep(100);
+			usleep(300);
 			bool t = true;
 			t = setMotors(2); 
 			if(!t) fail_hist.push_back(-1);
 			else fail_hist.clear();
-			if(fail_hist.size() >= 20){
-				cout<<"too many consecutive failures, exiting\n";
+			if(fail_hist.size() >= 10){
+				cout<<"too many consecutive failures\n";
+				unsigned char fail[1] = {'s'};
+				quei2c(1,fail);
+				exit(1);
 			}
 		}
 	       	if(debugDrive_) cout<<"ran setMotors\n\n";
@@ -214,6 +225,57 @@ void Robot::driveLoop(){
 		"us (hopefully) leftover\n";
 	}
 }
+void Robot::sendSerial(char send[], int size){
+
+}
+
+void Robot::openSerial(){
+	cout<<"opening USB connection \n";
+	fd_ = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY);
+	if(fd_ == -1){
+		cout<<"could not open serial port\n";
+		perror("open_port: Unable to open /dev/ttyUSB0 - ");
+	}
+
+	struct termios options;
+	tcgetattr(fd_, &options);
+	cfsetispeed(&options, B115200);
+	cfsetospeed(&options, B115200);
+	options.c_cflag &= ~CSIZE;
+	options.c_cflag |= CS8; // 8 bit chars
+	options.c_cflag &= ~PARENB; // no parity
+	options.c_cflag &= ~CSTOPB;
+
+	tcsetattr(fd_, TCSANOW, &options);
+
+	fcntl(fd_, F_SETFL, 0);
+	cout<<"connected to USB!\n";
+}
+
+void Robot::quei2c_4b(int size, unsigned char *q){
+	//cout<<" sending que with fd = " << fd<<"\n";
+	if ((write(fd_, &q, size)) != size) {         // send a byte   
+	      //printf("error writing to i2c slave in Robot::quei2c\n");
+	   }
+	contacts++;
+	 if (read(fd_, q, size) != size) {            // Read a byte 
+	      //printf("Unable to read from slave in Robot::quei2c\n");
+	      failed_reads++;
+	   }
+	contacts++;
+
+	if(failed_writes > 0 || failed_reads > 0) {
+		printf("in Robot::quei2c %d failed writes and %d failed reads\n",
+			       	failed_writes, failed_reads);
+		if(failed_writes>0){
+			for(int i=0; i<4; i++){
+				cout<<Rfails_[i]<<", "; 
+			}
+			cout<<"\n";
+		}
+	}
+}
+
 // sends a byte que to the already selected I2C device 
 // bytes returned from device replace sent messages in the que
 void Robot::quei2c(int size, unsigned char *q){
@@ -236,7 +298,8 @@ void Robot::quei2c(int size, unsigned char *q){
 	 q[i] = send[0];
 	}
 	if(failed_writes > 0 || failed_reads > 0) {
-		printf("in Robot::quei2c %d failed writes and %d failed reads\n", failed_writes, failed_reads);
+		printf("in Robot::quei2c %d failed writes and %d failed reads\n",
+			       	failed_writes, failed_reads);
 		if(failed_writes>0){
 			for(int i=0; i<4; i++){
 				cout<<Rfails_[i]<<", "; 
@@ -278,7 +341,9 @@ bool Robot::setMotors(int trynum){
        	{ return true; }
 	if(1 || trynum == 2){
 		ROS_ERROR("Robot::setMotors miscommunication");
-
+		unsigned char fail[1] = {'s'};
+		quei2c(1,fail);
+				
 		cout<<"Sent: ["; 
 		for(int i=0; i<4; i++){
 			if(i%2==0){
@@ -348,7 +413,6 @@ void Robot::power2pwm(){
 // tries to open the I2C port and set fd, repeates 10 times if failing
 void Robot::openI2C(){
 //	fd_ = wiringPiI2CSetup(0x11);
-
 	
    const char *fileName = "/dev/i2c-1";         // Name of the port we will be using
    int count = 0;

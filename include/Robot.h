@@ -33,6 +33,8 @@ class Robot{
 		void recon(firebot::ReconConfig &config, uint32_t level);
 		void lidarCallback(); // runs everytime a new lidar scan comes in
 		void openI2C();
+		void openSerial();
+		void sendSerial(char send[], int size);
 		void piI2C(int size, unsigned char *q);
 		bool getEncoders();
 		bool setMotors(int trynum);
@@ -71,4 +73,5 @@ class Robot{
 		void power2pwm();
 		void checki2c();
 		void quei2c(int size, unsigned char *q);
+		void quei2c_4b(int size, unsigned char *q);
 };

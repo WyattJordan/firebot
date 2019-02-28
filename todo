@@ -1,10 +1,5 @@
 On this computer:
 
-	publishing map and ways efficiently (updating visible marks)
-		create a function that converts vec<EndPoint> to MarkerArray
-		easily adjust visible points
-		set publishing frequency
-
 	publish odom location at a certain rate
 		save driveloop rate as variable
 		have a counter increment + do math to publish at slower rate
@@ -19,6 +14,13 @@ On this computer:
 	
 
 ------------------------------ DONE + NOTES ------------------------------
+
+done:
+	publishing map and ways efficiently (updating visible marks)
+		create a function that converts vec<EndPoint> to MarkerArray
+		easily adjust visible points
+		set publishing frequency
+
 
 	odom() calculations
 		Eigen is breaking w/ size issues
