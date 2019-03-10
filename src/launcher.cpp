@@ -14,6 +14,7 @@
 #include "Robot.h"
 #include <firebot/ReconConfig.h>
 #include <dynamic_reconfigure/server.h>
+#include <visualization_msgs/MarkerArray.h>
 #include <thread>     // 3 for thread and sharedptr
 #include <iostream> 
 using std::cout;
@@ -31,12 +32,15 @@ int main(int argc, char **argv){
 	ROS_INFO("running main launcher, going to create robot\n");
 	Robot rob;
 
+	
 	// load the dynamic reconfigure server
 	dynamic_reconfigure::Server<firebot::ReconConfig> server;
 	dynamic_reconfigure::Server<firebot::ReconConfig>::CallbackType f;
 	// callback recquires a function then an instance of the class (here Robot)
 	f = boost::bind(&Robot::recon, &rob, _1, _2);
 	server.setCallback(f);
+	
+	cout<<"setup server\n";
 
 	// load the maps, output maps to console
 	ros::NodeHandle n;
@@ -50,7 +54,11 @@ int main(int argc, char **argv){
 
 	cout<<"\now go traverse\n";//*/
 	std::thread thread1, driveLoop, publishNavLoop;
-	rob.openI2C();
+//	rob.openI2C();
+	rob.openSerial();
+	rob.setSerialMotors();
+	sleep(8);
+	
 	driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
 
 	nav.makeMapMarks("marker_ns");

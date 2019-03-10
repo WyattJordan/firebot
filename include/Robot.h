@@ -17,6 +17,8 @@
 #define WheelLCM  13.75 // width is 29.2cm outer 24.8cm inner, L is half this value
 #define WheelRCM  6.2  // diameter is 12.4, radius is 6.2cm
 #define PI2	  6.28319
+#define INTSIZE   4
+
 using std::string;
 using namespace Eigen;
 static void pabort(const char *s)
@@ -34,6 +36,8 @@ class Robot{
 		void lidarCallback(); // runs everytime a new lidar scan comes in
 		void openI2C();
 		void openSerial();
+		void setSerialMotors();
+		void getSerialEncoders();
 		void sendSerial(char send[], int size);
 		void piI2C(int size, unsigned char *q);
 		bool getEncoders();

@@ -40,7 +40,9 @@ Nav::Nav(int lvl, ros::Publisher* pub){
 	cwayMark_ = {0.8, 0.1, 0.9};
 	worldFrame_ = "map2";
 
+	cout<<"going to load files\n";
 	loadFiles(lvl);	
+	cout<<"going to init marks\n";
 	initRobotMarks();
 }
 void Nav::setOdomLoc(Vector3f &od){

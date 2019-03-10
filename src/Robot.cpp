@@ -139,6 +139,21 @@ void Robot::calculateTransform(float theta){
 void Robot::debugLoop(){
 }
 
+void Robot::setSerialMotors(){
+	if(eStop_){
+		lPWM_ = 0;
+		rPWM_ = 0;
+	}
+	int16_t mcode[1] = {-1}; // cannot be from 0-255 (use negatives)
+	write(fd_, mcode, 2); // Identify what info is coming next 
+	//unsigned char mdata[4] = {lForward_, lPWM_, rForward_, rPWM_};	
+	//write(fd_, mdata, 4);
+}
+
+void Robot::getSerialEncoders(){
+
+}
+
 void Robot::driveLoop(){
 	cout<<"talking to arduino, reset rviz now\n";
 	setMotors(1); usleep(500); setMotors(2);
@@ -175,6 +190,7 @@ void Robot::driveLoop(){
 			lDrive_ += adj;
 			rDrive_ -= adj;	
 		}
+
 		power2pwm();
 		if(i2c_) {
 			setMotors(1); 
@@ -190,6 +206,7 @@ void Robot::driveLoop(){
 				exit(1);
 			}
 		}
+
 	       	if(debugDrive_) cout<<"ran setMotors\n\n";
 
 		// set flags for debugging and publishing markers and robot
@@ -225,13 +242,14 @@ void Robot::driveLoop(){
 		"us (hopefully) leftover\n";
 	}
 }
+
 void Robot::sendSerial(char send[], int size){
 
 }
 
 void Robot::openSerial(){
 	cout<<"opening USB connection \n";
-	fd_ = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY);
+	fd_ = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY); // read+write | not controlling term | ? 
 	if(fd_ == -1){
 		cout<<"could not open serial port\n";
 		perror("open_port: Unable to open /dev/ttyUSB0 - ");
@@ -242,13 +260,13 @@ void Robot::openSerial(){
 	cfsetispeed(&options, B115200);
 	cfsetospeed(&options, B115200);
 	options.c_cflag &= ~CSIZE;
-	options.c_cflag |= CS8; // 8 bit chars
-	options.c_cflag &= ~PARENB; // no parity
+	options.c_cflag |= CS8; 	// 8 bit chars
+	options.c_cflag &= ~PARENB;	// no parity
 	options.c_cflag &= ~CSTOPB;
 
 	tcsetattr(fd_, TCSANOW, &options);
 
-	fcntl(fd_, F_SETFL, 0);
+	fcntl(fd_, F_SETFL, 0); // set the file status flag
 	cout<<"connected to USB!\n";
 }
 
@@ -404,8 +422,8 @@ void Robot::power2pwm(){
 	//cout<<"making pwms with lDrive_ = "<<lDrive_<<" rDrive_ = "<<rDrive_<<"\n";
 	lPWM_ = lDrive_ > 0 ? lDrive_*255.0 : -1*lDrive_*255.0;
 	rPWM_ = rDrive_ > 0 ? rDrive_*255.0 : -1*rDrive_*255.0;
-	lForward_ = lDrive_ > 0 ? 'a' : 'b'; // directions set by char for each motor
-	rForward_ = rDrive_ > 0 ? 'c' : 'd';
+	lForward_ = lDrive_ > 0 ? 'f' : 'b'; // directions set by char for each motor
+	rForward_ = rDrive_ > 0 ? 'f' : 'b';
 	//cout<<"made pwms lPWM_= "<<(int)lPWM_<<" rPWm= "<<(int)rPWM_<<"\n";
 	//cout<<"lforward: "<<lForward_<<"  rforward: "<<rForward_<<"\n";
 }
