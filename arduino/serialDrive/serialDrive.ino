@@ -25,17 +25,14 @@ boolean lforward, rforward, lforward2, rforward2, zeroFlag;
 long zeroStamp;
 boolean sDebug, Error, writeBack, outputEverything;
 
-char sendbuff [100];
-char  getBuff [100];
-char  msg [100];
+char      msg [100]; 
+char  getBuff [100]; 
+unsigned int getBuffPos;
+int code;
 
-float time2;
-int encCount, motCount, motCount2;
+float time1, time2;
+int encCount, motCount, motCount2, talkcount;
 void setup() {
-  // I2C
-  Wire.begin(17); 
-  Wire.onReceive(getData);
-  Wire.onRequest(sendData);
   
   // encoders
   pinMode(LED_BUILTIN, OUTPUT);
@@ -64,7 +61,9 @@ void setup() {
   Error = outputEverything = false;
   sDebug = true;
   writeBack = true;
-  if(sDebug) Serial.begin(115200);
+  
+  Serial.begin(115200);
+  while (!Serial) {;} // wait for serial port to connect
   
   for(int i=0; i<3; i++){
     digitalWrite(LED_BUILTIN, LOW);
@@ -73,9 +72,33 @@ void setup() {
     delay(100);
   }
   digitalWrite(LED_BUILTIN, LOW);
+
+  getBuffPos = 0;
+  code = 0;
+  time1 = 0;
+  talkcount = 0;
 }
 
 void loop() {
+  if(Serial.available()>0){
+    char c = Serial.read();
+    getBuff[getBuffPos++] = c;
+    if(getBuffPos == 2 && code == 0){ // reset code to 0 between msgs
+      code = (getBuff[1] << 8) | getBuff[0];
+      int test = -1;
+      Serial.print("test is ");
+      Serial.print(test);
+      Serial.print("code is ");
+      Serial.print(code);
+      getBuffPos = 0;
+      code = 0;
+    }
+  }
+  else if(millis() - time1 > 1000){
+    time1 = millis();
+    Serial.print("talking");
+    Serial.println(talkcount++);
+  }
   if(Error){
     sprintf(msg, "lPWM = %d rPWM = %d --- lPWM2 = %d rPWM2 = %d\n",
     lPWM,rPWM,lPWM2,rPWM2);
@@ -89,8 +112,7 @@ void loop() {
     Serial.println(msg);
     sprintf(msg, "motCount = %d, motCount2 = %d", motCount, motCount2);
     Serial.println(msg);
-
-  outputEverything = false;
+    outputEverything = false;
   }
   
   if(zeroFlag){
@@ -102,96 +124,6 @@ void loop() {
   }
 }
 
-void getData(int num){
-  getBuff[0] = Wire.read();
-  if(getBuff[0] == 's') outputEverything = true;
-  
-  if(getBuff[0] == '1'){ encCount = 4;} // starts 4 byte enc interaction
-  // starts 3 byte motor interaction
-  else if(getBuff[0] == 'a' || getBuff[0] == 'b'){ motCount = 4;} 
-  else if(getBuff[0] == 'w' || getBuff[0] == 'x'){ motCount2 = 4;}
-  
-  // leftmotor is a/b and right is c/d (first char is forrward)
-  if(motCount == 4) lforward = getBuff[0] == 'a' ? true : false;
-  else if(motCount == 3) lPWM = getBuff[0];
-  else if(motCount == 2) rforward = getBuff[0] == 'c' ? true : false;
-  else if(motCount == 1) rPWM = getBuff[0];
-
-  // leftmotor is w/x and right is y/z (first char is forward)
-  if(motCount2 == 4) lforward2 = getBuff[0] == 'w' ? true : false;
-  else if(motCount2 == 3) lPWM2 = getBuff[0];
-  else if(motCount2 == 2) rforward2 = getBuff[0] == 'y' ? true : false;
-  else if(motCount2 == 1) rPWM2 = getBuff[0];
-
-  
-  if(rPWM == 0 || lPWM == 0) {
-    zeroFlag = true; zeroStamp = millis();}
-} // end of getData
-
-void sendData(){
-  
-  if(encCount > 0){
-    // incoming bytes should be ['1','2','3','4'], send back enc vals
-    if(encCount == 4){Wire.write(highByte(leftDuration));}
-    else if(encCount == 3){
-      Wire.write(lowByte(leftDuration));
-      leftDuration = 0;
-    }
-    else if(encCount == 2){Wire.write(highByte(rightDuration));}
-    else if(encCount == 1){
-      Wire.write(lowByte(rightDuration));
-      rightDuration = 0;
-    }
-    encCount--;
-    time2 = millis();
-  }
-  // first motor interaction incoming should be ['a/b',lPWM,'c/d',rPWM]
-  else if(motCount>0){
-    if(motCount == 4){if(writeBack) Wire.write(lforward ? 'a' : 'b');}
-    if(motCount == 3){if(writeBack) Wire.write(lPWM);}
-    if(motCount == 2){if(writeBack) Wire.write(rforward ? 'c' : 'd');}
-    if(motCount == 1){if(writeBack) Wire.write(rPWM);}
-    motCount--;    
-  }
-  // second motor interaction to verify, only set PWMs if both agree
-  // incoming bytes should be ['w/x',lPWM,'y/z',rPWM]
-  else if(motCount2>0){
-    if(motCount2 == 4){
-        if(writeBack) Wire.write(lforward2 ? 'w' : 'x');
-    }
-    if(motCount2 == 3){
-      if(lPWM == lPWM2 && (lforward == lforward2)){
-        if(writeBack) Wire.write(lPWM2); // send back for verification
-        analogWrite(leftDrivePin, lPWM);
-        digitalWrite(leftDirPin, lforward ? HIGH : LOW);
-        //if(sDebug) {Serial.println("changed left");}
-      }
-      else{
-        if(writeBack) Wire.write('l'); // the two messages don't match
-        if(sDebug) {Serial.println("left diff on 2nd msg");}
-        Error = true;
-      }
-    }
-    if(motCount2 == 2){
-      Wire.write(rforward2 ? 'y' : 'z');
-    }
-    if(motCount2 == 1){
-      if(rPWM == rPWM2 && (rforward == rforward2)){
-        if(writeBack) Wire.write(rPWM2); // send back for verification
-        analogWrite(rightDrivePin, rPWM);
-        digitalWrite(rightDirPin, rforward ? HIGH : LOW);
-        //if(sDebug) {Serial.println("changed right");}
-      }
-      else{
-        if(writeBack) Wire.write('r');
-        if(sDebug) {Serial.println("right diff on 2nd msg");}
-        Error = true;
-      }
-     
-    }
-    motCount2--;   
-  }
-}
 
 ////////////////////////////////////////////////////////////////
 ///////////////////Encoder Interrupts///////////////////////////

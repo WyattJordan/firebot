@@ -42,19 +42,19 @@ void loop() {
 }
 
 void getData(int num){
-  getBuff[0] = Wire.read();
+  time2 = millis();
+  /*getBuff[0] = Wire.read();
   if(getBuff[0] == 'a') {armContactCount = 6;}
   if(armContactCount>0 && armContactCount<6){
     //analogWrite(PWMpins[5-armContactCount], getBuff[0]);
     armContactCount--;
-  }
+  }*/
 }
 
 void sendData(){
-  if(getBuff[0] == 'a') {;}
+  //if(getBuff[0] == 'a') {;}
   // list other cases for codes here
   
   time2 = millis();
   digitalWrite(LED_BUILTIN, HIGH);
 }
-
