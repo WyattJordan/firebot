@@ -57,9 +57,10 @@ int main(int argc, char **argv){
 //	rob.openI2C();
 	rob.openSerial();
 	rob.setSerialMotors();
+	cout<<"sleeping 8secs\n";
 	sleep(8);
 	
-	driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
+	//driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
 
 	nav.makeMapMarks("marker_ns");
 	nav.makeWayMarks("ways_ns");

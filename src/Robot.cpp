@@ -146,12 +146,46 @@ void Robot::setSerialMotors(){
 	}
 	int16_t mcode[1] = {-1}; // cannot be from 0-255 (use negatives)
 	write(fd_, mcode, 2); // Identify what info is coming next 
-	//unsigned char mdata[4] = {lForward_, lPWM_, rForward_, rPWM_};	
-	//write(fd_, mdata, 4);
+	// lForward_ = 'f'; rForward_ = 'b'; lPWM_ = 221; rPWM_ = 135;
+	unsigned char mdata[4] = {lForward_, lPWM_, rForward_, rPWM_};	
+	write(fd_, mdata, 4);
+	sleep(2);
+
+	getSerialEncoders();
+	/*
+	int16_t mcode2[1] = {-2}; // cannot be from 0-255 (use negatives)
+	write(fd_, mcode2, 2); // Identify what info is coming next 
+	*/
+	sleep(2);
+
+	int16_t mcode3[1] = {-3}; // cannot be from 0-255 (use negatives)
+	write(fd_, mcode3, 2); // Identify what info is coming next 
+	D3_ = 30;
+	D6_ = 234;
+	D9_ = 123;
+	D10_ = 245;
+	D11_ = 4;
+	unsigned char mdata2[5] = {D3_, D6_, D9_, D10_, D11_ };
+	write(fd_, mdata2, 5);
+	cout<<"done all 3 serial tests...\n";
+	sleep(5);
+	
 }
 
 void Robot::getSerialEncoders(){
+	int16_t mcode2[1] = {-2}; // cannot be from 0-255 (use negatives)
+	write(fd_, mcode2, 2); // Identify what info is coming next 
+	unsigned char encs[4];
+	read(fd_, encs, 4); // read 2 integers from the arduino
+	cout<<"read enc buff = ";
+	for(int i=0; i<4; i++){ cout<<encs[i]<<", ";}
+	cout<<"\n";
 
+	lEnc_ = (encs[0] << 8) | encs[1]; // left is first, high byte is first
+	rEnc_ = (encs[2] << 8) | encs[3];
+	
+	cout<<"left enc is "<<lEnc_<<"\n";
+	cout<<"right enc is "<<rEnc_<<"\n";
 }
 
 void Robot::driveLoop(){
@@ -250,7 +284,6 @@ void Robot::sendSerial(char send[], int size){
 void Robot::openSerial(){
 	cout<<"opening USB connection \n";
 	fd_ = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY); // read+write | not controlling term | ? 
-	if(fd_ == -1){
 		cout<<"could not open serial port\n";
 		perror("open_port: Unable to open /dev/ttyUSB0 - ");
 	}

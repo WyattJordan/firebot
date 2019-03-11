@@ -79,25 +79,43 @@ void setup() {
   talkcount = 0;
 }
 
+const int num_codes = 4;
+int data_length[num_codes] = {0, 4, 0, 5};
+// number of bytes coming in for a given code (index is -1*code)
+// code =  0 -> 0 bytes returned
+//	this is a placeholder, not an actual command
+// code = -1 -> 4 bytes = {leftDir, lPWM, rightDir, rPWM}
+//	set the motor directions and powers
+// code = -2 -> 0 bytes = {}
+//	send back the encoder values (4 bytes)
+// code = -3 -> 5 bytes = {D3_, D6_, D9_, D10_, D11_ }
+//	send the PWM values for the pins over I2C to secondary arduino
+
 void loop() {
   if(Serial.available()>0){
     char c = Serial.read();
     getBuff[getBuffPos++] = c;
-    if(getBuffPos == 2 && code == 0){ // reset code to 0 between msgs
-      code = (getBuff[1] << 8) | getBuff[0];
-      int test = -1;
-      Serial.print("test is ");
-      Serial.print(test);
-      Serial.print("code is ");
-      Serial.print(code);
-      getBuffPos = 0;
-      code = 0;
-    }
+	// a 2-byte int code is sent before any data
+	if(getBuffPos == 1 ){
+	      code = (getBuff[1] << 8) | getBuff[0];
+		if(!(code * -1 < num_codes) ) code = 0; // if a weird code is sent
+	  }
+	else if(getBuffPos >= 2 + data_length[-1*code]){
+		getBuffPos = 0; // all the data for that msg type received
+		if(code == 0) {;}
+		else if(code == -1) {setMotors();}
+		else if(code == -2) {sendEncoders();}
+		else if(code == -3) {sendI2C();}
+		//Serial.print("code was ");
+		//Serial.println(code);
+		code = 0;
+	}
   }
-  else if(millis() - time1 > 1000){
+
+  else if(millis() - time1 > 1000){ // code to run every second
     time1 = millis();
-    Serial.print("talking");
-    Serial.println(talkcount++);
+    //Serial.print("doing");
+    //Serial.println(talkcount++);
   }
   if(Error){
     sprintf(msg, "lPWM = %d rPWM = %d --- lPWM2 = %d rPWM2 = %d\n",
@@ -122,8 +140,41 @@ void loop() {
   if(millis()-zeroStamp > 500){      
       digitalWrite(LED_BUILTIN, LOW);
   }
+} // end of main loop
+
+/////////////////////////////////////////////////////////////////////
+void outputBuff(int len, bool asIntegers){
+	for(int i=0; i<len+2; i++){
+		if(asIntegers) {Serial.print((unsigned char)getBuff[i]);}
+		else {Serial.print(getBuff[i]);}
+		Serial.print(" ");
+	}
+	Serial.println();
 }
 
+void setMotors(){
+	//Serial.print("Ran set Motors with buff = ");
+	//outputBuff(4,true); 
+	digitalWrite(leftDirPin,  getBuff[2] == 'f' ? HIGH : LOW);
+	digitalWrite(rightDirPin, getBuff[4] == 'f' ? HIGH : LOW);
+	analogWrite(leftDrivePin,  getBuff[3]);
+	analogWrite(rightDrivePin, getBuff[5]);
+}
+
+void sendEncoders(){
+	leftDuration = 5460; // high = 25, low = 84
+	rightDuration = -500;
+	Serial.write(highByte(leftDuration));
+	Serial.write(lowByte(leftDuration));
+	Serial.write(highByte(rightDuration));
+	Serial.write(lowByte(rightDuration));
+	//Serial.println("Ran sendEncoders ");
+}
+
+void sendI2C(){
+	//Serial.print("Ran sendI2C with buff = ");
+	//outputBuff(5,true); 
+}
 
 ////////////////////////////////////////////////////////////////
 ///////////////////Encoder Interrupts///////////////////////////
