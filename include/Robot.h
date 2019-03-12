@@ -35,6 +35,7 @@ class Robot{
 		void recon(firebot::ReconConfig &config, uint32_t level);
 		void lidarCallback(); // runs everytime a new lidar scan comes in
 		void openI2C();
+		void setSerialArms();
 		void openSerial();
 		void setSerialMotors();
 		void getSerialEncoders();

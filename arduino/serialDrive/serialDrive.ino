@@ -32,6 +32,7 @@ int code;
 
 float time1, time2;
 int encCount, motCount, motCount2, talkcount;
+
 void setup() {
   
   // encoders
@@ -153,8 +154,8 @@ void outputBuff(int len, bool asIntegers){
 }
 
 void setMotors(){
-	//Serial.print("Ran set Motors with buff = ");
-	//outputBuff(4,true); 
+	Serial.print("Ran set Motors with buff = ");
+	outputBuff(4,true); 
 	digitalWrite(leftDirPin,  getBuff[2] == 'f' ? HIGH : LOW);
 	digitalWrite(rightDirPin, getBuff[4] == 'f' ? HIGH : LOW);
 	analogWrite(leftDrivePin,  getBuff[3]);
@@ -172,8 +173,8 @@ void sendEncoders(){
 }
 
 void sendI2C(){
-	//Serial.print("Ran sendI2C with buff = ");
-	//outputBuff(5,true); 
+	Serial.print("Ran sendI2C with buff = ");
+	outputBuff(5,true); 
 }
 
 ////////////////////////////////////////////////////////////////
