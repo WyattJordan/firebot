@@ -133,29 +133,48 @@ void Robot::setSerialMotors(){
 		lPWM_ = 0;
 		rPWM_ = 0;
 	}
+	//FILE *file;
+	//file = fopen("/dev/ttyUSB0","r+");
 	//cout<<"trying to send code in Robot::setSerialMotors\n";
 	int16_t mcode[1] = {-1}; // cannot be from 0-255 (use negatives)
+	unsigned char mdata[4] = {lForward_, lPWM_, rForward_, rPWM_};	
+
+	// trying with file IO
+//	fwrite(mcode, 2, 1, file);
+//	fwrite(mdata, 4, 1, file);
+
 	write(fd_, mcode, 2); // Identify what info is coming next 
-	//cout<<"wrote code in setSerialMotors\n"; usleep(500); // time to send a byte at 115200 b/s is ~70us // lForward_ = 'f'; rForward_ = 'b'; lPWM_ = 221; rPWM_ = 135; unsigned char mdata[4] = {lForward_, lPWM_, rForward_, rPWM_};	
+	//cout<<"wrote code in setSerialMotors\n"; 
+	usleep(500); // time to send a byte at 115200 b/s is ~70us 
+	lForward_ = 'f'; rForward_ = 'b'; lPWM_ = 221; rPWM_ = 135; 
 	write(fd_, mdata, 4);
-	//cout<<"done setSerialMotors\n";
+	cout<<"done setSerialMotors\n";
 }
 
 void Robot::setSerialArms(){
 	int16_t mcode[1] = {-3}; // code is -3, then sends 5 bytes for PWMs
 	write(fd_, mcode, 2); 
-	usleep(200);
+	usleep(500);
 	unsigned char mdata[5] = {D3_, D6_, D9_, D10_, D11_ };
 	write(fd_, mdata, 5);
 }
 
 void Robot::getSerialEncoders(){
-	//cout<<"trying to send code in Robot::getSerialEncoders\n";
+	//FILE *file;
+	//file = fopen("/dev/ttyUSB0","r+");
+
+	cout<<"trying to send code in Robot::getSerialEncoders\n";
 	int16_t mcode2[1] = {-2}; // cannot be from 0-255 (use negatives)
-	write(fd_, mcode2, 2); // Identify what info is coming next 
-	//cout<<"trying to send data in Robot::getSerialEncoders\n";
-	usleep(500);
 	unsigned char encs[4];
+
+//	fwrite(mcode2, 2, 1, file);
+//	fread(encs, 4, 1, file);
+
+	write(fd_, mcode2, 2); // Identify what info is coming next 
+	cout<<"trying to get data in Robot::getSerialEncoders sleeping\n";
+	//usleep(500);
+	//sleep(1);
+	cout<<"going to read\n";
 	read(fd_, encs, 4); // read 2 integers from the arduino
 
 	lEnc_ = (encs[0] << 8) | encs[1]; 
@@ -246,7 +265,6 @@ void Robot::openSerial(){
 		cout<<"could not open serial port\n";
 		exit(1);
 	}
-	
 
 	struct termios options;
 	tcgetattr(fd_, &options);
@@ -259,7 +277,7 @@ void Robot::openSerial(){
 	tcsetattr(fd_, TCSANOW, &options);
 
 	fcntl(fd_, F_SETFL, 0); // set the file status flag
-	sleep(4);
+	sleep(3);
 	cout<<"done Robot::openSerial\n";
 	
 }

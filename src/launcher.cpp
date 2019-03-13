@@ -49,10 +49,14 @@ int main(int argc, char **argv){
 	cout<<"made nav object and copied to rob\n";
 
 	std::thread thread1, driveLoop, publishNavLoop;
-	cout<<"opening serial connection\n";
+	cout<<"not opening serial connection\n";
 	rob.openSerial();
 	cout<<"trying next thing...\n";
-	rob.setSerialMotors();
+	for(int i=0; i<5; i++){
+		cout<<"testing serial motors num: "<<i<<"\n";
+		rob.setSerialMotors();
+		usleep(250000); //0.25 s
+	}
 	sleep(1);	
 	rob.getSerialEncoders();
 	

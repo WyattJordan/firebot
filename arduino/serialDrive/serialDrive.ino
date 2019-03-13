@@ -98,19 +98,22 @@ void loop() {
   if(Serial.available()>0){
     char c = Serial.read();
     getBuff[getBuffPos++] = c;
+//	Serial.print("getBuffPos ="); Serial.println(getBuffPos);
 	// a 2-byte int code is sent before any data
-	if(getBuffPos == 1 ){
+	if(getBuffPos == 2 ){
 	      code = (getBuff[1] << 8) | getBuff[0];
 		if(!(code * -1 < num_codes) ) code = 0; // if a weird code is sent
 	  }
-	else if(getBuffPos >= 2 + data_length[-1*code]){
+	// big problem was this being an else if, if it's get encoders
+	// there's no data to receive to it should run immediately
+	if(getBuffPos >= 2 + data_length[-1*code]){
 		getBuffPos = 0; // all the data for that msg type received
 		if(code == 0) {;}
 		else if(code == -1) {setMotors();}
 		else if(code == -2) {sendEncoders();}
 		else if(code == -3) {sendI2C();}
-		//Serial.print("code was ");
-		//Serial.println(code);
+		Serial.print("code was ");
+		Serial.println(code);
 		code = 0;
 	}
   }
@@ -156,8 +159,8 @@ void outputBuff(int len, bool asIntegers){
 }
 
 void setMotors(){
-//	Serial.print("Ran set Motors with buff = ");
-//	outputBuff(4,true); 
+	Serial.println("Ran set Motors with buff = ");
+	outputBuff(4,true); 
 	digitalWrite(leftDirPin,  getBuff[2] == 'f' ? HIGH : LOW);
 	digitalWrite(rightDirPin, getBuff[4] == 'f' ? HIGH : LOW);
 	analogWrite(leftDrivePin,  getBuff[3]);
@@ -167,6 +170,7 @@ void setMotors(){
 void sendEncoders(){
 //	leftDuration = 5460; // high = 25, low = 84
 //	rightDuration = -500;
+	//delay(1);
 	Serial.write(highByte(leftDuration));
 	Serial.write(lowByte(leftDuration));
 	Serial.write(highByte(rightDuration));
