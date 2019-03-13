@@ -9,9 +9,9 @@
  * run {x, y} ways {big, small}
  */
 
+#include "Robot.h"
 #include "ros/ros.h"
 #include <ros/console.h>
-#include "Robot.h"
 #include <firebot/ReconConfig.h>
 #include <dynamic_reconfigure/server.h>
 #include <visualization_msgs/MarkerArray.h>
@@ -20,7 +20,7 @@
 using std::cout;
 
 int main(int argc, char **argv){
-	ros::init(argc,argv,"robot");
+	ros::init(argc,argv,"robot"); // start the node with name "robot"
 
 	float x=0, y=0;
 	bool ways = false, run = false, big = false, small = false;
@@ -32,14 +32,12 @@ int main(int argc, char **argv){
 	ROS_INFO("running main launcher, going to create robot\n");
 	Robot rob;
 
-	
 	// load the dynamic reconfigure server
 	dynamic_reconfigure::Server<firebot::ReconConfig> server;
 	dynamic_reconfigure::Server<firebot::ReconConfig>::CallbackType f;
 	// callback recquires a function then an instance of the class (here Robot)
 	f = boost::bind(&Robot::recon, &rob, _1, _2);
 	server.setCallback(f);
-	
 	cout<<"setup server\n";
 
 	// load the maps, output maps to console
@@ -47,34 +45,27 @@ int main(int argc, char **argv){
 	ros::Publisher navPub = n.advertise<visualization_msgs::MarkerArray>("NavMarkers",1000);
 	
 	Nav nav(1, &navPub); // level 1	
-	nav.outputMap();
-	nav.outputWays();
-	cout<<"outputting ways graph\n";
 	rob.setNav(&nav); // give the robot the nav object for interacting with it
+	cout<<"made nav object and copied to rob\n";
 
-	cout<<"\now go traverse\n";//*/
 	std::thread thread1, driveLoop, publishNavLoop;
-//	rob.openI2C();
+	cout<<"opening serial connection\n";
 	rob.openSerial();
+	cout<<"trying next thing...\n";
 	rob.setSerialMotors();
-	cout<<"sleeping 8secs\n";
-	sleep(8);
+	sleep(1);	
+	rob.getSerialEncoders();
 	
-	//driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
+	cout<<"starting drive loop\n";
+	driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
 
-	nav.makeMapMarks("marker_ns");
+	nav.makeMapMarks("marker_ns"); // make initial sets for publishing
 	nav.makeWayMarks("ways_ns");
-//	publishNavLoop = std::thread(boost::bind(&Nav::publishLoop, &nav));	
+	publishNavLoop = std::thread(boost::bind(&Nav::publishLoop, &nav));	// loop for pubbing marker arrays
 	
 	nav.setBigRoomUpper(big);
 	nav.setSmallRoomUpper(small);
 	//cout<<"before findExpected\n";
-
-	if(ways){ 
-		cout<<"using waypoints!\n";}
-	else{
-		cout<<"finding expected\n";
-	}
 
 	ros::spin();
 	return 0;

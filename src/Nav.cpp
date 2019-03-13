@@ -59,7 +59,6 @@ void Nav::publishLoop(){
 			if(pubMap_){
 				markerPub_->publish(wayMarks_);
 				pubWays_ = false;
-	//			cout<<"published ways "<<wayMarks_.markers.size()<<"\n";
 			}
 			if(pubMap_){
 				markerPub_->publish(mapMarks_);
@@ -80,7 +79,6 @@ void Nav::publishLoop(){
 // Sets the door configuration for the small room, if up == true the 
 // door is on the higher side (larger y coordinate) 
 void Nav::setSmallRoomUpper(bool up){
-	cout<<"setting small room upper\n";	
 	if(up){
 		getPoint(18,mapPoints_).setNeighbors(1,12);		
 		getPoint(13,mapPoints_).setNeighbors(1,14);
@@ -221,7 +219,6 @@ bool Nav::getNeighbor(int ID, int neighI, EndPoint &neigh, vector<EndPoint> &pts
 void Nav::populateMarks(string which, string NS,
 	   	visualization_msgs::MarkerArray &marks, color lncol, color markcol){
 	vector<EndPoint>* pts;
-	cout<<"populating in Nav for :"<<which<<"\n";
 	if(which == "map") { pts = &mapPoints_; }
 	if(which == "way") { pts = &wayPoints_; }
 	marks.markers.resize(2 * (pts->size()));

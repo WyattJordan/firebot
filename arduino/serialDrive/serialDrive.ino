@@ -39,6 +39,8 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   leftDirection = true; //default -> Forward
   rightDirection = true;//default -> Forward
+  leftDuration = 0;
+  rightDuration = 0;
   pinMode( leftpinB,INPUT);
   pinMode(rightpinB,INPUT);
   attachInterrupt(0, leftwheelSpeed, CHANGE);//int.0 (pin2)
@@ -68,9 +70,9 @@ void setup() {
   
   for(int i=0; i<3; i++){
     digitalWrite(LED_BUILTIN, LOW);
-    delay(100);
+    delay(50);
     digitalWrite(LED_BUILTIN, HIGH);
-    delay(100);
+    delay(50);
   }
   digitalWrite(LED_BUILTIN, LOW);
 
@@ -154,8 +156,8 @@ void outputBuff(int len, bool asIntegers){
 }
 
 void setMotors(){
-	Serial.print("Ran set Motors with buff = ");
-	outputBuff(4,true); 
+//	Serial.print("Ran set Motors with buff = ");
+//	outputBuff(4,true); 
 	digitalWrite(leftDirPin,  getBuff[2] == 'f' ? HIGH : LOW);
 	digitalWrite(rightDirPin, getBuff[4] == 'f' ? HIGH : LOW);
 	analogWrite(leftDrivePin,  getBuff[3]);
@@ -163,18 +165,18 @@ void setMotors(){
 }
 
 void sendEncoders(){
-	leftDuration = 5460; // high = 25, low = 84
-	rightDuration = -500;
+//	leftDuration = 5460; // high = 25, low = 84
+//	rightDuration = -500;
 	Serial.write(highByte(leftDuration));
 	Serial.write(lowByte(leftDuration));
 	Serial.write(highByte(rightDuration));
 	Serial.write(lowByte(rightDuration));
-	//Serial.println("Ran sendEncoders ");
+	//Serial.println("R Encs");
 }
 
 void sendI2C(){
-	Serial.print("Ran sendI2C with buff = ");
-	outputBuff(5,true); 
+//	Serial.print("Ran sendI2C with buff = ");
+//	outputBuff(5,true); 
 }
 
 ////////////////////////////////////////////////////////////////
@@ -182,6 +184,8 @@ void sendI2C(){
 ////////////////////////////////////////////////////////////////
 void leftwheelSpeed()
 {
+zeroFlag = true;
+zeroStamp = millis();
   int Lstate = digitalRead(leftpinA);
   if((leftPinALast == LOW) && Lstate==HIGH)
   {
@@ -203,6 +207,8 @@ void leftwheelSpeed()
 
 void rightwheelSpeed()
 {
+zeroFlag = true;
+zeroStamp = millis();
   int Rstate = digitalRead(rightpinA);
   if((rightPinALast == LOW) && Rstate==HIGH)
   {

@@ -34,16 +34,11 @@ class Robot{
 		void driveLoop();
 		void recon(firebot::ReconConfig &config, uint32_t level);
 		void lidarCallback(); // runs everytime a new lidar scan comes in
-		void openI2C();
 		void setSerialArms();
 		void openSerial();
 		void setSerialMotors();
 		void getSerialEncoders();
 		void sendSerial(char send[], int size);
-		void piI2C(int size, unsigned char *q);
-		bool getEncoders();
-		bool setMotors(int trynum);
-		bool contactArms();
 		void setNav(Nav* nv);
 		string tmp;
 		int failed_reads, failed_writes, contacts, left255, right255;
@@ -61,8 +56,6 @@ class Robot{
 		unsigned char D3_, D6_, D9_, D10_, D11_; // PWMs 0:255 for arms
 		unsigned char lForward_, rForward_;
 		int16_t lEnc_, rEnc_;   // enc counts 
-		bool usingi2c_;         // avoid conflicting contacts	
-		bool i2c_; 		// is odroid connected to circuit (for testing w/o bot)
 		bool debugDrive_, runPID_, eStop_;
 		int maxleft_, maxright_;
 		int ms_; // ms delay between odom updates, fastest thread
@@ -73,10 +66,6 @@ class Robot{
 		Vector3f robotstep_, worldstep_, odomWorldLoc_; // distance changes in robot + world frames
 		void calculateTransform(float theta);
 
-		void debugLoop();
 		void calculateOdom();
 		void power2pwm();
-		void checki2c();
-		void quei2c(int size, unsigned char *q);
-		void quei2c_4b(int size, unsigned char *q);
 };
