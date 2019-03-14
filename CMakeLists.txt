@@ -1,11 +1,23 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(firebot)
+
 set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
+
 find_package(Eigen3 REQUIRED)
 include_directories( "${EIGEN3_INCLUDE_DIR}" )
 find_package(catkin REQUIRED cmake_modules)
 add_compile_options(-std=c++11)
+
+set(RPLIDAR_SDK_PATH "./sdk/")
+
+FILE(GLOB RPLIDAR_SDK_SRC 
+  "${RPLIDAR_SDK_PATH}/src/arch/linux/*.cpp"
+  "${RPLIDAR_SDK_PATH}/src/hal/*.cpp"
+  "${RPLIDAR_SDK_PATH}/src/*.cpp"
+)
+
+
 add_custom_command(
 	OUTPUT . 
 	WORKING_DIR .
@@ -21,6 +33,8 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   dynamic_reconfigure
+  rosconsole
+  sensor_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -129,6 +143,10 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${Eigen3_INCLUDE_DIRS}
   ~/wiringPi/
+  # for LIDAR
+  ${RPLIDAR_SDK_PATH}/include
+  ${RPLIDAR_SDK_PATH}/src
+  ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -170,6 +188,23 @@ target_link_libraries(launcher ${catkin_LIBRARIES})
 target_link_libraries(launcher wiringPi)
 
 
+# Stuff for LIDAR
+add_executable(rplidarNode src/node.cpp ${RPLIDAR_SDK_SRC})
+target_link_libraries(rplidarNode ${catkin_LIBRARIES})
+
+add_executable(rplidarNodeClient src/myClient.cpp)
+target_link_libraries(rplidarNodeClient ${catkin_LIBRARIES})
+
+install(TARGETS rplidarNode rplidarNodeClient
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(DIRECTORY launch rviz sdk
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+  USE_SOURCE_PERMISSIONS
+)
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
