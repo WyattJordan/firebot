@@ -52,12 +52,12 @@ int main(int argc, char **argv){
 	cout<<"not opening serial connection\n";
 	rob.openSerial();
 	cout<<"trying next thing...\n";
-	for(int i=0; i<5; i++){
+	for(int i=0; i<1500; i++){
 		cout<<"testing serial motors num: "<<i<<"\n";
 		rob.setSerialMotors();
-		usleep(250000); //0.25 s
+		//usleep(100000); //0.1 s
 	}
-	sleep(1);	
+	//sleep(1);	
 	rob.getSerialEncoders();
 	
 	cout<<"starting drive loop\n";

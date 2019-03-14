@@ -52,7 +52,7 @@ Robot::Robot() : posePID_(0,0,0,0,0,0){ // also calls pose constructor
 	rForward_ = 'c';
 	lPWM_ = rPWM_ = 200;
 	lEnc_ = rEnc_ = 0;
-	ms_ = 10;
+	ms_ = 20;
 
 	D3_ = 0; D6_ = 40; D9_ = 127; D10_ = 180; D11_ = 255;
 	power2pwm();
@@ -145,16 +145,16 @@ void Robot::setSerialMotors(){
 
 	write(fd_, mcode, 2); // Identify what info is coming next 
 	//cout<<"wrote code in setSerialMotors\n"; 
-	usleep(500); // time to send a byte at 115200 b/s is ~70us 
-	lForward_ = 'f'; rForward_ = 'b'; lPWM_ = 221; rPWM_ = 135; 
+	//usleep(500); // time to send a byte at 115200 b/s is ~70us 
+	lForward_ = 'f'; rForward_ = 'b'; lPWM_ = 121; rPWM_ = 35; 
 	write(fd_, mdata, 4);
-	cout<<"done setSerialMotors\n";
+	//cout<<"done setSerialMotors\n";
 }
 
 void Robot::setSerialArms(){
 	int16_t mcode[1] = {-3}; // code is -3, then sends 5 bytes for PWMs
 	write(fd_, mcode, 2); 
-	usleep(500);
+	//usleep(500);
 	unsigned char mdata[5] = {D3_, D6_, D9_, D10_, D11_ };
 	write(fd_, mdata, 5);
 }
@@ -163,7 +163,7 @@ void Robot::getSerialEncoders(){
 	//FILE *file;
 	//file = fopen("/dev/ttyUSB0","r+");
 
-	cout<<"trying to send code in Robot::getSerialEncoders\n";
+//	cout<<"trying to send code in Robot::getSerialEncoders\n";
 	int16_t mcode2[1] = {-2}; // cannot be from 0-255 (use negatives)
 	unsigned char encs[4];
 
@@ -171,10 +171,10 @@ void Robot::getSerialEncoders(){
 //	fread(encs, 4, 1, file);
 
 	write(fd_, mcode2, 2); // Identify what info is coming next 
-	cout<<"trying to get data in Robot::getSerialEncoders sleeping\n";
-	//usleep(500);
+//	cout<<"trying to get data in Robot::getSerialEncoders sleeping\n";
+	usleep(500);
 	//sleep(1);
-	cout<<"going to read\n";
+//	cout<<"going to read\n";
 	read(fd_, encs, 4); // read 2 integers from the arduino
 
 	lEnc_ = (encs[0] << 8) | encs[1]; 
@@ -188,7 +188,7 @@ void Robot::driveLoop(){
 	getSerialEncoders();
 	cout<<"got encoders\n";
 	usleep(5*ms_); // sleep 5 loops before starting
-	usleep(3000*1000); // sleep 3 seconds before starting
+	//usleep(3000*1000); // sleep 3 seconds before starting
 
 	int mapCount, wayCount, robCount, debugCount;
 	mapCount = wayCount = robCount = debugCount = 0;
@@ -205,7 +205,6 @@ void Robot::driveLoop(){
 	   	boost::chrono::system_clock::now() + boost::chrono::milliseconds(ms_);
 
 		getSerialEncoders(); 
-
 		/*else { // simulate Enc vals based on drive lvls
 			lEnc_ = 100 * lDrive_ ;//+ rand()%10;
 			rEnc_ = 100 * rDrive_ ;//+ rand()%10;		
@@ -249,7 +248,7 @@ void Robot::driveLoop(){
 		boost::this_thread::sleep_until(time_limit);
 		auto end = std::chrono::steady_clock::now();
 		if(debugDrive_)
-		       	cout<<"driveLoop running in "<< ms_ <<" ms with "<<
+		       	cout<<"driveLoop takes "<< ms_ <<" ms with "<<
 		std::chrono::duration_cast <std::chrono::milliseconds>(end-start).count()<<"ms and "<<
 		std::chrono::duration_cast <std::chrono::microseconds>(end-start).count()<<
 		"us (hopefully) leftover\n";
@@ -258,7 +257,8 @@ void Robot::driveLoop(){
 
 void Robot::openSerial(){
 	cout<<"opening USB connection \n";
-	fd_ = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY); // read+write | not controlling term | ? 
+	//fd_ = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY); // read+write | not controlling term | ? 
+	fd_ = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY); // read+write | not controlling term | ? 
 
 	perror("open_port: /dev/ttyUSB0 - ");
 	if(fd_ == -1){
@@ -274,6 +274,13 @@ void Robot::openSerial(){
 	options.c_cflag |= CS8; 	// 8 bit chars
 	options.c_cflag &= ~PARENB;	// no parity
 	options.c_cflag &= ~CSTOPB;
+
+	//options.c_oflag = 0;
+	options.c_lflag = 0; // allow raw input
+	options.c_cc[VTIME] = 1; // wait 0.1s between bytes before timing out on reads
+	options.c_cc[VMIN] = 4; // must read at least 4 bytes when reading (only reading encs)
+
+
 	tcsetattr(fd_, TCSANOW, &options);
 
 	fcntl(fd_, F_SETFL, 0); // set the file status flag
