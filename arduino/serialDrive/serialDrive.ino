@@ -101,19 +101,19 @@ void loop() {
 //	Serial.print("getBuffPos ="); Serial.println(getBuffPos);
 	// a 2-byte int code is sent before any data
 	if(getBuffPos == 2 ){
-	      code = (getBuff[1] << 8) | getBuff[0];
-		if(!(code * -1 < num_codes) ) code = 0; // if a weird code is sent
+	     code = (getBuff[1] << 8) | getBuff[0];
+	     if(!(code * -1 < num_codes) ) code = 0; // if a weird code is sent
 	  }
 	// big problem was this being an else if, if it's get encoders
 	// there's no data to receive to it should run immediately
 	if(getBuffPos >= 2 + data_length[-1*code]){
-		getBuffPos = 0; // all the data for that msg type received
 		if(code == 0) {;}
 		else if(code == -1) {setMotors();}
 		else if(code == -2) {sendEncoders();}
 		else if(code == -3) {sendI2C();}
-		Serial.print("code was ");
-		Serial.println(code);
+		//Serial.print("code was ");
+		//Serial.println(code);
+		getBuffPos = 0; // all the data for that msg type received
 		code = 0;
 	}
   }
@@ -126,16 +126,16 @@ void loop() {
   if(Error){
     sprintf(msg, "lPWM = %d rPWM = %d --- lPWM2 = %d rPWM2 = %d\n",
     lPWM,rPWM,lPWM2,rPWM2);
-    Serial.print(msg);
+    //Serial.print(msg);
     Error = false;
   }
   
   if(outputEverything){
     sprintf(msg, "lPWM = %d rPWM = %d and lPWM2 = %d rPWM2 = %d\n",
     lPWM,rPWM,lPWM2,rPWM2);
-    Serial.println(msg);
+    //Serial.println(msg);
     sprintf(msg, "motCount = %d, motCount2 = %d", motCount, motCount2);
-    Serial.println(msg);
+    //Serial.println(msg);
     outputEverything = false;
   }
   
@@ -159,8 +159,8 @@ void outputBuff(int len, bool asIntegers){
 }
 
 void setMotors(){
-	Serial.println("Ran set Motors with buff = ");
-	outputBuff(4,true); 
+	//Serial.println("Ran set Motors with buff = ");
+	//outputBuff(4,true); 
 	digitalWrite(leftDirPin,  getBuff[2] == 'f' ? HIGH : LOW);
 	digitalWrite(rightDirPin, getBuff[4] == 'f' ? HIGH : LOW);
 	analogWrite(leftDrivePin,  getBuff[3]);
@@ -168,14 +168,28 @@ void setMotors(){
 }
 
 void sendEncoders(){
+	      digitalWrite(LED_BUILTIN, HIGH);
 //	leftDuration = 5460; // high = 25, low = 84
 //	rightDuration = -500;
 	//delay(1);
-	Serial.write(highByte(leftDuration));
-	Serial.write(lowByte(leftDuration));
-	Serial.write(highByte(rightDuration));
-	Serial.write(lowByte(rightDuration));
+	//for( int i = 0; i<500; i++){
+		Serial.write(highByte(leftDuration));
+		Serial.write(lowByte(leftDuration));
+		Serial.write(highByte(rightDuration));
+		Serial.write(lowByte(rightDuration)); //*/
+		//delayMicroseconds(1000);
+		//delay(50);
+	//}
+
+	// doing it with prints...
+/*
+	Serial.print(highByte(leftDuration));
+	Serial.print(lowByte(leftDuration));
+	Serial.print(highByte(rightDuration));
+	Serial.print(lowByte(rightDuration)); //*/
 	//Serial.println("R Encs");
+	leftDuration = 0;
+	rightDuration = 0;
 }
 
 void sendI2C(){
