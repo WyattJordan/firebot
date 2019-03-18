@@ -54,8 +54,8 @@ void setup() {
   lforward = rforward = true;
   pinMode(leftDrivePin, OUTPUT);
   pinMode(rightDrivePin, OUTPUT);
-  pinMode(rightDirPin,OUTPUT);
   pinMode( leftDirPin,OUTPUT);
+  pinMode(rightDirPin,OUTPUT);
   analogWrite(leftDrivePin, lPWM);
   analogWrite(rightDrivePin, rPWM);
   digitalWrite(leftDirPin, HIGH);
@@ -105,7 +105,7 @@ void loop() {
 	     if(!(code * -1 < num_codes) ) code = 0; // if a weird code is sent
 	  }
 	// big problem was this being an else if, if it's get encoders
-	// there's no data to receive to it should run immediately
+	// there's no data to receive so it should run immediately
 	if(getBuffPos >= 2 + data_length[-1*code]){
 		if(code == 0) {;}
 		else if(code == -1) {setMotors();}
@@ -242,6 +242,7 @@ zeroStamp = millis();
   }
   rightPinALast = Rstate;
 
-  if(!rightDirection)  rightDuration++;
-  else  rightDuration--;
+// swapped increment and decrement because they were backwards
+  if(!rightDirection)  rightDuration--;
+  else  rightDuration++;
 }

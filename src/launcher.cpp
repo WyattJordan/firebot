@@ -22,6 +22,7 @@ using std::cout;
 int main(int argc, char **argv){
 	ros::init(argc,argv,"robot"); // start the node with name "robot"
 
+	// handle input arguments, p deprecated at this point
 	float x=0, y=0;
 	bool ways = false, run = false, big = false, small = false;
 	if(argc >= 2){ run = atoi(argv[1]) == 1; }
@@ -33,43 +34,29 @@ int main(int argc, char **argv){
 	Robot rob;
 
 	// load the dynamic reconfigure server
+	cout<<"setting up server... ";
 	dynamic_reconfigure::Server<firebot::ReconConfig> server;
 	dynamic_reconfigure::Server<firebot::ReconConfig>::CallbackType f;
 	// callback recquires a function then an instance of the class (here Robot)
 	f = boost::bind(&Robot::recon, &rob, _1, _2);
 	server.setCallback(f);
-	cout<<"setup server\n";
+	cout<<"server running\n";
 
-	// load the maps, output maps to console
+	// create publisher for Nav, pass to constr, set level being used 
 	ros::NodeHandle n;
 	ros::Publisher navPub = n.advertise<visualization_msgs::MarkerArray>("NavMarkers",1000);
-	
 	Nav nav(1, &navPub); // level 1	
-	rob.setNav(&nav); // give the robot the nav object for interacting with it
-	cout<<"made nav object and copied to rob\n";
+	rob.setNav(&nav); // give the robot the nav object so they can chit chat
+	cout<<"made nav object and linked to rob\n";
 
 	std::thread thread1, driveLoop, publishNavLoop;
-	cout<<"not opening serial connection\n";
-	rob.openSerial();
-	cout<<"trying next thing...\n";
-	for(int i=0; i<1500; i++){
-		cout<<"testing serial motors num: "<<i<<"\n";
-		rob.setSerialMotors();
-		//usleep(100000); //0.1 s
-	}
-	//sleep(1);	
-	rob.getSerialEncoders();
-	
-	cout<<"starting drive loop\n";
 	driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
 
 	nav.makeMapMarks("marker_ns"); // make initial sets for publishing
 	nav.makeWayMarks("ways_ns");
 	publishNavLoop = std::thread(boost::bind(&Nav::publishLoop, &nav));	// loop for pubbing marker arrays
-	
 	nav.setBigRoomUpper(big);
 	nav.setSmallRoomUpper(small);
-	//cout<<"before findExpected\n";
 
 	ros::spin();
 	return 0;

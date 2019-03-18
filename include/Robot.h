@@ -46,11 +46,12 @@ class Robot{
 	private:
 		Nav *nav_;
 		PID posePID_;
-		float setPose_, setSpeed_, error_;
+		float setPose_, error_;
 		double kp_, ki_, kd_, min_, max_, dt_; 
+		int mapCount_, wayCount_, robCount_, debugCount_;
 		int fd_; // file descriptor for I2C port
-		int Rfails_[4];
-		float lDrive_, rDrive_;     // drive power levels -1:1
+		float lDrive_, rDrive_, speed_;     // drive power levels -1:1
+		bool useSpeed_;
 		
 		unsigned char lPWM_, rPWM_; // drive PWMs 0:255
 		unsigned char D3_, D6_, D9_, D10_, D11_; // PWMs 0:255 for arms
@@ -68,4 +69,5 @@ class Robot{
 
 		void calculateOdom();
 		void power2pwm();
+		void periodicOutput();
 };

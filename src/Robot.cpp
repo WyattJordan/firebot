@@ -37,13 +37,11 @@ using std::string;
 using std::cout;
 using namespace Eigen;
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+#define clk boost::chrono::system_clock
+#define stc std::chrono
 
 Robot::Robot() : posePID_(0,0,0,0,0,0){ // also calls pose constructor
 	failed_reads = failed_writes = contacts = 0;
-	Rfails_[0] = 0; 
-	Rfails_[1] = 0; 
-	Rfails_[2] = 0; 
-	Rfails_[3] = 0; 
 	maxleft_ = maxright_ = 0;
 	left255 = right255 = 0;
 	debugDrive_ = runPID_ = eStop_ = false;
@@ -62,10 +60,12 @@ Robot::Robot() : posePID_(0,0,0,0,0,0){ // also calls pose constructor
 	rob2world_ << 1, 0, 0,   0, 1, 0,   0, 0, 1; // as if theta = 0
 	robotstep_ << 0,0,0;
 	worldstep_ << 0,0,0;
-	odomWorldLoc_   << 0,0,0; // starting pose/position
+	//odomWorldLoc_   << 0,0,0; // starting pose/position
+	odomWorldLoc_   << 5.9,13.5,0; // starting pose/position
+	// lower right corner of maze facing to the right
 
 	wiringPiSetup();
-	fd_ = wiringPiI2CSetup(0x11);
+	openSerial();
 } 
 
 void Robot::setNav(Nav* nv){
@@ -77,14 +77,21 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 	wayUpdateRate_ = config.wayrate;
 	robUpdateRate_ = config.robrate;
 	ms_ = config.ms;
+
 	lDrive_ = config.left;
 	rDrive_ = config.right;
-	//i2c_ = config.i2c;
 	debugDrive_ = config.debugdrive;
+	useSpeed_ = config.usespeed;
+	speed_ = config.speed;
+	if(useSpeed_){
+		lDrive_ = speed_;
+		rDrive_ = speed_;
+	}
+
 	power2pwm();
+
 	runPID_  = config.runpid;
 	setPose_ = config.setpose;
-	setSpeed_= config.setspeed;
 	eStop_ 	 = config.estop;
 	// do these need to be member variables? probs not
 	kp_ = config.kp;
@@ -92,6 +99,8 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 	kd_ = config.kd;
 	max_ = config.max;
 	min_ = config.min;
+
+	mapCount_ = wayCount_ = robCount_ = debugCount_ = 0;
 
 	posePID_ = PID(ms_, kp_, ki_, kd_, max_, min_);	
 	cout<<"RECONFIGURED!\n\n";
@@ -133,22 +142,10 @@ void Robot::setSerialMotors(){
 		lPWM_ = 0;
 		rPWM_ = 0;
 	}
-	//FILE *file;
-	//file = fopen("/dev/ttyUSB0","r+");
-	//cout<<"trying to send code in Robot::setSerialMotors\n";
 	int16_t mcode[1] = {-1}; // cannot be from 0-255 (use negatives)
 	unsigned char mdata[4] = {lForward_, lPWM_, rForward_, rPWM_};	
-
-	// trying with file IO
-//	fwrite(mcode, 2, 1, file);
-//	fwrite(mdata, 4, 1, file);
-
 	write(fd_, mcode, 2); // Identify what info is coming next 
-	//cout<<"wrote code in setSerialMotors\n"; 
-	//usleep(500); // time to send a byte at 115200 b/s is ~70us 
-	lForward_ = 'f'; rForward_ = 'b'; lPWM_ = 121; rPWM_ = 35; 
 	write(fd_, mdata, 4);
-	//cout<<"done setSerialMotors\n";
 }
 
 void Robot::setSerialArms(){
@@ -160,99 +157,93 @@ void Robot::setSerialArms(){
 }
 
 void Robot::getSerialEncoders(){
-	//FILE *file;
-	//file = fopen("/dev/ttyUSB0","r+");
-
-//	cout<<"trying to send code in Robot::getSerialEncoders\n";
 	int16_t mcode2[1] = {-2}; // cannot be from 0-255 (use negatives)
 	unsigned char encs[4];
-
-//	fwrite(mcode2, 2, 1, file);
-//	fread(encs, 4, 1, file);
-
 	write(fd_, mcode2, 2); // Identify what info is coming next 
-//	cout<<"trying to get data in Robot::getSerialEncoders sleeping\n";
 	usleep(500);
-	//sleep(1);
-//	cout<<"going to read\n";
 	read(fd_, encs, 4); // read 2 integers from the arduino
 
 	lEnc_ = (encs[0] << 8) | encs[1]; 
 	rEnc_ = (encs[2] << 8) | encs[3]; 
-	if(lEnc_ != 0) cout<<"left enc is "<<lEnc_<<"\n";
-	if(rEnc_ != 0) cout<<"right enc is "<<rEnc_<<"\n\n";
+	//if(lEnc_ != 0) cout<<"left enc is "<<lEnc_<<"\n";
+	//if(rEnc_ != 0) cout<<"right enc is "<<rEnc_<<"\n\n";
 }
 
 void Robot::driveLoop(){
 	cout<<"talking to arduino... \n";
 	getSerialEncoders();
 	cout<<"got encoders\n";
-	usleep(5*ms_); // sleep 5 loops before starting
-	//usleep(3000*1000); // sleep 3 seconds before starting
-
-	int mapCount, wayCount, robCount, debugCount;
-	mapCount = wayCount = robCount = debugCount = 0;
 
 	nav_->pubWays_ = true;
 	nav_->pubMap_ = true;
 	nav_->pubRob_ = true;
+	usleep(5*ms_); // sleep 5 loops before starting
 
 	cout<<"starting driveLoop\n";
+	// get encoders, do PID math, set motors, delay leftover time 
 	while(1){
-	mapUpdateRate_ = wayUpdateRate_ = robUpdateRate_ = 1;
-		// get encoders, do PID math, set motors, delay dt
-	boost::chrono::system_clock::time_point time_limit =
-	   	boost::chrono::system_clock::now() + boost::chrono::milliseconds(ms_);
+		clk::time_point time_limit = clk::now() + boost::chrono::milliseconds(ms_);
 
 		getSerialEncoders(); 
 		/*else { // simulate Enc vals based on drive lvls
 			lEnc_ = 100 * lDrive_ ;//+ rand()%10;
 			rEnc_ = 100 * rDrive_ ;//+ rand()%10;		
 		}//*/
-		if(debugDrive_) cout<<"lEnc_ = "<<lEnc_<<"  rEnc_ = "<<rEnc_<<"\n";
 		calculateOdom();
+
 		if(runPID_){
 			if(debugDrive_) cout<<"running pid = "<<runPID_ <<"\n";
+			// give the PID the desired and current rotations
 			float adj = posePID_.calculate(setPose_, odomWorldLoc_(2));
-			lDrive_ += adj;
-			rDrive_ -= adj;	
+			lDrive_ = speed_ + adj;
+			rDrive_ = speed_ - adj;	
 		}
-
 		power2pwm();
 		setSerialMotors();
-
-		// set flags for debugging and publishing markers and robot
-		mapCount++; wayCount++; robCount++; debugCount++;
-		/*if(debugCount > 100){ // 100 = every 2 seconds
-			debugDrive_ = ;
-		}
-		else if(debugDrive_){
-			debugDrive_ = false;
-		}*/
-
-		if(mapUpdateRate_ > 0 && mapCount >= 1000 / (ms_ * mapUpdateRate_)) {
-			nav_->pubMap_  = true;
-			mapCount = 0;
-		}
-		if(wayUpdateRate_ > 0 && wayCount >= 1000 / (ms_ * wayUpdateRate_)){
-			nav_->pubWays_ = true;
-			wayCount = 0;
-		}
-		if(robUpdateRate_ > 0 && robCount >= 1000 / (ms_ * robUpdateRate_)){
-			nav_->setOdomLoc(odomWorldLoc_); // give the Nav class the odom loc
-			nav_->pubRob_ = true;
-			robCount = 0;
+		if(debugDrive_) {
+			cout<<"lEnc_ = "<<lEnc_<<"  rEnc_ = "<<rEnc_<<"\n";
+			cout<<"lDrive_= "<<lDrive_<<" rDrive_ = "<<rDrive_<<"\n";
+			cout<<"lPWM_ = "<<lPWM_<<" rPWM_ = "<<rPWM_<<"\n";
 		}
 
-		auto start = std::chrono::steady_clock::now(); // measure length of time remaining
+		periodicOutput(); // check what needs to be output
+
+		auto start = stc::steady_clock::now(); // measure length of time remaining
 		boost::this_thread::sleep_until(time_limit);
-		auto end = std::chrono::steady_clock::now();
+		auto end = stc::steady_clock::now();
+
 		if(debugDrive_)
 		       	cout<<"driveLoop takes "<< ms_ <<" ms with "<<
-		std::chrono::duration_cast <std::chrono::milliseconds>(end-start).count()<<"ms and "<<
-		std::chrono::duration_cast <std::chrono::microseconds>(end-start).count()<<
+		stc::duration_cast <stc::milliseconds>(end-start).count()<<"ms and "<<
+		stc::duration_cast <stc::microseconds>(end-start).count()<<
 		"us (hopefully) leftover\n";
 	}
+}
+
+void Robot::periodicOutput(){
+	mapCount_++; wayCount_++; robCount_++; debugCount_++;
+	if(debugDrive_){
+		debugDrive_ = false;
+	}
+	if(debugCount_ > 100){ // 100 = every 2 seconds
+		debugDrive_ = true;
+		debugCount_ = 0;
+	}
+	
+	if(mapUpdateRate_ > 0 && mapCount_ >= 1000 / (ms_ * mapUpdateRate_)) {
+		nav_->pubMap_  = true;
+		mapCount_ = 0;
+	}
+	if(wayUpdateRate_ > 0 && wayCount_ >= 1000 / (ms_ * wayUpdateRate_)){
+		nav_->pubWays_ = true;
+		wayCount_ = 0;
+	}
+	if(robUpdateRate_ > 0 && robCount_ >= 1000 / (ms_ * robUpdateRate_)){
+		nav_->setOdomLoc(odomWorldLoc_); // give the Nav class the odom loc
+		nav_->pubRob_ = true;
+		robCount_ = 0;
+	}
+
 }
 
 void Robot::openSerial(){
@@ -277,6 +268,9 @@ void Robot::openSerial(){
 
 	//options.c_oflag = 0;
 	options.c_lflag = 0; // allow raw input
+
+	// THESE TWO LINES ARE CRITICAL FOR TIMING WHEN READING!!
+	// see: https://stackoverflow.com/questions/20154157/termios-vmin-vtime-and-blocking-non-blocking-read-operations 
 	options.c_cc[VTIME] = 1; // wait 0.1s between bytes before timing out on reads
 	options.c_cc[VMIN] = 4; // must read at least 4 bytes when reading (only reading encs)
 
@@ -293,8 +287,8 @@ void Robot::openSerial(){
 // scales -1:1 to 0:255
 void Robot::power2pwm(){
 	//cout<<"making pwms with lDrive_ = "<<lDrive_<<" rDrive_ = "<<rDrive_<<"\n";
-	lPWM_ = lDrive_ > 0 ? lDrive_*255.0 : -1*lDrive_*255.0;
-	rPWM_ = rDrive_ > 0 ? rDrive_*255.0 : -1*rDrive_*255.0;
+	lPWM_ = lDrive_ >= 0 ? lDrive_*255.0 : -1*lDrive_*255.0;
+	rPWM_ = rDrive_ >= 0 ? rDrive_*255.0 : -1*rDrive_*255.0;
 	lForward_ = lDrive_ > 0 ? 'f' : 'b'; // directions set by char for each motor
 	rForward_ = rDrive_ > 0 ? 'f' : 'b';
 	//cout<<"made pwms lPWM_= "<<(int)lPWM_<<" rPWm= "<<(int)rPWM_<<"\n";
