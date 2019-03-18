@@ -83,9 +83,10 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 	debugDrive_ = config.debugdrive;
 	useSpeed_ = config.usespeed;
 	speed_ = config.speed;
+	fudge_ = config.fudge;
 	if(useSpeed_){
 		lDrive_ = speed_;
-		rDrive_ = speed_;
+		rDrive_ = speed_ * fudge_;
 	}
 
 	power2pwm();
@@ -120,7 +121,7 @@ void Robot::calculateOdom(){
 	robotstep_ <<  x, y, p;
 	if(debug) cout<<"robot step:\n"<<robotstep_<<"\n";
 	if(debug) cout<<"odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";	
-	float theta = odomWorldLoc_(2) + robotstep_(2)/2.0; // this isn't matlab!
+	float theta = odomWorldLoc_(2) + robotstep_(2)/2.0; // radians!
 
 	if(debug) cout<<"using theta = "<<theta<<"\n";
 	calculateTransform(theta);	      // find transform using half the step	
@@ -189,21 +190,27 @@ void Robot::driveLoop(){
 			lEnc_ = 100 * lDrive_ ;//+ rand()%10;
 			rEnc_ = 100 * rDrive_ ;//+ rand()%10;		
 		}//*/
+		cout<<"calcing odom\n";
 		calculateOdom();
 
 		if(runPID_){
-			if(debugDrive_) cout<<"running pid = "<<runPID_ <<"\n";
+			if(1||debugDrive_) cout<<"in pid,odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";	
+			if(1||debugDrive_) cout<<"theta = "<<180/PI2*odomWorldLoc_(2)<<"\n";
+
 			// give the PID the desired and current rotations
-			float adj = posePID_.calculate(setPose_, odomWorldLoc_(2));
+			// note: 0 is robot front, +0 turns left, -0 turns right
+			// loop around occurs at back of robot
+
+			float adj = posePID_.calculate(setPose_ * PI2/180.0, odomWorldLoc_(2));
 			lDrive_ = speed_ + adj;
-			rDrive_ = speed_ - adj;	
+			rDrive_ = speed_*fudge_ - adj;	
+			cout<<"adj = "<<adj<<"\n";
 		}
 		power2pwm();
 		setSerialMotors();
 		if(debugDrive_) {
-			cout<<"lEnc_ = "<<lEnc_<<"  rEnc_ = "<<rEnc_<<"\n";
-			cout<<"lDrive_= "<<lDrive_<<" rDrive_ = "<<rDrive_<<"\n";
-			cout<<"lPWM_ = "<<lPWM_<<" rPWM_ = "<<rPWM_<<"\n";
+			cout<<"lDrive_= "<<lDrive_<<" ("<<lPWM_<<
+				") rDrive_ = "<<rDrive_<<" ("<<rPWM_<<")\n";
 		}
 
 		periodicOutput(); // check what needs to be output

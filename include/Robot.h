@@ -46,7 +46,7 @@ class Robot{
 	private:
 		Nav *nav_;
 		PID posePID_;
-		float setPose_, error_;
+		float fudge_, setPose_, error_;
 		double kp_, ki_, kd_, min_, max_, dt_; 
 		int mapCount_, wayCount_, robCount_, debugCount_;
 		int fd_; // file descriptor for I2C port

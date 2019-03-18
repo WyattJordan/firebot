@@ -13,7 +13,7 @@ class PIDImpl
         PIDImpl( double dt, double max, double min, double Kp, double Kd, double Ki );
         ~PIDImpl();
         double calculate( double setpoint, double pv );
-		void setDt(float dt);
+	void setDt(float dt);
 
     private:
         double _dt;
@@ -63,16 +63,20 @@ void PIDImpl::setDt(float dt){
 double PIDImpl::calculate( double setpoint, double pv )
 {
     
-    // Calculate error
+	std::cout<<"getting error\n";
+	// Calculate error
     double error = setpoint - pv;
 
+    std::cout<<"p term\n";
     // Proportional term
     double Pout = _Kp * error;
 
+    std::cout<<"i term\n";
     // Integral term
     _integral += error * _dt;
     double Iout = _Ki * _integral;
 
+    std::cout<<"d term\n";
     // Derivative term
     double derivative = (error - _pre_error) / _dt;
     double Dout = _Kd * derivative;
