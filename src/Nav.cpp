@@ -594,8 +594,8 @@ void Nav::calcRobotMarks(){
 	robMarkSphere_.type = visualization_msgs::Marker::SPHERE;
 	robMarkSphere_.action = visualization_msgs::Marker::ADD;
 
-	robMarkSphere_.scale.x = WheelLCM*2;
-	robMarkSphere_.scale.y = WheelLCM*2;
+	robMarkSphere_.scale.x = WheelDist*2; // WheelLCM = 13.75
+	robMarkSphere_.scale.y = WheelDist*2;
 	robMarkSphere_.scale.z = 5;
 
 	robMarkSphere_.color.a = 1.0;

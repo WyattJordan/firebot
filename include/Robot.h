@@ -14,8 +14,8 @@
 
 #define addrDrive 17  // I2C slave addresses also 0x11 and 0x10
 #define addrArm   16
-#define WheelLCM  13.75 // width is 29.2cm outer 24.8cm inner, L is half this value
-#define WheelRCM  6.2  // diameter is 12.4, radius is 6.2cm
+#define WheelDist  13.75 // width is 29.2cm outer 24.8cm inner, L is half this value
+#define WheelRad  6.2  // diameter is 12.4, radius is 6.2cm
 #define PI2	  6.28319
 #define INTSIZE   4
 
@@ -48,10 +48,11 @@ class Robot{
 		PID posePID_;
 		float fudge_, setPose_, error_;
 		double kp_, ki_, kd_, min_, max_, dt_; 
-		int mapCount_, wayCount_, robCount_, debugCount_;
+		int mapCount_, wayCount_, robCount_, debugCount_; // periodic triggers
 		int fd_; // file descriptor for I2C port
-		float lDrive_, rDrive_, speed_;     // drive power levels -1:1
-		bool useSpeed_;
+		float lDrive_, rDrive_, speed_;
+		float  rampSpeed_, rampInc_, rampTime_; // drive power levels -1:1
+		bool useSpeed_, ramp_, firstRamp_;
 		
 		unsigned char lPWM_, rPWM_; // drive PWMs 0:255
 		unsigned char D3_, D6_, D9_, D10_, D11_; // PWMs 0:255 for arms
@@ -68,6 +69,9 @@ class Robot{
 		void calculateTransform(float theta);
 
 		void calculateOdom();
+		void rampUpSpeed();
+		float incrementRamp();
+		void speed2power(float adj);
 		void power2pwm();
 		void periodicOutput();
 };

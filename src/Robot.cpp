@@ -55,13 +55,15 @@ Robot::Robot() : posePID_(0,0,0,0,0,0){ // also calls pose constructor
 	D3_ = 0; D6_ = 40; D9_ = 127; D10_ = 180; D11_ = 255;
 	power2pwm();
 	srand(time(NULL));
+	ramp_ = false;
 	
 	// initialize vectors, if not it won't compile!
 	rob2world_ << 1, 0, 0,   0, 1, 0,   0, 0, 1; // as if theta = 0
 	robotstep_ << 0,0,0;
 	worldstep_ << 0,0,0;
 	//odomWorldLoc_   << 0,0,0; // starting pose/position
-	odomWorldLoc_   << 5.9,13.5,0; // starting pose/position
+	//odomWorldLoc_   << WheelDist,13.5,0; // start at back left w/ steel block
+	odomWorldLoc_   << 123,WheelDist,PI2/4; // start at center of back wall
 	// lower right corner of maze facing to the right
 
 	wiringPiSetup();
@@ -80,10 +82,14 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 
 	lDrive_ = config.left;
 	rDrive_ = config.right;
-	debugDrive_ = config.debugdrive;
 	useSpeed_ = config.usespeed;
 	speed_ = config.speed;
 	fudge_ = config.fudge;
+	ramp_ = config.ramp;
+	if(ramp_) {firstRamp_ = true;}
+	rampSpeed_ = config.rampspeed;
+	rampTime_  = config.ramptime;
+
 	if(useSpeed_){
 		lDrive_ = speed_;
 		rDrive_ = speed_ * fudge_;
@@ -111,13 +117,13 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 // Increment locX, locY, locP with the new encoder vals
 void Robot::calculateOdom(){
 	bool debug = false;
-	float lRad = (PI2 * lEnc_ ) / 663.0; // 663.0 enc counts / rotation
-	float rRad = (PI2 * rEnc_ ) / 663.0; 
+	float lRad = (PI2 * (float) lEnc_ ) / (663.0 * 2.0); // 663.0 enc counts / rotation
+	float rRad = (PI2 * (float) rEnc_ ) / (663.0 * 2.0); 
 	if(debug) cout<<"lRad = "<<lRad<<" rRad = "<<rRad<<"\n";
 
-	float x = WheelRCM / 2.0 * (lRad + rRad);
+	float x = WheelRad / 2.0 * (lRad + rRad);
 	float y = 0;
-	float p = WheelRCM / (2.0 * WheelLCM) * (rRad - lRad);
+	float p = WheelRad / (2.0 * WheelDist) * (rRad - lRad);
 	robotstep_ <<  x, y, p;
 	if(debug) cout<<"robot step:\n"<<robotstep_<<"\n";
 	if(debug) cout<<"odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";	
@@ -170,6 +176,35 @@ void Robot::getSerialEncoders(){
 	//if(rEnc_ != 0) cout<<"right enc is "<<rEnc_<<"\n\n";
 }
 
+
+void Robot::rampUpSpeed(){
+	if(firstRamp_){
+		cout<<"first ramp%%%%%%%%%%%%%%%%%%%\n";
+		rampInc_ = (rampSpeed_ - speed_) / (rampTime_ / (ms_ / 1000.0));
+		firstRamp_ = false;
+	}
+	if(ramp_){
+		cout<<"Ramping... rampInc_ = "<<rampInc_<<" speed = "<<speed_<<"\n";
+		speed_ = speed_ + rampInc_;
+		speed2power(0);
+		cout<<"made speed drive levels, making pwms\n";
+		power2pwm();
+		cout<<"done PWM\n";
+		// if ramp has overshot
+		if((rampSpeed_ < 0 && speed_ < rampSpeed_) ||
+			(rampSpeed_ > 0 && speed_ > rampSpeed_)){
+			cout<<"exiting ramp...\n";
+			speed_ = rampSpeed_;
+			ramp_ = false;
+		}	
+	}
+
+}
+void Robot::speed2power(float adj){
+	lDrive_ = speed_ - adj;
+	rDrive_ = speed_*fudge_ + adj;	
+}
+
 void Robot::driveLoop(){
 	cout<<"talking to arduino... \n";
 	getSerialEncoders();
@@ -186,24 +221,18 @@ void Robot::driveLoop(){
 		clk::time_point time_limit = clk::now() + boost::chrono::milliseconds(ms_);
 
 		getSerialEncoders(); 
-		/*else { // simulate Enc vals based on drive lvls
-			lEnc_ = 100 * lDrive_ ;//+ rand()%10;
-			rEnc_ = 100 * rDrive_ ;//+ rand()%10;		
-		}//*/
-		cout<<"calcing odom\n";
 		calculateOdom();
-
+		//rampUpSpeed();
+		
 		if(runPID_){
-			if(1||debugDrive_) cout<<"in pid,odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";	
-			if(1||debugDrive_) cout<<"theta = "<<180/PI2*odomWorldLoc_(2)<<"\n";
+			if(0||debugDrive_) cout<<"in pid,odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";
+			if(0||debugDrive_) cout<<"theta = "<<180/PI2*odomWorldLoc_(2)<<"\n";
 
 			// give the PID the desired and current rotations
 			// note: 0 is robot front, +0 turns left, -0 turns right
 			// loop around occurs at back of robot
-
 			float adj = posePID_.calculate(setPose_ * PI2/180.0, odomWorldLoc_(2));
-			lDrive_ = speed_ + adj;
-			rDrive_ = speed_*fudge_ - adj;	
+			speed2power(adj);
 			cout<<"adj = "<<adj<<"\n";
 		}
 		power2pwm();
@@ -232,7 +261,7 @@ void Robot::periodicOutput(){
 	if(debugDrive_){
 		debugDrive_ = false;
 	}
-	if(debugCount_ > 100){ // 100 = every 2 seconds
+	if(0 && debugCount_ > 200){ // 100 = every 4 seconds (ms_ = 20);
 		debugDrive_ = true;
 		debugCount_ = 0;
 	}
@@ -293,12 +322,12 @@ void Robot::openSerial(){
 
 // scales -1:1 to 0:255
 void Robot::power2pwm(){
-	//cout<<"making pwms with lDrive_ = "<<lDrive_<<" rDrive_ = "<<rDrive_<<"\n";
+	if(debugDrive_) cout<<"making pwms with lDrive_ = "<<lDrive_<<" rDrive_ = "<<rDrive_<<"\n";
 	lPWM_ = lDrive_ >= 0 ? lDrive_*255.0 : -1*lDrive_*255.0;
 	rPWM_ = rDrive_ >= 0 ? rDrive_*255.0 : -1*rDrive_*255.0;
-	lForward_ = lDrive_ > 0 ? 'f' : 'b'; // directions set by char for each motor
-	rForward_ = rDrive_ > 0 ? 'f' : 'b';
-	//cout<<"made pwms lPWM_= "<<(int)lPWM_<<" rPWm= "<<(int)rPWM_<<"\n";
-	//cout<<"lforward: "<<lForward_<<"  rforward: "<<rForward_<<"\n";
+	lForward_ = lDrive_ >= 0 ? 'f' : 'b'; // directions set by char for each motor
+	rForward_ = rDrive_ >= 0 ? 'f' : 'b';
+	if(debugDrive_) cout<<"made pwms lPWM_= "<<(int)lPWM_<<" rPWm= "<<(int)rPWM_<<"\n";
+	if(debugDrive_) cout<<"lforward: "<<lForward_<<"  rforward: "<<rForward_<<"\n";
 }
 
