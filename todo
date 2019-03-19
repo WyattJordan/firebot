@@ -1,20 +1,22 @@
 On this computer:
+	PID tuning - make it go in a rectangle accurately
 
+	Thread Planning
+		driveLoop - does motor PID, odom calculations
+		lidarUpdateLoop - refine location, kalman filter?
+				  variable time depending on good reading
+		mainCommandSequence - main logic 
+		sensorLoop - run prior to starting and kill when mic triggers
+	
+------------------------------ DONE + NOTES ------------------------------
+
+done:
 	publish odom location at a certain rate
 		save driveloop rate as variable
 		have a counter increment + do math to publish at slower rate
 		set flag for separate publishing thread
 
-	plan out thread count?
-		driveLoop - does motor PID, odom calculations
-		lidarUpdateLoop - refine location, kalman filter?
-				  variable time depending on good reading
-		mainCommandSequence - main logic 
-		sensorLoop - run prior to starting and kill when mic triggers?
-	
------------------------------- DONE + NOTES ------------------------------
 
-done:
 	publishing map and ways efficiently (updating visible marks)
 		create a function that converts vec<EndPoint> to MarkerArray
 		easily adjust visible points
