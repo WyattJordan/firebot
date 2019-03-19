@@ -50,7 +50,7 @@ class Robot{
 		int fd_; // file descriptor for I2C port
 		float lDrive_, rDrive_, speed_;
 		float  rampSpeed_, rampInc_, rampTime_; // drive power levels -1:1
-		bool useSpeed_, ramp_, firstRamp_;
+		bool useSpeed_, ramp_, firstRamp_, speedChange_;
 		
 		unsigned char lPWM_, rPWM_; // drive PWMs 0:255
 		unsigned char D3_, D6_, D9_, D10_, D11_; // PWMs 0:255 for arms
@@ -72,4 +72,5 @@ class Robot{
 		void speed2power(float adj);
 		void power2pwm();
 		void periodicOutput();
+		float toRad(float deg);
 };

@@ -14,6 +14,7 @@ class PIDImpl
         ~PIDImpl();
         double calculate( double setpoint, double pv );
 	void setDt(float dt);
+	void setValues(double dt, double max, double min, double Kp, double Kd, double Ki);
 
     private:
         double _dt;
@@ -34,11 +35,15 @@ double PID::calculate( double setpoint, double pv )
 {
     return pimpl->calculate(setpoint,pv);
 }
+
 PID::~PID() 
 {
     delete pimpl;
 }
 
+void PID::setVals(double dt, double max, double min, double Kp, double Kd, double Ki ){
+	pimpl->setValues(dt, max, min, Kp, Kd, Ki);
+}
 
 /**
  * Implementation
@@ -55,6 +60,15 @@ PIDImpl::PIDImpl( double dt, double max, double min, double Kp, double Kd, doubl
 {
 }
 
+void PIDImpl::setValues(double dt, double max, double min, double Kp, double Kd, double Ki){
+	_dt = dt;
+	_max = max;
+	_min = min;
+	_Kp = Kp;
+	_Ki = Ki;
+	_Kd = Kd;
+}
+
 void PIDImpl::setDt(float dt){
 	_dt = dt;
 }
@@ -63,27 +77,30 @@ void PIDImpl::setDt(float dt){
 double PIDImpl::calculate( double setpoint, double pv )
 {
     
-	bool d = false;
-	if(d)std::cout<<"getting error\n";
+	bool d = 0;
+	if(d)cout<<"set = "<<setpoint<<" actual = "<<pv<<"\n";
+
 	// Calculate error
     double error = setpoint - pv;
+	if(d)std::cout<<"error = "<<error<<"\n";
 
-    if(d)std::cout<<"p term\n";
     // Proportional term
     double Pout = _Kp * error;
+    if(d)std::cout<<"p term = "<<_Kp<<" Pout = "<<Pout<<"\n";
 
-    if(d)std::cout<<"i term\n";
     // Integral term
     _integral += error * _dt;
     double Iout = _Ki * _integral;
+    if(d)std::cout<<"i term = "<<_Ki<<" Iout = "<<Iout<<"\n";
 
-   if(d) std::cout<<"d term\n";
     // Derivative term
     double derivative = (error - _pre_error) / _dt;
     double Dout = _Kd * derivative;
+    if(d)std::cout<<"d term = "<<_Kd<<" Dout = "<<Dout<<"\n";
 
     // Calculate total output
     double output = Pout + Iout + Dout;
+    if(0||d) cout<<"output = "<<output<<"\n";
 
     // Restrict to max/min
     if( output > _max )

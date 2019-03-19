@@ -58,7 +58,7 @@ int main(int argc, char **argv){
 	nav.setBigRoomUpper(big);
 	nav.setSmallRoomUpper(small);
 
-	/*
+	
 	for(int i=0; i<3; i++){
 		cout<<"start in "<<3-i<<"...\n";
 		sleep(1);

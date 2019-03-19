@@ -33,41 +33,41 @@ using namespace Eigen;
 #define stc std::chrono
 
 void Robot::mainLogic(){
-/*	runPID_ = true;
-	speed_ = 0;
+//	runPID_ = true;
+	odomWorldLoc_   << 0,0,0; // starting pose/position
+	speed_ = 0.3;
 	speed2power(0);
-	cout<<"running slow to start\n";
+	eStop_ = false;
+	cout<<"started PID while stopped\n";
 	sleep(1);
-
-	setRamp(1, 0.6); // ramp up to 0.6 in 2 seconds
-	sleep(4);
-
-	float changes[4] = {90*PI2/360, 180*PI2/360, 270*PI2/360, 0};
+	
 	int count = 0;
+	setPose_ = 0;
+	runPID_ = true;
 	while(1){
 		int idx = count%4;
 
 		if(idx==0 && odomWorldLoc_(0) > 150){
-			setPose_ = changes[idx];
-			cout<<"set Pose to "<<setPose_<<"\n";
+			setPose_ += 90;
+			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
 			count++;
 
 		}
 		else if(idx==1 && odomWorldLoc_(1) > 150){
-			setPose_ = changes[idx];
-			cout<<"set Pose to "<<setPose_<<"\n";
+			setPose_ = 90;
+			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
 			count++;
 
 		}	
 		else if(idx==2 && odomWorldLoc_(0) < 80){
-			setPose_ = changes[idx];
-			cout<<"set Pose to "<<setPose_<<"\n";
+			setPose_ = 90;
+			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
 			count++;
 
 		}	
 		else if(idx==3 && odomWorldLoc_(1) < 180){
-			setPose_ = changes[idx];
-			cout<<"set Pose to "<<setPose_<<"\n";
+			setPose_ = 90;
+			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
 			count++;
 		}	
 	}//*/
@@ -113,7 +113,6 @@ void Robot::rampUpSpeed(){
 			(rampSpeed_ > 0 && speed_ > rampSpeed_)){
 
 			cout<<"exiting ramp...\n";
-			sleep(1);
 			speed_ = rampSpeed_;
 			ramp_ = false;
 		}	
@@ -123,10 +122,11 @@ void Robot::rampUpSpeed(){
 
 Robot::Robot() : posePID_(0,0,0,0,0,0){ // also calls pose constructor
 	fudge_ = 0.949;
+	eStop_ = true;
 	speed_ = 0;
 	firstRamp_ = true;
 
-	debugDrive_ = runPID_ = eStop_ = false;
+	debugDrive_ = runPID_ = false;
 	lDrive_ = rDrive_ = 0;
 	lForward_ = 'f';
 	rForward_ = 'f';
@@ -143,9 +143,9 @@ Robot::Robot() : posePID_(0,0,0,0,0,0){ // also calls pose constructor
 	rob2world_ << 1, 0, 0,   0, 1, 0,   0, 0, 1; // as if theta = 0
 	robotstep_ << 0,0,0;
 	worldstep_ << 0,0,0;
-	//odomWorldLoc_   << 0,0,0; // starting pose/position
+	odomWorldLoc_   << 0,0,0; // starting pose/position
 	//odomWorldLoc_   << WheelDist,13.5,0; // start at back left w/ steel block
-	odomWorldLoc_   << 123,WheelDist,PI2/4; // start at center of back wall
+	//odomWorldLoc_   << 123,WheelDist,PI2/4; // start at center of back wall
 
 	wiringPiSetup();
 	openSerial();
@@ -153,46 +153,52 @@ Robot::Robot() : posePID_(0,0,0,0,0,0){ // also calls pose constructor
 
 void Robot::recon(firebot::ReconConfig &config, uint32_t level){ 
 	eStop_ 	 = config.estop;
-	mapUpdateRate_ = config.maprate;
+	/*mapUpdateRate_ = config.maprate;
 	wayUpdateRate_ = config.wayrate;
-	robUpdateRate_ = config.robrate;
+	robUpdateRate_ = config.robrate;*/
 	//ms_ = config.ms; 
 
 	lDrive_ = config.left;
 	rDrive_ = config.right;
 	debugDrive_ = config.debug;
 	//useSpeed_ = config.usespeed;
+	//if(speed_ != config.speed) speedChange_ = true;
 	//speed_ = config.speed;
 	//fudge_ = config.fudge;
-	/*ramp_ = config.ramp;
-	if(ramp_) {firstRamp_ = true;}
-	rampSpeed_ = config.rampspeed;
-	rampTime_  = config.ramptime;
-
+	/*
+	if(rampSpeed_ != config.rampspeed){
+		cout<<"%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n";
+		rampSpeed_ = config.rampspeed;
+		rampTime_  = config.ramptime;
+		firstRamp_ = true;
+		ramp_ = true;
+	}//*/
+		/*
 	if(useSpeed_){
 		lDrive_ = speed_;
 		rDrive_ = speed_ * fudge_;
-	}*/
+	}//*/
 
 	//power2pwm();
 
 	runPID_  = config.runpid;
-	setPose_ = config.setpose;
+	//setPose_ = config.setpose;
 	// do these need to be member variables? probs not
 	kp_ = config.kp;
 	ki_ = config.ki;
 	kd_ = config.kd;
 	max_ = config.max;
-	min_ = config.min;
+	//min_ = config.min;
+	min_ = max_*-1;
 
-	posePID_ = PID(ms_, kp_, ki_, kd_, max_, min_);	
+	posePID_.setVals(ms_, max_, min_, kp_, kd_, ki_) ;
 	cout<<"RECONFIGURED!\n\n";
 }
 
 
 // Increment locX, locY, locP with the new encoder vals
 void Robot::calculateOdom(){
-	bool debug = debugDrive_;
+	bool debug = 0;//debugDrive_;
 	float lRad = (PI2 * (float) lEnc_ ) / (1470.0); // 1470.0 enc counts / rotation??
 	float rRad = (PI2 * (float) rEnc_ ) / (1470.0); 
 	if(debug) cout<<"lRad = "<<lRad<<" rRad = "<<rRad<<"\n";
@@ -201,17 +207,17 @@ void Robot::calculateOdom(){
 	float y = 0;
 	float p = WheelRad / (2.0 * WheelDist) * (rRad - lRad);
 	robotstep_ <<  x, y, p;
-	if(debug) cout<<"robot step:\n"<<robotstep_<<"\n";
+	//if(debug) cout<<"robot step:\n"<<robotstep_<<"\n";
 	if(debug) cout<<"odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";	
 	float theta = odomWorldLoc_(2) + robotstep_(2)/2.0; // radians!
 
-	if(debug) cout<<"using theta = "<<theta<<"\n";
+	if(debug) cout<<"using theta = "<<theta<<" for rob2world_\n";
 	calculateTransform(theta);	      // find transform using half the step	
-	if(debug) cout<<"rob2world_ =\n"<<rob2world_<<"\n";
+	//if(debug) cout<<"rob2world_ =\n"<<rob2world_<<"\n";
 	worldstep_ = rob2world_*robotstep_; 
 	odomWorldLoc_ += worldstep_;
 
-	if(debug) cout<<"odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";	
+	//if(debug) cout<<"odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";	
 }
 
 // Given the robot's pose relative to the world calculate rob2world_.
@@ -238,11 +244,11 @@ void Robot::driveLoop(){
 		clk::time_point time_limit = clk::now() + boost::chrono::milliseconds(ms_);
 
 		getSerialEncoders(); 
-		calculateOdom();
+		calculateOdom(); // many outputs to console
 		rampUpSpeed();
 		
 		if(runPID_){
-			if(0||debugDrive_) cout<<"in pid,odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";
+			if(0||debugDrive_) cout<<"in pid, odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";
 			if(0||debugDrive_) cout<<"theta = "<<360/PI2*odomWorldLoc_(2)<<"\n";
 
 			// give the PID the desired and current rotations
@@ -250,9 +256,12 @@ void Robot::driveLoop(){
 			// loop around occurs at back of robot
 			float adj = posePID_.calculate(setPose_ * PI2/360.0, odomWorldLoc_(2));
 			speed2power(adj);
-			if(adj!=0) cout<<"adj = "<<adj<<"\n";
+			//if(0||adj!=0) cout<<"speed = "<<speed_<<"adj = "<<adj<<"\n\n";
+			//sleep(1);
 		}
-		power2pwm();
+		else{
+			power2pwm(); // already run by speed2power in PID
+		}
 		setSerialMotors();
 		if(debugDrive_) {
 			cout<<"lDrive_= "<<lDrive_<<" ("<<(int)lPWM_<<
@@ -388,6 +397,10 @@ void Robot::power2pwm(){
 	rForward_ = rDrive_ >= 0 ? 'f' : 'b';
 	//if(debugDrive_) cout<<"made pwms lPWM_= "<<(int)lPWM_<<" rPWm= "<<(int)rPWM_<<"\n";
 	//if(debugDrive_) cout<<"lforward: "<<lForward_<<"  rforward: "<<rForward_<<"\n";
+}
+
+float Robot::toRad(float deg){
+	return deg*PI2/360.0;
 }
 
 void Robot::setNav(Nav* nv){ nav_ = nv; }
