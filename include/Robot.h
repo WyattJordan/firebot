@@ -14,10 +14,9 @@
 
 #define addrDrive 17  // I2C slave addresses also 0x11 and 0x10
 #define addrArm   16
-#define WheelDist  13.75 // width is 29.2cm outer 24.8cm inner, L is half this value
+#define WheelDist 12.95 // width is 28.8cm outer, 24cm inner, L is half this center value
 #define WheelRad  6.2  // diameter is 12.4, radius is 6.2cm
 #define PI2	  6.28319
-#define INTSIZE   4
 
 using std::string;
 using namespace Eigen;
@@ -31,6 +30,7 @@ class Robot{
 
 	public:
 		Robot();
+		void mainLogic();
 		void driveLoop();
 		void recon(firebot::ReconConfig &config, uint32_t level);
 		void lidarCallback(); // runs everytime a new lidar scan comes in
@@ -40,8 +40,6 @@ class Robot{
 		void getSerialEncoders();
 		void sendSerial(char send[], int size);
 		void setNav(Nav* nv);
-		string tmp;
-		int failed_reads, failed_writes, contacts, left255, right255;
 
 	private:
 		Nav *nav_;
@@ -59,7 +57,6 @@ class Robot{
 		unsigned char lForward_, rForward_;
 		int16_t lEnc_, rEnc_;   // enc counts 
 		bool debugDrive_, runPID_, eStop_;
-		int maxleft_, maxright_;
 		int ms_; // ms delay between odom updates, fastest thread
 		int wayUpdateRate_, mapUpdateRate_, robUpdateRate_;
 
@@ -69,6 +66,7 @@ class Robot{
 		void calculateTransform(float theta);
 
 		void calculateOdom();
+		void setRamp(float t, float s);
 		void rampUpSpeed();
 		float incrementRamp();
 		void speed2power(float adj);

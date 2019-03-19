@@ -55,7 +55,7 @@ void Nav::publishLoop(){
 		if(pubWays_ || pubMap_ || pubRob_){
 		// 	cout<<"pubbing ways: "<<pubWays_<<" with size "<<wayMarks_.markers.size()<<
 		//		" and map: "<<pubMap_<<" with size "<<mapMarks_.markers.size()<<"\n";
-			cout<<"published ways/map/robot\n";
+			///cout<<"published ways/map/robot\n";
 			if(pubMap_){
 				markerPub_->publish(wayMarks_);
 				pubWays_ = false;

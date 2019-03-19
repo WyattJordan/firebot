@@ -31,6 +31,7 @@ unsigned int getBuffPos;
 int code;
 
 float time1, time2;
+bool ledState;
 int encCount, motCount, motCount2, talkcount;
 
 void setup() {
@@ -80,6 +81,7 @@ void setup() {
   code = 0;
   time1 = 0;
   talkcount = 0;
+ledState = false;
 }
 
 const int num_codes = 4;
@@ -118,8 +120,15 @@ void loop() {
 	}
   }
 
-  else if(millis() - time1 > 1000){ // code to run every second
+  else if(millis() - time1 > 500){ // code to run every second
     time1 = millis();
+	ledState = !ledState;
+	if(ledState) {
+		digitalWrite(LED_BUILTIN,HIGH);
+	}
+	else{
+		digitalWrite(LED_BUILTIN,LOW);
+	}
     //Serial.print("doing");
     //Serial.println(talkcount++);
   }
@@ -144,7 +153,7 @@ void loop() {
       zeroFlag = false;
   }
   if(millis()-zeroStamp > 500){      
-      digitalWrite(LED_BUILTIN, LOW);
+      ///digitalWrite(LED_BUILTIN, LOW);
   }
 } // end of main loop
 
@@ -168,26 +177,10 @@ void setMotors(){
 }
 
 void sendEncoders(){
-	      digitalWrite(LED_BUILTIN, HIGH);
-//	leftDuration = 5460; // high = 25, low = 84
-//	rightDuration = -500;
-	//delay(1);
-	//for( int i = 0; i<500; i++){
-		Serial.write(highByte(leftDuration));
-		Serial.write(lowByte(leftDuration));
-		Serial.write(highByte(rightDuration));
-		Serial.write(lowByte(rightDuration)); //*/
-		//delayMicroseconds(1000);
-		//delay(50);
-	//}
-
-	// doing it with prints...
-/*
-	Serial.print(highByte(leftDuration));
-	Serial.print(lowByte(leftDuration));
-	Serial.print(highByte(rightDuration));
-	Serial.print(lowByte(rightDuration)); //*/
-	//Serial.println("R Encs");
+	Serial.write(highByte(leftDuration));
+	Serial.write(lowByte(leftDuration));
+	Serial.write(highByte(rightDuration));
+	Serial.write(lowByte(rightDuration)); 
 	leftDuration = 0;
 	rightDuration = 0;
 }

@@ -49,7 +49,7 @@ int main(int argc, char **argv){
 	rob.setNav(&nav); // give the robot the nav object so they can chit chat
 	cout<<"made nav object and linked to rob\n";
 
-	std::thread thread1, driveLoop, publishNavLoop;
+	std::thread mainLogic, driveLoop, publishNavLoop;
 	driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
 
 	nav.makeMapMarks("marker_ns"); // make initial sets for publishing
@@ -57,6 +57,15 @@ int main(int argc, char **argv){
 	publishNavLoop = std::thread(boost::bind(&Nav::publishLoop, &nav));	// loop for pubbing marker arrays
 	nav.setBigRoomUpper(big);
 	nav.setSmallRoomUpper(small);
+
+	/*
+	for(int i=0; i<3; i++){
+		cout<<"start in "<<3-i<<"...\n";
+		sleep(1);
+	}
+	cout<<"\nGO!\n";
+	mainLogic = std::thread(boost::bind(&Robot::mainLogic, &rob));	
+	//*/
 
 	ros::spin();
 	return 0;

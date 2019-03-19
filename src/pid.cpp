@@ -63,20 +63,21 @@ void PIDImpl::setDt(float dt){
 double PIDImpl::calculate( double setpoint, double pv )
 {
     
-	std::cout<<"getting error\n";
+	bool d = false;
+	if(d)std::cout<<"getting error\n";
 	// Calculate error
     double error = setpoint - pv;
 
-    std::cout<<"p term\n";
+    if(d)std::cout<<"p term\n";
     // Proportional term
     double Pout = _Kp * error;
 
-    std::cout<<"i term\n";
+    if(d)std::cout<<"i term\n";
     // Integral term
     _integral += error * _dt;
     double Iout = _Ki * _integral;
 
-    std::cout<<"d term\n";
+   if(d) std::cout<<"d term\n";
     // Derivative term
     double derivative = (error - _pre_error) / _dt;
     double Dout = _Kd * derivative;
