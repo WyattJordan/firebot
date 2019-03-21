@@ -17,6 +17,7 @@
 #define WheelDist 12.95 // width is 28.8cm outer, 24cm inner, L is half this center value
 #define WheelRad  6.2  // diameter is 12.4, radius is 6.2cm
 #define PI2	  6.28319
+#define PI	  3.14159 
 
 using std::string;
 using namespace Eigen;
@@ -66,7 +67,7 @@ class Robot{
 		void calculateTransform(float theta);
 
 		void calculateOdom();
-		void setRamp(float t, float s);
+		void setRamp(float s, float t);
 		void rampUpSpeed();
 		float incrementRamp();
 		void speed2power(float adj);

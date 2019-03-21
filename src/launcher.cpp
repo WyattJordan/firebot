@@ -54,14 +54,16 @@ int main(int argc, char **argv){
 
 	nav.makeMapMarks("marker_ns"); // make initial sets for publishing
 	nav.makeWayMarks("ways_ns");
-	publishNavLoop = std::thread(boost::bind(&Nav::publishLoop, &nav));	// loop for pubbing marker arrays
+	// loop for publishing marker arrays
+	publishNavLoop = std::thread(boost::bind(&Nav::publishLoop, &nav));	
 	nav.setBigRoomUpper(big);
 	nav.setSmallRoomUpper(small);
 
 	
 	for(int i=0; i<3; i++){
 		cout<<"start in "<<3-i<<"...\n";
-		sleep(1);
+		usleep(1000*500); // half second
+		//sleep(1);
 	}
 	cout<<"\nGO!\n";
 	mainLogic = std::thread(boost::bind(&Robot::mainLogic, &rob));	

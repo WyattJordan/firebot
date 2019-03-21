@@ -3,7 +3,9 @@
 
 #include <iostream>
 #include <cmath>
+
 #include "pid.h"
+#include "Robot.h" // for PI2
 
 using namespace std;
 
@@ -81,26 +83,41 @@ double PIDImpl::calculate( double setpoint, double pv )
 	if(d)cout<<"set = "<<setpoint<<" actual = "<<pv<<"\n";
 
 	// Calculate error
-    double error = setpoint - pv;
+	setpoint = fmod(setpoint, PI2); // modulo, make all numbers from -2PI to 2PI
+	pv = fmod(pv, PI2);
+	if(d)cout<<"set | pv after range to 2pi = "<<setpoint<<" | "<<pv<<"\n";
+	// make all numbers between +Pi and -Pi (0 along +x)
+	if(setpoint>PI) setpoint  -= PI2;
+	if(setpoint<-PI) setpoint += PI2;
+	if(pv>PI)  pv -= PI2;
+	if(pv<-PI) pv += PI2;
+
+	if(d)cout<<"set | pv after range to pi = "<<setpoint<<" | "<<pv<<"\n";
+	if(d)cout<<"setpoint - pv = "<<setpoint - pv<<"\n";
+
+    double error = fmod(setpoint - pv, PI2);
+    if(error < -PI) error += PI2;
+    if(error >= PI) error -= PI2;
+    
 	if(d)std::cout<<"error = "<<error<<"\n";
 
     // Proportional term
     double Pout = _Kp * error;
-    if(d)std::cout<<"p term = "<<_Kp<<" Pout = "<<Pout<<"\n";
+    //if(d)std::cout<<"p term = "<<_Kp<<" Pout = "<<Pout<<"\n";
 
     // Integral term
     _integral += error * _dt;
     double Iout = _Ki * _integral;
-    if(d)std::cout<<"i term = "<<_Ki<<" Iout = "<<Iout<<"\n";
+    //if(d)std::cout<<"i term = "<<_Ki<<" Iout = "<<Iout<<"\n";
 
     // Derivative term
     double derivative = (error - _pre_error) / _dt;
     double Dout = _Kd * derivative;
-    if(d)std::cout<<"d term = "<<_Kd<<" Dout = "<<Dout<<"\n";
+    //if(d)std::cout<<"d term = "<<_Kd<<" Dout = "<<Dout<<"\n";
 
     // Calculate total output
     double output = Pout + Iout + Dout;
-    if(0||d) cout<<"output = "<<output<<"\n";
+    //if(0||d) cout<<"output = "<<output<<"\n";
 
     // Restrict to max/min
     if( output > _max )

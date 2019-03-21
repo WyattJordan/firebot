@@ -32,15 +32,24 @@ using namespace Eigen;
 #define clk boost::chrono::system_clock
 #define stc std::chrono
 
+void msleep(int t){
+	usleep(1000*t);
+}
+
+
 void Robot::mainLogic(){
-//	runPID_ = true;
-	odomWorldLoc_   << 0,0,0; // starting pose/position
-	speed_ = 0.3;
-	speed2power(0);
+	runPID_ = false;
+	//odomWorldLoc_   << 0,0,0; // starting pose/position
+	odomWorldLoc_   << WheelDist, 23.5,0; // start at back left w/ steel block
 	eStop_ = false;
-	cout<<"started PID while stopped\n";
-	sleep(1);
-	
+	speed_ = 0;
+	// TODO -- only works w/ 0.3 speed, something else must also be at 0.3 to make it work... 
+	setRamp(0.3, 0.5); // slowly accelerate
+
+	cout<<"started PID while stopped speed = "<<speed_<<"\n";
+	msleep(500); // once done accelerating
+	runPID_ = true;
+
 	int count = 0;
 	setPose_ = 0;
 	runPID_ = true;
@@ -48,25 +57,25 @@ void Robot::mainLogic(){
 		int idx = count%4;
 
 		if(idx==0 && odomWorldLoc_(0) > 150){
-			setPose_ += 90;
+			setPose_ = 90 + 360;
 			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
 			count++;
 
 		}
 		else if(idx==1 && odomWorldLoc_(1) > 150){
-			setPose_ = 90;
+			setPose_ = 180;
 			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
 			count++;
 
 		}	
 		else if(idx==2 && odomWorldLoc_(0) < 80){
-			setPose_ = 90;
+			setPose_ = 270;
 			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
 			count++;
 
 		}	
-		else if(idx==3 && odomWorldLoc_(1) < 180){
-			setPose_ = 90;
+		else if(idx==3 && odomWorldLoc_(1) < 80){
+			setPose_ = 0;
 			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
 			count++;
 		}	
@@ -75,27 +84,28 @@ void Robot::mainLogic(){
 	// just ramping backwards
 	/*
 	cout<<"STARTING SECOND RAMP\n";
-	setRamp(2, 0); // ramp down to 0 in 2 seconds
+	setRamp(0,2); // ramp down to 0 in 2 seconds
 	sleep(4);
 
 	cout<<"STARTING THIRD RAMP\n";
-	setRamp(3, -0.6); // ramp up to -0.6 in 2 seconds
+	setRamp(-0.6, 3); // ramp up to -0.6 in 2 seconds
 	sleep(4);
 
 	cout<<"STARTING THIRD RAMP\n";
-	setRamp(2, 0); // ramp down to 0 in 2 seconds
+	setRamp(0, 2); // ramp down to 0 in 2 seconds
 	sleep(4);
 	
 	speed_ = 0; // just in case
 	*/
 }
 
-void Robot::setRamp(float t, float s){
+void Robot::setRamp(float s, float t){
 	rampTime_ = t;
 	rampSpeed_ = s;
 	firstRamp_ = true;
 	ramp_ = true; 
 }
+
 void Robot::rampUpSpeed(){
 	if(ramp_){
 		if(firstRamp_){
@@ -106,11 +116,11 @@ void Robot::rampUpSpeed(){
 		}
 		speed_ = speed_ + rampInc_;
 		speed2power(0);
-		power2pwm();
-		// if ramp has overshot
+		// if ramp has overshot or is very close to value
+		//cout<<"Ramping... rampInc_ = "<<rampInc_<<" speed = "<<speed_<<"\n";
 		if((rampSpeed_ == 0 && std::abs(speed_) < std::abs(rampInc_)) ||
-			(rampSpeed_ < 0 && speed_ < rampSpeed_) ||
-			(rampSpeed_ > 0 && speed_ > rampSpeed_)){
+			(rampSpeed_ <= 0 && speed_ < rampSpeed_) ||
+			(rampSpeed_ >= 0 && speed_ > rampSpeed_)){
 
 			cout<<"exiting ramp...\n";
 			speed_ = rampSpeed_;
@@ -158,8 +168,8 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 	robUpdateRate_ = config.robrate;*/
 	//ms_ = config.ms; 
 
-	lDrive_ = config.left;
-	rDrive_ = config.right;
+	//lDrive_ = config.left;
+	//rDrive_ = config.right;
 	debugDrive_ = config.debug;
 	//useSpeed_ = config.usespeed;
 	//if(speed_ != config.speed) speedChange_ = true;
@@ -181,7 +191,7 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 
 	//power2pwm();
 
-	runPID_  = config.runpid;
+	//runPID_  = config.runpid;
 	//setPose_ = config.setpose;
 	// do these need to be member variables? probs not
 	kp_ = config.kp;
@@ -195,6 +205,93 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 	cout<<"RECONFIGURED!\n\n";
 }
 
+void Robot::driveLoop(){
+	cout<<"talking to arduino... \n";
+	getSerialEncoders();
+	cout<<"got encoders\n";
+
+	nav_->pubWays_ = true;
+	nav_->pubMap_ = true;
+	nav_->pubRob_ = true;
+	usleep(5*ms_); // sleep 5 loops before starting
+	robUpdateRate_ = mapUpdateRate_ = wayUpdateRate_ = 1;
+
+	cout<<"starting driveLoop\n";
+	// get encoders, do PID math, set motors, delay leftover time 
+	while(1){
+		clk::time_point time_limit = clk::now() + boost::chrono::milliseconds(ms_);
+
+		//if(speed_<0.6) speed_ += 0.001;
+		//speed2power(0);
+		getSerialEncoders(); 
+		calculateOdom(); // many outputs to console
+		rampUpSpeed();
+		
+		if(runPID_){
+			if(0||debugDrive_) cout<<"in pid, odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";
+			if(0||debugDrive_) cout<<"theta = "<<360/PI2*odomWorldLoc_(2)<<"\n";
+
+			// give the PID the desired and current rotations
+			// note: 0 is robot front, +0 turns left, -0 turns right
+			// loop around occurs at back of robot
+			float adj = posePID_.calculate(setPose_ * PI2/360.0, odomWorldLoc_(2));
+			speed2power(adj);
+			if(debugDrive_) cout<<"P - "<<kp_<<" I - "<<ki_<<" D - "<<kd_<<"\n";
+			if(debugDrive_ /*adj!=0*/) cout<<"speed = "<<speed_<<"adj = "<<adj<<"\n\n";
+			///sleep(3);
+			
+		}
+		else{
+			power2pwm(); // already run by speed2power in PID
+		}
+		setSerialMotors();
+		if(0 && debugDrive_) {
+			cout<<"speed = "<<speed_<<"Drive_= "<<lDrive_<<" ("<<(int)lPWM_<<
+				") rDrive_ = "<<rDrive_<<" ("<<(int)rPWM_<<")\n";
+		}
+
+		periodicOutput(); // check what needs to be output
+
+		auto start = stc::steady_clock::now(); // measure length of time remaining
+		boost::this_thread::sleep_until(time_limit);
+		auto end = stc::steady_clock::now();
+
+		if(debugDrive_){
+			cout<<odomWorldLoc_<<"\n";
+		       	cout<<"driveLoop takes "<< ms_ <<" ms with "<<
+		stc::duration_cast <stc::milliseconds>(end-start).count()<<"ms and "<<
+		stc::duration_cast <stc::microseconds>(end-start).count()<<
+		"us (hopefully) leftover\n";
+		}
+	}
+}
+
+void Robot::periodicOutput(){
+	mapCount_++; wayCount_++; robCount_++; debugCount_++;
+	if(debugDrive_){
+		debugDrive_ = false;
+		cout<<"\n";
+	}
+	if(debugCount_ > 50){ // 50 counts = 1s (ms_ = 20);
+		debugDrive_ = true;
+		debugCount_ = 0;
+	}//*/
+	
+	if(mapUpdateRate_ > 0 && mapCount_ >= 1000 / (ms_ * mapUpdateRate_)) {
+		nav_->pubMap_  = true;
+		mapCount_ = 0;
+	}
+	if(wayUpdateRate_ > 0 && wayCount_ >= 1000 / (ms_ * wayUpdateRate_)){
+		nav_->pubWays_ = true;
+		wayCount_ = 0;
+	}
+	if(robUpdateRate_ > 0 && robCount_ >= 1000 / (ms_ * robUpdateRate_)){
+		nav_->setOdomLoc(odomWorldLoc_); // give the Nav class the odom loc
+		nav_->pubRob_ = true;
+		robCount_ = 0;
+	}
+
+}
 
 // Increment locX, locY, locP with the new encoder vals
 void Robot::calculateOdom(){
@@ -224,91 +321,6 @@ void Robot::calculateOdom(){
 void Robot::calculateTransform(float theta){
 	rob2world_.topLeftCorner(2,2) << cos(theta), -sin(theta),
 					 sin(theta),  cos(theta);
-}
-
-
-void Robot::driveLoop(){
-	cout<<"talking to arduino... \n";
-	getSerialEncoders();
-	cout<<"got encoders\n";
-
-	nav_->pubWays_ = true;
-	nav_->pubMap_ = true;
-	nav_->pubRob_ = true;
-	usleep(5*ms_); // sleep 5 loops before starting
-	robUpdateRate_ = mapUpdateRate_ = wayUpdateRate_ = 1;
-
-	cout<<"starting driveLoop\n";
-	// get encoders, do PID math, set motors, delay leftover time 
-	while(1){
-		clk::time_point time_limit = clk::now() + boost::chrono::milliseconds(ms_);
-
-		getSerialEncoders(); 
-		calculateOdom(); // many outputs to console
-		rampUpSpeed();
-		
-		if(runPID_){
-			if(0||debugDrive_) cout<<"in pid, odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";
-			if(0||debugDrive_) cout<<"theta = "<<360/PI2*odomWorldLoc_(2)<<"\n";
-
-			// give the PID the desired and current rotations
-			// note: 0 is robot front, +0 turns left, -0 turns right
-			// loop around occurs at back of robot
-			float adj = posePID_.calculate(setPose_ * PI2/360.0, odomWorldLoc_(2));
-			speed2power(adj);
-			//if(0||adj!=0) cout<<"speed = "<<speed_<<"adj = "<<adj<<"\n\n";
-			//sleep(1);
-		}
-		else{
-			power2pwm(); // already run by speed2power in PID
-		}
-		setSerialMotors();
-		if(debugDrive_) {
-			cout<<"lDrive_= "<<lDrive_<<" ("<<(int)lPWM_<<
-				") rDrive_ = "<<rDrive_<<" ("<<(int)rPWM_<<")\n";
-		}
-
-		periodicOutput(); // check what needs to be output
-
-		auto start = stc::steady_clock::now(); // measure length of time remaining
-		boost::this_thread::sleep_until(time_limit);
-		auto end = stc::steady_clock::now();
-
-		if(debugDrive_){
-			cout<<odomWorldLoc_<<"\n";
-		       	cout<<"driveLoop takes "<< ms_ <<" ms with "<<
-		stc::duration_cast <stc::milliseconds>(end-start).count()<<"ms and "<<
-		stc::duration_cast <stc::microseconds>(end-start).count()<<
-		"us (hopefully) leftover\n";
-		}
-	}
-}
-
-void Robot::periodicOutput(){
-	mapCount_++; wayCount_++; robCount_++; debugCount_++;
-	/*if(debugDrive_){
-		debugDrive_ = false;
-		cout<<"\n";
-	}
-	if(debugCount_ > 150){ // 50 counts = 1s (ms_ = 20);
-		debugDrive_ = true;
-		debugCount_ = 0;
-	}//*/
-	
-	if(mapUpdateRate_ > 0 && mapCount_ >= 1000 / (ms_ * mapUpdateRate_)) {
-		nav_->pubMap_  = true;
-		mapCount_ = 0;
-	}
-	if(wayUpdateRate_ > 0 && wayCount_ >= 1000 / (ms_ * wayUpdateRate_)){
-		nav_->pubWays_ = true;
-		wayCount_ = 0;
-	}
-	if(robUpdateRate_ > 0 && robCount_ >= 1000 / (ms_ * robUpdateRate_)){
-		nav_->setOdomLoc(odomWorldLoc_); // give the Nav class the odom loc
-		nav_->pubRob_ = true;
-		robCount_ = 0;
-	}
-
 }
 
 void Robot::openSerial(){
