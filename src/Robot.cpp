@@ -15,7 +15,8 @@
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
 
-#include <boost/thread/thread.hpp>
+//#include <boost/thread/thread.hpp>
+#include <thread>
 #include <chrono>
 
 // for serial
@@ -29,7 +30,7 @@ using std::string;
 using std::cout;
 using namespace Eigen;
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-#define clk boost::chrono::system_clock
+#define clk std::chrono::steady_clock
 #define stc std::chrono
 
 void msleep(int t){
@@ -208,6 +209,11 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 	cout<<"RECONFIGURED!\n\n";
 }//*/
 
+void Robot::outputTime(clk::time_point t1, clk::time_point t2){
+	cout<<"takes "<<
+	stc::duration_cast <stc::milliseconds>(t2-t1).count()<<"ms and "<<
+	stc::duration_cast <stc::microseconds>(t2-t1).count()<< "us\n";
+}
 // ERROR IS THIS LOOP IS TAKING TOO LONG TO COMPUTE AFTER A TURN!!!
 void Robot::driveLoop(){
 	cout<<"talking to arduino... \n";
@@ -222,14 +228,26 @@ void Robot::driveLoop(){
 
 	cout<<"starting driveLoop\n";
 	// get encoders, do PID math, set motors, delay leftover time 
+	bool bad_flag = false;
+	float adj;
 	while(1){
-		clk::time_point time_limit = clk::now() + boost::chrono::milliseconds(ms_);
 
+		clk::time_point time_limit = clk::now() + stc::milliseconds(ms_);
+		if(bad_flag){
+			//clk::time_point time_limit = clk::now() + 2*stc::milliseconds(ms_);
+			//cout<<"loop after bad flag\n";
+//`			cout<<"time_limit: "<<time_limit<<"\n";
+		}
+		//clk::time_point time_limit = clk::now() + boost::chrono::milliseconds(ms_);
 		//if(speed_<0.6) speed_ += 0.001;
 		//speed2power(0);
+		auto t1 = stc::steady_clock::now(); // measure length of time remaining
 		getSerialEncoders(); 
+		auto t2 = stc::steady_clock::now(); // measure length of time remaining
 		calculateOdom(); // many outputs to console
+		auto t3 = stc::steady_clock::now(); // measure length of time remaining
 		rampUpSpeed();
+		auto t4 = stc::steady_clock::now(); // measure length of time remaining
 		
 		if(runPID_){
 			if(0||debugDrive_) cout<<"in pid, odomWorldLoc_ = "<<odomWorldLoc_(0)
@@ -238,7 +256,7 @@ void Robot::driveLoop(){
 			// give the PID the desired and current rotations
 			// note: 0 is robot front, +0 turns left, -0 turns right
 			// loop around occurs at back of robot
-			float adj = posePID_.calculate(setPose_ * PI2/360.0, odomWorldLoc_(2));
+			adj = posePID_.calculate(setPose_ * PI2/360.0, odomWorldLoc_(2));
 			speed2power(adj);
 			if(debugDrive_) cout<<"set = "<<setPose_<<" P - "<<kp_<<" I - "<<ki_
 				<<" D - "<<kd_<<"\n";
@@ -249,30 +267,52 @@ void Robot::driveLoop(){
 		else{
 			power2pwm(); // already run by speed2power in PID
 		}
+
+		auto t5 = stc::steady_clock::now(); // measure length of time remaining
 		setSerialMotors();
+		auto t6 = stc::steady_clock::now(); // measure length of time remaining
 		if(0 && debugDrive_) {
 			cout<<"speed = "<<speed_<<"Drive_= "<<lDrive_<<" ("<<(int)lPWM_<<
 				") rDrive_ = "<<rDrive_<<" ("<<(int)rPWM_<<")\n";
 		}
 
 		periodicOutput(); // check what needs to be output
+		auto t7 = stc::steady_clock::now(); // measure length of time remaining
+
+		int PID_time = stc::duration_cast <stc::milliseconds>(t7-t1).count();
+		if(PID_time > 5){
+			cout<<"PID takes "<<
+			stc::duration_cast <stc::milliseconds>(t7-t1).count()<<"ms and "<<
+			stc::duration_cast <stc::microseconds>(t7-t1).count()<< "us\n";
+			cout<<"t1 to next: "; outputTime(t1,t2);
+			cout<<"t2 to next: "; outputTime(t2,t3);
+			cout<<"t3 to next: "; outputTime(t3,t4);
+			cout<<"t4 to next: "; outputTime(t4,t5);
+			cout<<"t5 to next: "; outputTime(t5,t6);
+			cout<<"t6 to next: "; outputTime(t6,t7);
+			cout<<"speed = "<<speed_<<"adj = "<<adj<<"\n\n";
+		}
+	
 
 		auto start = stc::steady_clock::now(); // measure length of time remaining
-		boost::this_thread::sleep_until(time_limit);
+		//if(bad_flag) cout<<"starting to sleep at: "<<start<<"\n";
+		std::this_thread::sleep_until(time_limit);
 		auto end = stc::steady_clock::now();
+		//if(bad_flag) cout<<"done sleep at: "<<end<<"\n";
 
 		int ms = stc::duration_cast <stc::milliseconds>(end-start).count();
+		if(debugDrive_ || ms<4){
+			if(ms<4){ 
+				 cout<<"in pid, odomWorldLoc_ = "<<odomWorldLoc_(0)
+			<<" x "<<odomWorldLoc_(1)<<" y "<<360/PI2*odomWorldLoc_(2)<< " thet\n";
 
-		if(ms<4){
-		       	ROS_INFO("Problem with timing!!");
-			cout<<"driveLoop takes "<< ms_ <<" ms with "<<
-		stc::duration_cast <stc::milliseconds>(end-start).count()<<"ms and "<<
-		stc::duration_cast <stc::microseconds>(end-start).count()<<
-		"us (hopefully) leftover\n";
-		}
+			bad_flag = true;
+				cout<<"speed = "<<speed_<<"adj = "<<adj<<"\n\n";
+				ROS_INFO("Problem with timing!!");
+//				cout<<"time limit: "<<time_limit<<"\n";
+			}
+			else{ cout<<odomWorldLoc_<<"\n";}
 
-		if(debugDrive_){
-			cout<<odomWorldLoc_<<"\n";
 		       	cout<<"driveLoop takes "<< ms_ <<" ms with "<<
 		stc::duration_cast <stc::milliseconds>(end-start).count()<<"ms and "<<
 		stc::duration_cast <stc::microseconds>(end-start).count()<<

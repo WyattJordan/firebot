@@ -11,6 +11,7 @@
 #include <firebot/ReconConfig.h>
 #include <Eigen/Core>
 #include <string>
+#include <chrono>
 
 #define addrDrive 17  // I2C slave addresses also 0x11 and 0x10
 #define addrArm   16
@@ -18,6 +19,8 @@
 #define WheelRad  6.2  // diameter is 12.4, radius is 6.2cm
 #define PI2	  6.28319
 #define PI	  3.14159 
+#define stc std::chrono
+#define clk std::chrono::steady_clock
 
 using std::string;
 using namespace Eigen;
@@ -66,6 +69,7 @@ class Robot{
 		Vector3f robotstep_, worldstep_, odomWorldLoc_; // distance changes in robot + world frames
 		void calculateTransform(float theta);
 
+		void outputTime(clk::time_point t1, clk::time_point t2);
 		void calculateOdom();
 		void setRamp(float s, float t);
 		void rampUpSpeed();

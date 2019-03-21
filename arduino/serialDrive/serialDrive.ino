@@ -30,9 +30,9 @@ char  getBuff [100];
 unsigned int getBuffPos;
 int code;
 
-float time1, time2;
-bool ledState;
-int encCount, motCount, motCount2, talkcount;
+float time1, time2, motortimestamp, enctimestamp;
+bool ledState, discon;
+int setMotorsCount, encCount;
 
 void setup() {
   
@@ -46,7 +46,6 @@ void setup() {
   pinMode(rightpinB,INPUT);
   attachInterrupt(0, leftwheelSpeed, CHANGE);//int.0 (pin2)
   attachInterrupt(1, rightwheelSpeed,CHANGE);//int.1 (pin3)
-  encCount = motCount = -1; // counts down to 0
   zeroFlag = false;
   zeroStamp = millis();
   
@@ -68,20 +67,16 @@ void setup() {
   
   Serial.begin(115200);
   while (!Serial) {;} // wait for serial port to connect
-  
-  for(int i=0; i<3; i++){
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(50);
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(50);
-  }
-  digitalWrite(LED_BUILTIN, LOW);
+	blinkLED(3);
 
   getBuffPos = 0;
   code = 0;
   time1 = 0;
-  talkcount = 0;
 ledState = false;
+	motortimestamp = millis();
+	enctimestamp = millis();
+	setMotorsCount = encCount = 0;
+discon = false;
 }
 
 const int num_codes = 4;
@@ -97,6 +92,14 @@ int data_length[num_codes] = {0, 4, 0, 5};
 //	send the PWM values for the pins over I2C to secondary arduino
 
 void loop() {
+if(millis()-motortimestamp > 25 && !discon && setMotorsCount > 50){
+	digitalWrite(LED_BUILTIN, HIGH);
+	getBuffPos = 0;
+	analogWrite(leftDrivePin,  0);
+	analogWrite(rightDrivePin, 0);
+	discon = true;
+	
+}
   if(Serial.available()>0){
     char c = Serial.read();
     getBuff[getBuffPos++] = c;
@@ -104,7 +107,10 @@ void loop() {
 	// a 2-byte int code is sent before any data
 	if(getBuffPos == 2 ){
 	     code = (getBuff[1] << 8) | getBuff[0];
-	     if(!(code * -1 < num_codes) ) code = 0; // if a weird code is sent
+	     if(!(code * -1 < num_codes) ) { // if a weird code is sent reset
+			code = 0;
+			getBuffPos = 0;
+		}
 	  }
 	// big problem was this being an else if, if it's get encoders
 	// there's no data to receive so it should run immediately
@@ -118,10 +124,11 @@ void loop() {
 		getBuffPos = 0; // all the data for that msg type received
 		code = 0;
 	}
+
   }
 
-  else if(millis() - time1 > 500){ // code to run every second
-    time1 = millis();
+  else if(millis() - time1 > 1000){ // code to run every second
+/*    time1 = millis();
 	ledState = !ledState;
 	if(ledState) {
 		digitalWrite(LED_BUILTIN,HIGH);
@@ -129,8 +136,8 @@ void loop() {
 	else{
 		digitalWrite(LED_BUILTIN,LOW);
 	}
+*/
     //Serial.print("doing");
-    //Serial.println(talkcount++);
   }
   if(Error){
     sprintf(msg, "lPWM = %d rPWM = %d --- lPWM2 = %d rPWM2 = %d\n",
@@ -138,18 +145,9 @@ void loop() {
     //Serial.print(msg);
     Error = false;
   }
-  
-  if(outputEverything){
-    sprintf(msg, "lPWM = %d rPWM = %d and lPWM2 = %d rPWM2 = %d\n",
-    lPWM,rPWM,lPWM2,rPWM2);
-    //Serial.println(msg);
-    sprintf(msg, "motCount = %d, motCount2 = %d", motCount, motCount2);
-    //Serial.println(msg);
-    outputEverything = false;
-  }
-  
+    
   if(zeroFlag){
-      digitalWrite(LED_BUILTIN, HIGH);
+      //digitalWrite(LED_BUILTIN, HIGH);
       zeroFlag = false;
   }
   if(millis()-zeroStamp > 500){      
@@ -174,6 +172,9 @@ void setMotors(){
 	digitalWrite(rightDirPin, getBuff[4] == 'f' ? HIGH : LOW);
 	analogWrite(leftDrivePin,  getBuff[3]);
 	analogWrite(rightDrivePin, getBuff[5]);
+	motortimestamp = millis();
+	setMotorsCount++;
+	discon = false;
 }
 
 void sendEncoders(){
@@ -183,6 +184,8 @@ void sendEncoders(){
 	Serial.write(lowByte(rightDuration)); 
 	leftDuration = 0;
 	rightDuration = 0;
+	enctimestamp = millis();
+	encCount++;
 }
 
 void sendI2C(){
@@ -190,6 +193,16 @@ void sendI2C(){
 //	outputBuff(5,true); 
 }
 
+void blinkLED(int n){
+ for(int i=0; i<n; i++){
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(50);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(50);
+  }
+    digitalWrite(LED_BUILTIN, LOW);
+
+}
 ////////////////////////////////////////////////////////////////
 ///////////////////Encoder Interrupts///////////////////////////
 ////////////////////////////////////////////////////////////////
