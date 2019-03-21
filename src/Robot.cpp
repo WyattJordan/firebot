@@ -130,8 +130,8 @@ void Robot::rampUpSpeed(){
 
 }
 
-Robot::Robot() : posePID_(0,0,0,0,0,0){ // also calls pose constructor
-	fudge_ = 0.949;
+Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constructor
+	fudge_ = 0.949; // accounts for difference between right and left wheel
 	eStop_ = true;
 	speed_ = 0;
 	firstRamp_ = true;
@@ -148,6 +148,8 @@ Robot::Robot() : posePID_(0,0,0,0,0,0){ // also calls pose constructor
 	srand(time(NULL));
 	ramp_ = false;
 	
+	max_ = 0.4; min_ = 0.001; kp_ = 1; kd_ = 0; ki_ = 0;
+	posePID_.setVals(ms_, max_, min_, kp_, kd_, ki_) ;
 	wayCount_ = mapCount_ = robCount_ = debugCount_ = 0;
 	// initialize vectors, if not it won't compile!
 	rob2world_ << 1, 0, 0,   0, 1, 0,   0, 0, 1; // as if theta = 0
@@ -163,9 +165,9 @@ Robot::Robot() : posePID_(0,0,0,0,0,0){ // also calls pose constructor
 
 void Robot::recon(firebot::ReconConfig &config, uint32_t level){ 
 	eStop_ 	 = config.estop;
-	/*mapUpdateRate_ = config.maprate;
-	wayUpdateRate_ = config.wayrate;
-	robUpdateRate_ = config.robrate;*/
+	//mapUpdateRate_ = config.maprate;
+	//wayUpdateRate_ = config.wayrate;
+	//robUpdateRate_ = config.robrate;
 	//ms_ = config.ms; 
 
 	//lDrive_ = config.left;
@@ -175,6 +177,7 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 	//if(speed_ != config.speed) speedChange_ = true;
 	//speed_ = config.speed;
 	//fudge_ = config.fudge;
+
 	/*
 	if(rampSpeed_ != config.rampspeed){
 		cout<<"%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n";
@@ -183,7 +186,7 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 		firstRamp_ = true;
 		ramp_ = true;
 	}//*/
-		/*
+	/*
 	if(useSpeed_){
 		lDrive_ = speed_;
 		rDrive_ = speed_ * fudge_;
@@ -194,17 +197,18 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 	//runPID_  = config.runpid;
 	//setPose_ = config.setpose;
 	// do these need to be member variables? probs not
+	
 	kp_ = config.kp;
 	ki_ = config.ki;
 	kd_ = config.kd;
 	max_ = config.max;
-	//min_ = config.min;
-	min_ = max_*-1;
+	min_ = config.min;
 
 	posePID_.setVals(ms_, max_, min_, kp_, kd_, ki_) ;
 	cout<<"RECONFIGURED!\n\n";
-}
+}//*/
 
+// ERROR IS THIS LOOP IS TAKING TOO LONG TO COMPUTE AFTER A TURN!!!
 void Robot::driveLoop(){
 	cout<<"talking to arduino... \n";
 	getSerialEncoders();
@@ -228,15 +232,16 @@ void Robot::driveLoop(){
 		rampUpSpeed();
 		
 		if(runPID_){
-			if(0||debugDrive_) cout<<"in pid, odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";
-			if(0||debugDrive_) cout<<"theta = "<<360/PI2*odomWorldLoc_(2)<<"\n";
+			if(0||debugDrive_) cout<<"in pid, odomWorldLoc_ = "<<odomWorldLoc_(0)
+			<<" x "<<odomWorldLoc_(1)<<" y "<<360/PI2*odomWorldLoc_(2)<< " thet\n";
 
 			// give the PID the desired and current rotations
 			// note: 0 is robot front, +0 turns left, -0 turns right
 			// loop around occurs at back of robot
 			float adj = posePID_.calculate(setPose_ * PI2/360.0, odomWorldLoc_(2));
 			speed2power(adj);
-			if(debugDrive_) cout<<"P - "<<kp_<<" I - "<<ki_<<" D - "<<kd_<<"\n";
+			if(debugDrive_) cout<<"set = "<<setPose_<<" P - "<<kp_<<" I - "<<ki_
+				<<" D - "<<kd_<<"\n";
 			if(debugDrive_ /*adj!=0*/) cout<<"speed = "<<speed_<<"adj = "<<adj<<"\n\n";
 			///sleep(3);
 			
@@ -256,6 +261,16 @@ void Robot::driveLoop(){
 		boost::this_thread::sleep_until(time_limit);
 		auto end = stc::steady_clock::now();
 
+		int ms = stc::duration_cast <stc::milliseconds>(end-start).count();
+
+		if(ms<4){
+		       	ROS_INFO("Problem with timing!!");
+			cout<<"driveLoop takes "<< ms_ <<" ms with "<<
+		stc::duration_cast <stc::milliseconds>(end-start).count()<<"ms and "<<
+		stc::duration_cast <stc::microseconds>(end-start).count()<<
+		"us (hopefully) leftover\n";
+		}
+
 		if(debugDrive_){
 			cout<<odomWorldLoc_<<"\n";
 		       	cout<<"driveLoop takes "<< ms_ <<" ms with "<<
@@ -272,7 +287,7 @@ void Robot::periodicOutput(){
 		debugDrive_ = false;
 		cout<<"\n";
 	}
-	if(debugCount_ > 50){ // 50 counts = 1s (ms_ = 20);
+	if(debugCount_ > 150){ // 50 counts = 1s (ms_ = 20);
 		debugDrive_ = true;
 		debugCount_ = 0;
 	}//*/

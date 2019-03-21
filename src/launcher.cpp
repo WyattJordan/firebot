@@ -34,6 +34,7 @@ int main(int argc, char **argv){
 	Robot rob;
 
 	// load the dynamic reconfigure server
+	/*
 	cout<<"setting up server... ";
 	dynamic_reconfigure::Server<firebot::ReconConfig> server;
 	dynamic_reconfigure::Server<firebot::ReconConfig>::CallbackType f;
@@ -41,6 +42,7 @@ int main(int argc, char **argv){
 	f = boost::bind(&Robot::recon, &rob, _1, _2);
 	server.setCallback(f);
 	cout<<"server running\n";
+	*/
 
 	// create publisher for Nav, pass to constr, set level being used 
 	ros::NodeHandle n;
