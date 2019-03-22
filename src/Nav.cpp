@@ -55,7 +55,7 @@ void Nav::publishLoop(){
 		if(pubWays_ || pubMap_ || pubRob_){
 		// 	cout<<"pubbing ways: "<<pubWays_<<" with size "<<wayMarks_.markers.size()<<
 		//		" and map: "<<pubMap_<<" with size "<<mapMarks_.markers.size()<<"\n";
-			cout<<"published ways/map/robot\n";
+			///cout<<"published ways/map/robot\n";
 			if(pubMap_){
 				markerPub_->publish(wayMarks_);
 				pubWays_ = false;
@@ -594,8 +594,8 @@ void Nav::calcRobotMarks(){
 	robMarkSphere_.type = visualization_msgs::Marker::SPHERE;
 	robMarkSphere_.action = visualization_msgs::Marker::ADD;
 
-	robMarkSphere_.scale.x = WheelLCM*2;
-	robMarkSphere_.scale.y = WheelLCM*2;
+	robMarkSphere_.scale.x = WheelDist*2; // WheelLCM = 13.75
+	robMarkSphere_.scale.y = WheelDist*2;
 	robMarkSphere_.scale.z = 5;
 
 	robMarkSphere_.color.a = 1.0;
