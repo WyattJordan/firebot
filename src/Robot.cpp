@@ -44,8 +44,9 @@ void Robot::mainLogic(){
 	odomWorldLoc_   << WheelDist, 23.5,0; // start at back left w/ steel block
 	eStop_ = false;
 	speed_ = 0;
+	
 	// TODO -- only works w/ 0.3 speed, something else must also be at 0.3 to make it work... 
-	setRamp(0.3, 0.5); // slowly accelerate
+	setRamp(0.1, 0.5); // slowly accelerate
 
 	cout<<"started PID while stopped speed = "<<speed_<<"\n";
 	msleep(500); // once done accelerating
@@ -169,14 +170,14 @@ void Robot::recon(firebot::ReconConfig &config, uint32_t level){
 	//mapUpdateRate_ = config.maprate;
 	//wayUpdateRate_ = config.wayrate;
 	//robUpdateRate_ = config.robrate;
-	//ms_ = config.ms; 
+	delay_ = config.delay; 
 
 	//lDrive_ = config.left;
 	//rDrive_ = config.right;
 	debugDrive_ = config.debug;
 	//useSpeed_ = config.usespeed;
 	//if(speed_ != config.speed) speedChange_ = true;
-	//speed_ = config.speed;
+	speed_ = config.speed;
 	//fudge_ = config.fudge;
 
 	/*
@@ -217,6 +218,7 @@ void Robot::outputTime(clk::time_point t1, clk::time_point t2){
 // ERROR IS THIS LOOP IS TAKING TOO LONG TO COMPUTE AFTER A TURN!!!
 void Robot::driveLoop(){
 	cout<<"talking to arduino... \n";
+	delay_ = 10;
 	getSerialEncoders();
 	cout<<"got encoders\n";
 
@@ -435,16 +437,19 @@ void Robot::setSerialArms(){
 	write(fd_, mdata, 5);
 }
 
-void Robot::getSerialEncoders(){
+bool Robot::getSerialEncoders(){
 	int16_t mcode2[1] = {-2}; // cannot be from 0-255 (use negatives)
 	unsigned char encs[4];
 	write(fd_, mcode2, 2); // Identify what info is coming next 
-	usleep(500);
+	usleep(delay_);
 	int code = read(fd_, encs, 4); // read 2 integers from the arduino
 	if(code == 4){
 		lEnc_ = (encs[0] << 8) | encs[1]; 
 		rEnc_ = (encs[2] << 8) | encs[3]; 
+		return true;
 	}
+	cout<<"Could not read encs, code = "<<code<<"\n";
+	return false;
 	//if(lEnc_ != 0) cout<<"left enc is "<<lEnc_<<"\n";
 	//if(rEnc_ != 0) cout<<"right enc is "<<rEnc_<<"\n\n";
 }

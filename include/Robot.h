@@ -41,7 +41,7 @@ class Robot{
 		void setSerialArms();
 		void openSerial();
 		void setSerialMotors();
-		void getSerialEncoders();
+		bool getSerialEncoders();
 		void sendSerial(char send[], int size);
 		void setNav(Nav* nv);
 
@@ -63,6 +63,7 @@ class Robot{
 		bool debugDrive_, runPID_, eStop_;
 		int ms_; // ms delay between odom updates, fastest thread
 		int wayUpdateRate_, mapUpdateRate_, robUpdateRate_;
+		int delay_;
 
 		// odometry vars;
 		Matrix3f rob2world_;	// rotation matrix calculated given pose

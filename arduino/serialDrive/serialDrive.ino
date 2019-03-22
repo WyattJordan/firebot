@@ -178,10 +178,14 @@ void setMotors(){
 }
 
 void sendEncoders(){
-	Serial.write(highByte(leftDuration));
+byte send[4] = {highByte(leftDuration), lowByte(leftDuration),
+ highByte(rightDuration), lowByte(rightDuration)};
+Serial.write(send,4);
+	/*Serial.write(highByte(leftDuration));
 	Serial.write(lowByte(leftDuration));
 	Serial.write(highByte(rightDuration));
 	Serial.write(lowByte(rightDuration)); 
+*/
 	leftDuration = 0;
 	rightDuration = 0;
 	enctimestamp = millis();
