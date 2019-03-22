@@ -189,7 +189,7 @@ target_link_libraries(launcher wiringPi)
 
 
 # Stuff for LIDAR
-add_executable(rplidarNode src/node.cpp ${RPLIDAR_SDK_SRC})
+#[[add_executable(rplidarNode src/node.cpp src/endpoint.cpp ${RPLIDAR_SDK_SRC})
 target_link_libraries(rplidarNode ${catkin_LIBRARIES})
 
 add_executable(rplidarNodeClient src/myClient.cpp)
@@ -205,6 +205,9 @@ install(DIRECTORY launch rviz sdk
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
   USE_SOURCE_PERMISSIONS
 )
+]]
+
+
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}

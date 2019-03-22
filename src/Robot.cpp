@@ -46,15 +46,18 @@ void Robot::mainLogic(){
 	speed_ = 0;
 	
 	// TODO -- only works w/ 0.3 speed, something else must also be at 0.3 to make it work... 
-	setRamp(0.1, 0.5); // slowly accelerate
+	
+	setRamp(0.3, 0.5); // slowly accelerate
 
 	cout<<"started PID while stopped speed = "<<speed_<<"\n";
 	msleep(500); // once done accelerating
 	runPID_ = true;
 
+	
 	int count = 0;
 	setPose_ = 0;
 	runPID_ = true;
+	
 	while(1){
 		int idx = count%4;
 
@@ -218,7 +221,7 @@ void Robot::outputTime(clk::time_point t1, clk::time_point t2){
 // ERROR IS THIS LOOP IS TAKING TOO LONG TO COMPUTE AFTER A TURN!!!
 void Robot::driveLoop(){
 	cout<<"talking to arduino... \n";
-	delay_ = 10;
+	delay_ = 0;
 	getSerialEncoders();
 	cout<<"got encoders\n";
 
@@ -282,7 +285,7 @@ void Robot::driveLoop(){
 		auto t7 = stc::steady_clock::now(); // measure length of time remaining
 
 		int PID_time = stc::duration_cast <stc::milliseconds>(t7-t1).count();
-		if(PID_time > 5){
+		if(PID_time > 14){
 			cout<<"PID takes "<<
 			stc::duration_cast <stc::milliseconds>(t7-t1).count()<<"ms and "<<
 			stc::duration_cast <stc::microseconds>(t7-t1).count()<< "us\n";
@@ -319,6 +322,7 @@ void Robot::driveLoop(){
 		stc::duration_cast <stc::milliseconds>(end-start).count()<<"ms and "<<
 		stc::duration_cast <stc::microseconds>(end-start).count()<<
 		"us (hopefully) leftover\n";
+			cout<<"speed = "<<speed_<<"\n";
 		}
 	}
 }
@@ -393,6 +397,8 @@ void Robot::openSerial(){
 
 	struct termios options;
 	tcgetattr(fd_, &options);
+	//cfsetispeed(&options, B9600); // 115200 b/s input and output
+	//cfsetospeed(&options, B9600);
 	cfsetispeed(&options, B115200); // 115200 b/s input and output
 	cfsetospeed(&options, B115200);
 	options.c_cflag &= ~CSIZE;      // no bit mask for data bits
