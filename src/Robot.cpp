@@ -37,20 +37,19 @@ void msleep(int t){
 	usleep(1000*t);
 }
 
-
 void Robot::mainLogic(){
 	runPID_ = false;
 	//odomWorldLoc_   << 0,0,0; // starting pose/position
 	odomWorldLoc_   << WheelDist, 23.5,0; // start at back left w/ steel block
+	//odomWorldLoc_   << 123,WheelDist,PI2/4; // start at center of back wall
 	eStop_ = false;
 	speed_ = 0;
 	
 	// TODO -- only works w/ 0.3 speed, something else must also be at 0.3 to make it work... 
 	
-	setRamp(0.3, 0.5); // slowly accelerate
+	setRamp(0.5, 0.5); // slowly accelerate
 
 	cout<<"started PID while stopped speed = "<<speed_<<"\n";
-	msleep(500); // once done accelerating
 	runPID_ = true;
 
 	
@@ -73,16 +72,18 @@ void Robot::mainLogic(){
 			count++;
 
 		}	
-		else if(idx==2 && odomWorldLoc_(0) < 80){
+		else if(idx==2 && odomWorldLoc_(0) < 50){
 			setPose_ = 270;
 			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
 			count++;
 
 		}	
-		else if(idx==3 && odomWorldLoc_(1) < 80){
+		else if(idx==3 && odomWorldLoc_(1) < 50){
 			setPose_ = 0;
 			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
 			count++;
+			//sleep(2);
+			//speed_=0;
 		}	
 	}//*/
 
@@ -244,15 +245,11 @@ void Robot::driveLoop(){
 //`			cout<<"time_limit: "<<time_limit<<"\n";
 		}
 		//clk::time_point time_limit = clk::now() + boost::chrono::milliseconds(ms_);
-		//if(speed_<0.6) speed_ += 0.001;
-		//speed2power(0);
 		auto t1 = stc::steady_clock::now(); // measure length of time remaining
 		getSerialEncoders(); 
 		auto t2 = stc::steady_clock::now(); // measure length of time remaining
 		calculateOdom(); // many outputs to console
-		auto t3 = stc::steady_clock::now(); // measure length of time remaining
 		rampUpSpeed();
-		auto t4 = stc::steady_clock::now(); // measure length of time remaining
 		
 		if(runPID_){
 			if(0||debugDrive_) cout<<"in pid, odomWorldLoc_ = "<<odomWorldLoc_(0)
@@ -260,14 +257,13 @@ void Robot::driveLoop(){
 
 			// give the PID the desired and current rotations
 			// note: 0 is robot front, +0 turns left, -0 turns right
-			// loop around occurs at back of robot
 			adj = posePID_.calculate(setPose_ * PI2/360.0, odomWorldLoc_(2));
-			speed2power(adj);
 			if(debugDrive_) cout<<"set = "<<setPose_<<" P - "<<kp_<<" I - "<<ki_
 				<<" D - "<<kd_<<"\n";
 			if(debugDrive_ /*adj!=0*/) cout<<"speed = "<<speed_<<"adj = "<<adj<<"\n\n";
-			///sleep(3);
-			
+		}
+		else if(ramp_){
+			speed2power(0);
 		}
 		else{
 			power2pwm(); // already run by speed2power in PID
@@ -290,9 +286,6 @@ void Robot::driveLoop(){
 			stc::duration_cast <stc::milliseconds>(t7-t1).count()<<"ms and "<<
 			stc::duration_cast <stc::microseconds>(t7-t1).count()<< "us\n";
 			cout<<"t1 to next: "; outputTime(t1,t2);
-			cout<<"t2 to next: "; outputTime(t2,t3);
-			cout<<"t3 to next: "; outputTime(t3,t4);
-			cout<<"t4 to next: "; outputTime(t4,t5);
 			cout<<"t5 to next: "; outputTime(t5,t6);
 			cout<<"t6 to next: "; outputTime(t6,t7);
 			cout<<"speed = "<<speed_<<"adj = "<<adj<<"\n\n";

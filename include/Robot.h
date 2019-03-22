@@ -15,7 +15,8 @@
 
 #define addrDrive 17  // I2C slave addresses also 0x11 and 0x10
 #define addrArm   16
-#define WheelDist 12.95 // width is 28.8cm outer, 24cm inner, L is half this center value
+// was 12,95
+#define WheelDist 13.15 // width is 28.8cm outer, 24cm inner, L is half this center value
 #define WheelRad  6.2  // diameter is 12.4, radius is 6.2cm
 #define PI2	  6.28319
 #define PI	  3.14159 

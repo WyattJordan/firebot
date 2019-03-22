@@ -99,6 +99,7 @@ void Nav::setSmallRoomUpper(bool up){
 		getPoint(11,wayPoints_).setNeighbors(1,12);
 		getPoint(10,wayPoints_).setNeighbors(2,9,14);
 	}
+	makeMapMarks("smallRoom_map");
 }
 
 // Sets the door configuration for the larger room, if up == true the door is
@@ -118,6 +119,7 @@ void Nav::setBigRoomUpper(bool up){
 		getPoint(4,wayPoints_).setNeighbors(2,3,5);
 		getPoint(16,wayPoints_).setNeighbors(2,15,17);
 	}	
+	makeMapMarks("bigRoom_map");
 }
 
 // Determines which map points are visible to the robot given 
@@ -252,7 +254,7 @@ void Nav::populateMarks(string which, string NS,
 		marks.markers[idx].header.frame_id = worldFrame_;
 		marks.markers[idx].id = i+1000;
 		marks.markers[idx].ns = NS;
-		marks.markers[idx].text = NS=="way" ? std::to_string((*pts)[i].getID()) : "";
+		marks.markers[idx].text = std::to_string((*pts)[i].getID());
 		marks.markers[idx].type = visualization_msgs::Marker::TEXT_VIEW_FACING;
 		marks.markers[idx].action = visualization_msgs::Marker::ADD;
 		marks.markers[idx].scale.x = 3;
@@ -565,8 +567,6 @@ void Nav::loadFiles(int lvl){
 		wayPoints_.push_back(tmp);
 		for(int i=0; i<7; i++) nums.erase(nums.begin()+0);
 	}
-
-
 }
 
 void Nav::calcRobotMarks(){

@@ -86,15 +86,15 @@ double PIDImpl::calculate( double setpoint, double pv )
 	// Calculate error
 	setpoint = fmod(setpoint, PI2); // modulo, make all numbers from -2PI to 2PI
 	pv = fmod(pv, PI2);
-	if(*_d)cout<<"set | pv after range to 2pi = "<<setpoint<<" | "<<pv<<"\n";
+	//if(*_d)cout<<"set | pv after range to 2pi = "<<setpoint<<" | "<<pv<<"\n";
 	// make all numbers between +Pi and -Pi (0 along +x)
 	if(setpoint>PI) setpoint  -= PI2;
 	if(setpoint<-PI) setpoint += PI2;
 	if(pv>PI)  pv -= PI2;
 	if(pv<-PI) pv += PI2;
 
-	if(*_d)cout<<"set | pv after range to pi = "<<setpoint<<" | "<<pv<<"\n";
-	if(*_d)cout<<"setpoint - pv = "<<setpoint - pv<<"\n";
+	//if(*_d)cout<<"set | pv after range to pi = "<<setpoint<<" | "<<pv<<"\n";
+	//if(*_d)cout<<"setpoint - pv = "<<setpoint - pv<<"\n";
 
     double error = fmod(setpoint - pv, PI2);
     if(error < -PI) error += PI2;
@@ -118,7 +118,7 @@ double PIDImpl::calculate( double setpoint, double pv )
 
     // Calculate total output
     double output = Pout + Iout + Dout;
-    if(0||*_d) cout<<" raw output = "<<output<<"\n";
+    //if(0||*_d) cout<<" raw output = "<<output<<"\n";
 
     // Restrict to max/min but keeping possible negatives
     if( abs(output) > _max )
