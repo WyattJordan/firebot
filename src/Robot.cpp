@@ -5,6 +5,7 @@
 #include "Robot.h"
 #include "Nav.h"
 #include "pid.h"
+#include "defintions.h"
 #include <Eigen/Core>
 #include <dynamic_reconfigure/server.h>
 #include <firebot/ReconConfig.h>
@@ -137,30 +138,32 @@ void Robot::rampUpSpeed(){
 }
 
 Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constructor
+	// default values
 	fudge_ = 0.949; // accounts for difference between right and left wheel
-	eStop_ = true;
-	speed_ = 0;
-	firstRamp_ = true;
+	speed_ = 0;      // start stopped
+	runSpeed_ = 0.5; // set speed to run at for this competition
+	eStop_ = false;
+	ramp_ = firstRamp_ = false;
 
 	debugDrive_ = runPID_ = false;
 	lDrive_ = rDrive_ = 0;
-	lForward_ = 'f';
-	rForward_ = 'f';
+	lForward_ = rForward_ = 'f';
 	lPWM_ = rPWM_ = lEnc_ = rEnc_ = 0;
 	ms_ = 20;
 
-	D3_ = 0; D6_ = 40; D9_ = 127; D10_ = 180; D11_ = 255;
+	D3_ = 0; D6_ = 40; D9_ = 127; D10_ = 180; D11_ = 255; // Arm PWM 
 	power2pwm();
 	srand(time(NULL));
-	ramp_ = false;
 	
-	max_ = 0.4; min_ = 0.001; kp_ = 1; kd_ = 0; ki_ = 0;
+	max_ = 0.4; min_ = 0.001; kp_ = 1; kd_ = 0; ki_ = 0; // PID gains
 	posePID_.setVals(ms_, max_, min_, kp_, kd_, ki_) ;
 	wayCount_ = mapCount_ = robCount_ = debugCount_ = 0;
+
 	// initialize vectors, if not it won't compile!
 	rob2world_ << 1, 0, 0,   0, 1, 0,   0, 0, 1; // as if theta = 0
-	robotstep_ << 0,0,0;
+	robotstep_ << 0,0,0; 
 	worldstep_ << 0,0,0;
+
 	odomWorldLoc_   << 0,0,0; // starting pose/position
 	//odomWorldLoc_   << WheelDist,13.5,0; // start at back left w/ steel block
 	//odomWorldLoc_   << 123,WheelDist,PI2/4; // start at center of back wall
@@ -219,6 +222,76 @@ void Robot::outputTime(clk::time_point t1, clk::time_point t2){
 	stc::duration_cast <stc::milliseconds>(t2-t1).count()<<"ms and "<<
 	stc::duration_cast <stc::microseconds>(t2-t1).count()<< "us\n";
 }
+
+void Robot::executeNavStack(){
+	// TODO - update pose when LIDAR updates position
+
+	if(navStack.size()>0){
+		float dist = distToNextPoint();
+		if(startNavStack_){ // if starting to navigate!
+			startNavStack_ = false;
+			speed_ = 0; // make sure we are starting from a stationary position
+
+			// if the robot is already at the first point (within threshold)
+			if(dist > WayPointStartThreshold){
+				navStack.pop();
+				facingFirst_ = false;
+			}
+			else{ // if too far away from first point start turning to face it
+				setPose_ = getPoseToPoint(navStack.front());
+				facingFirst_ = true;
+			}
+		}
+		else if(facingFirst_){ // turning to face first point
+			if(adj_ == 0){ // PID has finished turning, no adj needed
+				facingFirst_ = false;
+				setRamp(0.5, 0.5); // start driving to next point
+			}
+
+		}
+
+		else if(navStack.size() == 1){ // slowing down as approaching final point
+			if(dist < determineExperimentallyForSpeedOf0.5){
+				setRamp(0, 1.5);
+				navStack.pop();
+			}
+		}
+		else if(navStack.size()>1){ // standard behavior while driving
+			if(positionUpdated){
+				// TODO - recalculate Pose to be used based on new position and wayPoint
+
+			}
+			if(dist < startTurnDist){
+				// TODO - calculate next pose (usually factor of 90) and set it
+			}
+
+		}
+	
+	}
+	else if(navStack.size() == 0){ // done last navigation waiting to start again
+	   	startNavStack_ = true;
+	}
+}
+
+// determines distance between robot pos (odomWorldLoc_) and next point in navstack
+float Robot::distToNextPoint(){
+	if(navStack.size()>0){
+		float xdiff = navStack.front().getx() - odomWorldLoc_(0);
+		float ydiff = navStack.front().gety() - odomWorldLoc_(1);
+		pow( pow(xdiff,2) + pow(ydiff,2), 0.5);
+	}
+
+	cout<<"Robot::distToNextPoint called on empty stack!!!\n";
+	exit(1);
+	return -1.0;
+
+}
+
+float Robot::getPoseToPoint(EndPoint pt){
+	pt.getPolar(odomWorldLoc_(0),odomWorldLoc_(1)); // find polar with robot as origin
+	return pt.getTheta();
+}
+
 // ERROR IS THIS LOOP IS TAKING TOO LONG TO COMPUTE AFTER A TURN!!!
 void Robot::driveLoop(){
 	cout<<"talking to arduino... \n";
@@ -235,7 +308,6 @@ void Robot::driveLoop(){
 	cout<<"starting driveLoop\n";
 	// get encoders, do PID math, set motors, delay leftover time 
 	bool bad_flag = false;
-	float adj;
 	while(1){
 
 		clk::time_point time_limit = clk::now() + stc::milliseconds(ms_);
@@ -250,6 +322,7 @@ void Robot::driveLoop(){
 		auto t2 = stc::steady_clock::now(); // measure length of time remaining
 		calculateOdom(); // many outputs to console
 		rampUpSpeed();
+		executeNavStack();
 		
 		if(runPID_){
 			if(0||debugDrive_) cout<<"in pid, odomWorldLoc_ = "<<odomWorldLoc_(0)
@@ -257,10 +330,10 @@ void Robot::driveLoop(){
 
 			// give the PID the desired and current rotations
 			// note: 0 is robot front, +0 turns left, -0 turns right
-			adj = posePID_.calculate(setPose_ * PI2/360.0, odomWorldLoc_(2));
+			adj_ = posePID_.calculate(setPose_ * PI2/360.0, odomWorldLoc_(2));
 			if(debugDrive_) cout<<"set = "<<setPose_<<" P - "<<kp_<<" I - "<<ki_
 				<<" D - "<<kd_<<"\n";
-			if(debugDrive_ /*adj!=0*/) cout<<"speed = "<<speed_<<"adj = "<<adj<<"\n\n";
+			if(debugDrive_ /*adj_!=0*/) cout<<"speed = "<<speed_<<"adj = "<<adj_<<"\n\n";
 		}
 		else if(ramp_){
 			speed2power(0);
@@ -288,7 +361,7 @@ void Robot::driveLoop(){
 			cout<<"t1 to next: "; outputTime(t1,t2);
 			cout<<"t5 to next: "; outputTime(t5,t6);
 			cout<<"t6 to next: "; outputTime(t6,t7);
-			cout<<"speed = "<<speed_<<"adj = "<<adj<<"\n\n";
+			cout<<"speed = "<<speed_<<"adj = "<<adj_<<"\n\n";
 		}
 	
 
@@ -305,7 +378,7 @@ void Robot::driveLoop(){
 			<<" x "<<odomWorldLoc_(1)<<" y "<<360/PI2*odomWorldLoc_(2)<< " thet\n";
 
 			bad_flag = true;
-				cout<<"speed = "<<speed_<<"adj = "<<adj<<"\n\n";
+				cout<<"speed = "<<speed_<<"adj = "<<adj_<<"\n\n";
 				ROS_INFO("Problem with timing!!");
 //				cout<<"time limit: "<<time_limit<<"\n";
 			}
