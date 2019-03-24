@@ -55,7 +55,7 @@ void EndPoint::getPolar(float Rx, float Ry){
 	float diffy = y-Ry;
 	pp.R = pow(diffx*diffx + diffy*diffy, 0.5);
 	float t = atan2(diffy, diffx) * 180 / 3.14159;
-	pp.theta = t>0 ? t : t + 360; // polar vals range 0:360
+	pp.theta = t<0 ? t + 360 : t; // polar vals range 0:360
 }
 
 float EndPoint::getx()  const {  return x;}

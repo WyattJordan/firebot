@@ -61,7 +61,7 @@ class Robot{
 		int wayUpdateRate_, mapUpdateRate_, robUpdateRate_;
 		int delay_;
 		queue<EndPoint> navStack;
-		bool startNavStack_,facingFirst_;
+		bool startNavStack_,facingFirst_, reversed_;
 
 		// odometry vars;
 		Matrix3f rob2world_;	// rotation matrix calculated given pose

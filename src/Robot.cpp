@@ -38,6 +38,7 @@ void msleep(int t){
 	usleep(1000*t);
 }
 
+// check while navStack.size()>0 to wait while navigating
 void Robot::mainLogic(){
 	runPID_ = false;
 	//odomWorldLoc_   << 0,0,0; // starting pose/position
@@ -49,15 +50,40 @@ void Robot::mainLogic(){
 	// TODO -- only works w/ 0.3 speed, something else must also be at 0.3 to make it work... 
 	
 	setRamp(0.5, 0.5); // slowly accelerate
+	msleep(500);
 
 	cout<<"started PID while stopped speed = "<<speed_<<"\n";
 	runPID_ = true;
-
 	
 	int count = 0;
 	setPose_ = 0;
 	runPID_ = true;
 	
+	sleep(2);
+	Vector3f beforeStopping = odomWorldLoc_;
+	setRamp(0, 0.5);
+	while(speed_ !=0) {;} //wait to stop
+	Vector3f diff = odomWorldLoc_ - beforeStopping;
+	cout<<"distance for speed 0.5, in 0.5s: \n"<<diff;
+
+	sleep(1);
+	Vector3f start = odomWorldLoc_;
+	setRamp(0.5, 0.5);
+	while(speed_ !=0.5) {;} //wait to accelerate
+	Vector3f diff2 = odomWorldLoc_ - start;
+	cout<<"distance for accelerating with speed 0.5, in 0.5s: \n"<<diff2;
+	cout<<"difference for dists for starting and stopping 0.5 in 0.5: \n"<<diff2-diff;
+
+	sleep(2);
+	beforeStopping = odomWorldLoc_;
+	setRamp(0, 1);
+	while(speed_ !=0) {;} //wait to stop
+	Vector3f diff3 = odomWorldLoc_ - beforeStopping;
+	cout<<"distance for speed 0.5, in 1s: \n"<<diff3;
+
+
+
+	/*
 	while(1){
 		int idx = count%4;
 
@@ -142,7 +168,7 @@ Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constru
 	fudge_ = 0.949; // accounts for difference between right and left wheel
 	speed_ = 0;      // start stopped
 	runSpeed_ = 0.5; // set speed to run at for this competition
-	eStop_ = false;
+	eStop_ = reversed_ = false;
 	ramp_ = firstRamp_ = false;
 
 	debugDrive_ = runPID_ = false;
@@ -224,7 +250,7 @@ void Robot::outputTime(clk::time_point t1, clk::time_point t2){
 }
 
 void Robot::executeNavStack(){
-	// TODO - update pose when LIDAR updates position
+	// TODO - update pose to next point when LIDAR updates position
 
 	if(navStack.size()>0){
 		float dist = distToNextPoint();
@@ -233,14 +259,14 @@ void Robot::executeNavStack(){
 			speed_ = 0; // make sure we are starting from a stationary position
 
 			// if the robot is already at the first point (within threshold)
-			if(dist > WayPointStartThreshold){
+			if(dist < WayPointStartThreshold){
 				navStack.pop();
-				facingFirst_ = false;
 			}
-			else{ // if too far away from first point start turning to face it
-				setPose_ = getPoseToPoint(navStack.front());
-				facingFirst_ = true;
-			}
+			/*else{ // if too far away from first point start turning to face it
+			}*/
+
+			setPose_ = getPoseToPoint(navStack.front()); // 
+			facingFirst_ = true; // wait for first turn
 		}
 		else if(facingFirst_){ // turning to face first point
 			if(adj_ == 0){ // PID has finished turning, no adj needed
@@ -289,14 +315,38 @@ float Robot::distToNextPoint(){
 
 float Robot::getPoseToPoint(EndPoint pt){
 	pt.getPolar(odomWorldLoc_(0),odomWorldLoc_(1)); // find polar with robot as origin
+	float t = pt.getTheta();
+	
+	// TODO after getting stack nav working uncomment this to reverse bot when needed
+	if(std::abs(setPose_ - t) > 90){ // if the turn is > 90 reverse the bot
+		// right wheel becomes left and vice versa in all instances
+		// by swapping lDrive and rDrive in the following locations
+		// 1. speed2power
+		// 2. odometry (getting enc vals)
+		// 3. before PID somewhere?
+		// 4. 
+
+		reversed_ = !reversed_; 
+	}
+
 	return pt.getTheta();
 }
 
-// ERROR IS THIS LOOP IS TAKING TOO LONG TO COMPUTE AFTER A TURN!!!
+// This is the main thread that runs and controls the 'bot the mainLogic
+// loop simply adjusts variables that this thread is referencing.
+// Flow:
+// 	1. Get Encoder counts via arduino
+// 	2. Determine new world location from counts
+// 	3. Check if the speed is being ramped and if so increment speed_
+// 	4. Check if a navStack is running and if so set pose accordingly
+// 	5. Run the PID and and calculate lDrive and rDrive
+// 	6. Set the motors via arduino
+// 	7. Output debug info (not every loop) includes rviz map, ways, debugDrive_
+// 	8. Wait time remaining such that this loop took 20ms (or ms_ ms)
 void Robot::driveLoop(){
 	cout<<"talking to arduino... \n";
-	delay_ = 0;
-	getSerialEncoders();
+	delay_ = 20; // also the default in Recon.cfg
+	getSerialEncoders(); // just make sure arduino is connected
 	cout<<"got encoders\n";
 
 	nav_->pubWays_ = true;
@@ -306,46 +356,39 @@ void Robot::driveLoop(){
 	robUpdateRate_ = mapUpdateRate_ = wayUpdateRate_ = 1;
 
 	cout<<"starting driveLoop\n";
-	// get encoders, do PID math, set motors, delay leftover time 
-	bool bad_flag = false;
 	while(1){
 
 		clk::time_point time_limit = clk::now() + stc::milliseconds(ms_);
-		if(bad_flag){
-			//clk::time_point time_limit = clk::now() + 2*stc::milliseconds(ms_);
-			//cout<<"loop after bad flag\n";
-//`			cout<<"time_limit: "<<time_limit<<"\n";
-		}
-		//clk::time_point time_limit = clk::now() + boost::chrono::milliseconds(ms_);
 		auto t1 = stc::steady_clock::now(); // measure length of time remaining
 		getSerialEncoders(); 
 		auto t2 = stc::steady_clock::now(); // measure length of time remaining
-		calculateOdom(); // many outputs to console
+		calculateOdom(); 
 		rampUpSpeed();
 		executeNavStack();
 		
-		if(runPID_){
-			if(0||debugDrive_) cout<<"in pid, odomWorldLoc_ = "<<odomWorldLoc_(0)
+		if(runPID_){ // this should almost always be the one running
+			if(debugDrive_) cout<<"in pid, odomWorldLoc_ = "<<odomWorldLoc_(0)
 			<<" x "<<odomWorldLoc_(1)<<" y "<<360/PI2*odomWorldLoc_(2)<< " thet\n";
 
 			// give the PID the desired and current rotations
 			// note: 0 is robot front, +0 turns left, -0 turns right
 			adj_ = posePID_.calculate(setPose_ * PI2/360.0, odomWorldLoc_(2));
+			speed2power(adj_);
 			if(debugDrive_) cout<<"set = "<<setPose_<<" P - "<<kp_<<" I - "<<ki_
-				<<" D - "<<kd_<<"\n";
-			if(debugDrive_ /*adj_!=0*/) cout<<"speed = "<<speed_<<"adj = "<<adj_<<"\n\n";
+				<<" D - "<<kd_<<"\n"<<"speed = "<<speed_<<"adj = "<<adj_<<"\n\n";
 		}
-		else if(ramp_){
+		else if(ramp_){ // if PID gets turned off for some odd reason...
 			speed2power(0);
 		}
-		else{
+		else{ // honestly this shouldn't even be running...
+			if(reversed_) {ROS_ERROR("calling power2pwm when reversed which is bad...");}
 			power2pwm(); // already run by speed2power in PID
 		}
 
 		auto t5 = stc::steady_clock::now(); // measure length of time remaining
 		setSerialMotors();
 		auto t6 = stc::steady_clock::now(); // measure length of time remaining
-		if(0 && debugDrive_) {
+		if(0 && debugDrive_) { // usually unneeded but just in case enable
 			cout<<"speed = "<<speed_<<"Drive_= "<<lDrive_<<" ("<<(int)lPWM_<<
 				") rDrive_ = "<<rDrive_<<" ("<<(int)rPWM_<<")\n";
 		}
@@ -353,6 +396,10 @@ void Robot::driveLoop(){
 		periodicOutput(); // check what needs to be output
 		auto t7 = stc::steady_clock::now(); // measure length of time remaining
 
+
+		/////////////////////////////////////////////////////////////////////
+		//////// Rest in this loop is just timing and some outputs //////////
+		/////////////////////////////////////////////////////////////////////
 		int PID_time = stc::duration_cast <stc::milliseconds>(t7-t1).count();
 		if(PID_time > 14){
 			cout<<"PID takes "<<
@@ -363,31 +410,26 @@ void Robot::driveLoop(){
 			cout<<"t6 to next: "; outputTime(t6,t7);
 			cout<<"speed = "<<speed_<<"adj = "<<adj_<<"\n\n";
 		}
-	
 
 		auto start = stc::steady_clock::now(); // measure length of time remaining
-		//if(bad_flag) cout<<"starting to sleep at: "<<start<<"\n";
-		std::this_thread::sleep_until(time_limit);
+		std::this_thread::sleep_until(time_limit); // wait such that loop took ms_ long
 		auto end = stc::steady_clock::now();
-		//if(bad_flag) cout<<"done sleep at: "<<end<<"\n";
 
 		int ms = stc::duration_cast <stc::milliseconds>(end-start).count();
-		if(debugDrive_ || ms<4){
+		if(debugDrive_ || ms<4){ // if less than 4 ms left over
 			if(ms<4){ 
 				 cout<<"in pid, odomWorldLoc_ = "<<odomWorldLoc_(0)
 			<<" x "<<odomWorldLoc_(1)<<" y "<<360/PI2*odomWorldLoc_(2)<< " thet\n";
 
-			bad_flag = true;
 				cout<<"speed = "<<speed_<<"adj = "<<adj_<<"\n\n";
-				ROS_INFO("Problem with timing!!");
-//				cout<<"time limit: "<<time_limit<<"\n";
+				ROS_INFO("Problem with timing!! (less than 4ms leftover)");
 			}
 			else{ cout<<odomWorldLoc_<<"\n";}
 
-		       	cout<<"driveLoop takes "<< ms_ <<" ms with "<<
-		stc::duration_cast <stc::milliseconds>(end-start).count()<<"ms and "<<
-		stc::duration_cast <stc::microseconds>(end-start).count()<<
-		"us (hopefully) leftover\n";
+			cout<<"driveLoop takes "<< ms_ <<" ms with "<<
+			stc::duration_cast <stc::milliseconds>(end-start).count()<<"ms and "<<
+			stc::duration_cast <stc::microseconds>(end-start).count()<<
+			"us (hopefully) leftover\n";
 			cout<<"speed = "<<speed_<<"\n";
 		}
 	}
@@ -395,7 +437,7 @@ void Robot::driveLoop(){
 
 void Robot::periodicOutput(){
 	mapCount_++; wayCount_++; robCount_++; debugCount_++;
-	if(debugDrive_){
+	/*if(debugDrive_){
 		debugDrive_ = false;
 		cout<<"\n";
 	}
@@ -516,8 +558,16 @@ bool Robot::getSerialEncoders(){
 	usleep(delay_);
 	int code = read(fd_, encs, 4); // read 2 integers from the arduino
 	if(code == 4){
-		lEnc_ = (encs[0] << 8) | encs[1]; 
-		rEnc_ = (encs[2] << 8) | encs[3]; 
+		if(!reversed_){
+			lEnc_ = (encs[0] << 8) | encs[1]; 
+			rEnc_ = (encs[2] << 8) | encs[3]; 
+		}
+		else{ // when reversed swap which wheel is which and the direction read
+			rEnc_ = (encs[0] << 8) | encs[1]; 
+			lEnc_ = (encs[2] << 8) | encs[3]; 
+			rEnc_ *= -1;
+			lEnc_ *= -1;
+		}
 		return true;
 	}
 	cout<<"Could not read encs, code = "<<code<<"\n";
@@ -526,9 +576,15 @@ bool Robot::getSerialEncoders(){
 	//if(rEnc_ != 0) cout<<"right enc is "<<rEnc_<<"\n\n";
 }
 
-void Robot::speed2power(float adj){
-	lDrive_ = speed_ - adj;
-	rDrive_ = speed_*fudge_ + adj;	
+void Robot::speed2power(float adj){ // note uses local adj not member
+	if(!reversed_){
+		lDrive_ = speed_ - adj;
+		rDrive_ = speed_*fudge_ + adj;	
+	}
+	else {
+		lDrive_ = (-1.0 * speed_) + adj;
+		rDrive_ = (-1.0 * speed_)*fudge_ - adj;	
+	}
 	power2pwm();
 }
 
