@@ -33,7 +33,6 @@ int main(int argc, char **argv){
 
 	ROS_INFO("running main launcher, going to create robot\n");
 	Robot rob;
-	setupServer(rob);
 
 	// Create the Navigation object and set it up
 	ros::NodeHandle n;
@@ -68,7 +67,8 @@ int main(int argc, char **argv){
 	return 0;
 }
 
-void setupServer(Robot rob){
+// seems to be causing issues, be careful if this is used
+/*void setupServer(Robot rob){
 	cout<<"setting up server... ";
 	dynamic_reconfigure::Server<firebot::ReconConfig> server;
 	dynamic_reconfigure::Server<firebot::ReconConfig>::CallbackType f;
@@ -76,4 +76,4 @@ void setupServer(Robot rob){
 	f = boost::bind(&Robot::recon, &rob, _1, _2);
 	server.setCallback(f);
 	cout<<"server running\n";
-}
+}*/

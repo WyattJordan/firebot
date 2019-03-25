@@ -5,7 +5,7 @@
 #include "Robot.h"
 #include "Nav.h"
 #include "pid.h"
-#include "defintions.h"
+#include "definitions.h"
 #include <Eigen/Core>
 #include <dynamic_reconfigure/server.h>
 #include <firebot/ReconConfig.h>
@@ -40,96 +40,16 @@ void msleep(int t){
 
 // check while navStack.size()>0 to wait while navigating
 void Robot::mainLogic(){
-	runPID_ = false;
-	//odomWorldLoc_   << 0,0,0; // starting pose/position
-	odomWorldLoc_   << WheelDist, 23.5,0; // start at back left w/ steel block
+	odomWorldLoc_   << 0,0,0; // starting pose/position
+	//odomWorldLoc_   << WheelDist, 23.5,0; // start at back left w/ steel block
 	//odomWorldLoc_   << 123,WheelDist,PI2/4; // start at center of back wall
 	eStop_ = false;
 	speed_ = 0;
 	
 	// TODO -- only works w/ 0.3 speed, something else must also be at 0.3 to make it work... 
-	
-	setRamp(0.5, 0.5); // slowly accelerate
-	msleep(500);
-
 	cout<<"started PID while stopped speed = "<<speed_<<"\n";
-	runPID_ = true;
-	
-	int count = 0;
-	setPose_ = 0;
-	runPID_ = true;
-	
-	sleep(2);
-	Vector3f beforeStopping = odomWorldLoc_;
-	setRamp(0, 0.5);
-	while(speed_ !=0) {;} //wait to stop
-	Vector3f diff = odomWorldLoc_ - beforeStopping;
-	cout<<"distance for speed 0.5, in 0.5s: \n"<<diff;
 
-	sleep(1);
-	Vector3f start = odomWorldLoc_;
-	setRamp(0.5, 0.5);
-	while(speed_ !=0.5) {;} //wait to accelerate
-	Vector3f diff2 = odomWorldLoc_ - start;
-	cout<<"distance for accelerating with speed 0.5, in 0.5s: \n"<<diff2;
-	cout<<"difference for dists for starting and stopping 0.5 in 0.5: \n"<<diff2-diff;
-
-	sleep(2);
-	beforeStopping = odomWorldLoc_;
-	setRamp(0, 1);
-	while(speed_ !=0) {;} //wait to stop
-	Vector3f diff3 = odomWorldLoc_ - beforeStopping;
-	cout<<"distance for speed 0.5, in 1s: \n"<<diff3;
-
-
-
-	/*
-	while(1){
-		int idx = count%4;
-
-		if(idx==0 && odomWorldLoc_(0) > 150){
-			setPose_ = 90 + 360;
-			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
-			count++;
-
-		}
-		else if(idx==1 && odomWorldLoc_(1) > 150){
-			setPose_ = 180;
-			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
-			count++;
-
-		}	
-		else if(idx==2 && odomWorldLoc_(0) < 50){
-			setPose_ = 270;
-			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
-			count++;
-
-		}	
-		else if(idx==3 && odomWorldLoc_(1) < 50){
-			setPose_ = 0;
-			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
-			count++;
-			//sleep(2);
-			//speed_=0;
-		}	
-	}//*/
-
-	// just ramping backwards
-	/*
-	cout<<"STARTING SECOND RAMP\n";
-	setRamp(0,2); // ramp down to 0 in 2 seconds
-	sleep(4);
-
-	cout<<"STARTING THIRD RAMP\n";
-	setRamp(-0.6, 3); // ramp up to -0.6 in 2 seconds
-	sleep(4);
-
-	cout<<"STARTING THIRD RAMP\n";
-	setRamp(0, 2); // ramp down to 0 in 2 seconds
-	sleep(4);
-	
-	speed_ = 0; // just in case
-	*/
+	testDistToStop();
 }
 
 void Robot::setRamp(float s, float t){
@@ -142,22 +62,21 @@ void Robot::setRamp(float s, float t){
 void Robot::rampUpSpeed(){
 	if(ramp_){
 		if(firstRamp_){
-			cout<<"first ramp%%%%%%%%%%%%%%%%%%%\n";
 			rampInc_ = (rampSpeed_ - speed_) / (rampTime_ / (ms_ / 1000.0));
 			firstRamp_ = false;
-			cout<<"Ramping... rampInc_ = "<<rampInc_<<" speed = "<<speed_<<"\n";
+			cout<<"Starting ramp... rampInc_ = "<<rampInc_<<" speed = "<<speed_<<"\n";
 		}
 		speed_ = speed_ + rampInc_;
 		speed2power(0);
 		// if ramp has overshot or is very close to value
 		//cout<<"Ramping... rampInc_ = "<<rampInc_<<" speed = "<<speed_<<"\n";
 		if((rampSpeed_ == 0 && std::abs(speed_) < std::abs(rampInc_)) ||
-			(rampSpeed_ <= 0 && speed_ < rampSpeed_) ||
-			(rampSpeed_ >= 0 && speed_ > rampSpeed_)){
+			(rampSpeed_ < 0 && speed_ < rampSpeed_) ||
+			(rampSpeed_ > 0 && speed_ > rampSpeed_)){
 
-			cout<<"exiting ramp...\n";
 			speed_ = rampSpeed_;
 			ramp_ = false;
+			cout<<"exiting ramp... speed = "<<speed_<<"\n";
 		}	
 	}
 
@@ -198,57 +117,16 @@ Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constru
 	openSerial();
 } 
 
-void Robot::recon(firebot::ReconConfig &config, uint32_t level){ 
-	eStop_ 	 = config.estop;
-	//mapUpdateRate_ = config.maprate;
-	//wayUpdateRate_ = config.wayrate;
-	//robUpdateRate_ = config.robrate;
-	delay_ = config.delay; 
-
-	//lDrive_ = config.left;
-	//rDrive_ = config.right;
-	debugDrive_ = config.debug;
-	//useSpeed_ = config.usespeed;
-	//if(speed_ != config.speed) speedChange_ = true;
-	speed_ = config.speed;
-	//fudge_ = config.fudge;
-
-	/*
-	if(rampSpeed_ != config.rampspeed){
-		cout<<"%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n";
-		rampSpeed_ = config.rampspeed;
-		rampTime_  = config.ramptime;
-		firstRamp_ = true;
-		ramp_ = true;
-	}//*/
-	/*
-	if(useSpeed_){
-		lDrive_ = speed_;
-		rDrive_ = speed_ * fudge_;
-	}//*/
-
-	//power2pwm();
-
-	//runPID_  = config.runpid;
-	//setPose_ = config.setpose;
-	// do these need to be member variables? probs not
-	
-	kp_ = config.kp;
-	ki_ = config.ki;
-	kd_ = config.kd;
-	max_ = config.max;
-	min_ = config.min;
-
-	posePID_.setVals(ms_, max_, min_, kp_, kd_, ki_) ;
-	cout<<"RECONFIGURED!\n\n";
-}//*/
-
 void Robot::outputTime(clk::time_point t1, clk::time_point t2){
 	cout<<"takes "<<
 	stc::duration_cast <stc::milliseconds>(t2-t1).count()<<"ms and "<<
 	stc::duration_cast <stc::microseconds>(t2-t1).count()<< "us\n";
 }
 
+// stopping distance from 0.5 speed in 0.5s is 12.5cm
+// stopping distance from 0.5 speed in 1s is 22.5cm
+// acceleration distance from 0 to 0.5 in 0.5s is 6.44cm
+// therefore if the point being navigated to is less than 12.5 + 6.44 use 0.2 speed
 void Robot::executeNavStack(){
 	// TODO - update pose to next point when LIDAR updates position
 
@@ -277,19 +155,19 @@ void Robot::executeNavStack(){
 		}
 
 		else if(navStack.size() == 1){ // slowing down as approaching final point
-			if(dist < determineExperimentallyForSpeedOf0.5){
+			/*if(dist < determineExperimentallyForSpeedOf0.5){
 				setRamp(0, 1.5);
 				navStack.pop();
-			}
+			}*/
 		}
 		else if(navStack.size()>1){ // standard behavior while driving
-			if(positionUpdated){
+			/*if(positionUpdated){
 				// TODO - recalculate Pose to be used based on new position and wayPoint
 
 			}
 			if(dist < startTurnDist){
 				// TODO - calculate next pose (usually factor of 90) and set it
-			}
+			}*/
 
 		}
 	
@@ -318,7 +196,7 @@ float Robot::getPoseToPoint(EndPoint pt){
 	float t = pt.getTheta();
 	
 	// TODO after getting stack nav working uncomment this to reverse bot when needed
-	if(std::abs(setPose_ - t) > 90){ // if the turn is > 90 reverse the bot
+/*	if(std::abs(setPose_ - t) > 90){ // if the turn is > 90 reverse the bot
 		// right wheel becomes left and vice versa in all instances
 		// by swapping lDrive and rDrive in the following locations
 		// 1. speed2power
@@ -327,7 +205,7 @@ float Robot::getPoseToPoint(EndPoint pt){
 		// 4. 
 
 		reversed_ = !reversed_; 
-	}
+	}*/
 
 	return pt.getTheta();
 }
@@ -377,13 +255,15 @@ void Robot::driveLoop(){
 			if(debugDrive_) cout<<"set = "<<setPose_<<" P - "<<kp_<<" I - "<<ki_
 				<<" D - "<<kd_<<"\n"<<"speed = "<<speed_<<"adj = "<<adj_<<"\n\n";
 		}
-		else if(ramp_){ // if PID gets turned off for some odd reason...
+		else{ // if PID gets turned off for some odd reason...
 			speed2power(0);
 		}
+		/*
 		else{ // honestly this shouldn't even be running...
 			if(reversed_) {ROS_ERROR("calling power2pwm when reversed which is bad...");}
+			cout<<"running just power2pwm!!!\n";
 			power2pwm(); // already run by speed2power in PID
-		}
+		}*/
 
 		auto t5 = stc::steady_clock::now(); // measure length of time remaining
 		setSerialMotors();
@@ -402,13 +282,14 @@ void Robot::driveLoop(){
 		/////////////////////////////////////////////////////////////////////
 		int PID_time = stc::duration_cast <stc::milliseconds>(t7-t1).count();
 		if(PID_time > 14){
-			cout<<"PID takes "<<
+			cout<<"PID took over 14ms\n";
+			/*cout<<"PID takes "<<
 			stc::duration_cast <stc::milliseconds>(t7-t1).count()<<"ms and "<<
 			stc::duration_cast <stc::microseconds>(t7-t1).count()<< "us\n";
 			cout<<"t1 to next: "; outputTime(t1,t2);
 			cout<<"t5 to next: "; outputTime(t5,t6);
 			cout<<"t6 to next: "; outputTime(t6,t7);
-			cout<<"speed = "<<speed_<<"adj = "<<adj_<<"\n\n";
+			cout<<"speed = "<<speed_<<"adj = "<<adj_<<"\n\n";//*/
 		}
 
 		auto start = stc::steady_clock::now(); // measure length of time remaining
@@ -416,7 +297,7 @@ void Robot::driveLoop(){
 		auto end = stc::steady_clock::now();
 
 		int ms = stc::duration_cast <stc::milliseconds>(end-start).count();
-		if(debugDrive_ || ms<4){ // if less than 4 ms left over
+		if(debugDrive_ || ms<0){ // if less than 4 ms left over
 			if(ms<4){ 
 				 cout<<"in pid, odomWorldLoc_ = "<<odomWorldLoc_(0)
 			<<" x "<<odomWorldLoc_(1)<<" y "<<360/PI2*odomWorldLoc_(2)<< " thet\n";
@@ -570,7 +451,7 @@ bool Robot::getSerialEncoders(){
 		}
 		return true;
 	}
-	cout<<"Could not read encs, code = "<<code<<"\n";
+	//cout<<"Could not read encs, code = "<<code<<"\n";
 	return false;
 	//if(lEnc_ != 0) cout<<"left enc is "<<lEnc_<<"\n";
 	//if(rEnc_ != 0) cout<<"right enc is "<<rEnc_<<"\n\n";
@@ -604,3 +485,130 @@ float Robot::toRad(float deg){
 }
 
 void Robot::setNav(Nav* nv){ nav_ = nv; }
+
+void Robot::testDistToStop(){
+
+	cout<<"set = "<<setPose_<<" P - "<<kp_<<" I - "<<ki_
+	<<" D - "<<kd_<<"\n"<<"speed = "<<speed_<<"adj = "<<adj_<<"\n\n";
+
+	reversed_ = false;
+	setRamp(0.5, 0.5); // slowly accelerate
+	runPID_ = true;
+	while(speed_ !=0.5) {;} //wait to stop
+	usleep(10);
+	cout<<"acceleration distance = \n"<<odomWorldLoc_<<"\n";
+
+	while(odomWorldLoc_(0) < 70){;}
+	setRamp(0, 0.5);
+/*
+	sleep(1);
+	Vector3f beforeStopping = odomWorldLoc_;
+	setRamp(0, 0.5);
+	while(speed_ !=0) {;} //wait to stop
+	msleep(1);
+	cout<<"done waiting to stop...\n";
+	Vector3f diff = odomWorldLoc_ - beforeStopping;
+	cout<<"distance for stoping w/ speed 0.5, in 0.5s: \n"<<diff;
+
+	sleep(1);
+	Vector3f start = odomWorldLoc_;
+	setRamp(0.5, 0.5);
+	while(speed_ !=0.5) {;} //wait to accelerate
+	msleep(1);
+	Vector3f diff2 = odomWorldLoc_ - start;
+	cout<<"distance for accelerating with speed 0.5, in 0.5s: \n"<<diff2;
+	cout<<"difference for dists for starting and stopping 0.5 in 0.5: \n"<<diff2-diff;
+
+	sleep(2);
+	beforeStopping = odomWorldLoc_;
+	setRamp(0, 1);
+	while(speed_ !=0) {;} //wait to stop
+	msleep(1);
+	Vector3f diff3 = odomWorldLoc_ - beforeStopping;
+	cout<<"distance for speed 0.5, in 1s: \n"<<diff3;
+*/
+}
+
+void Robot::moveInSquare(){
+	int count = 0;
+	setPose_ = 0;
+	runPID_ = true;
+	while(1){
+		int idx = count%4;
+
+		if(idx==0 && odomWorldLoc_(0) > 150){
+			setPose_ = 90 + 360;
+			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
+			count++;
+
+		}
+		else if(idx==1 && odomWorldLoc_(1) > 150){
+			setPose_ = 180;
+			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
+			count++;
+
+		}	
+		else if(idx==2 && odomWorldLoc_(0) < 50){
+			setPose_ = 270;
+			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
+			count++;
+
+		}	
+		else if(idx==3 && odomWorldLoc_(1) < 50){
+			setPose_ = 0;
+			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
+			count++;
+			//sleep(2);
+			//speed_=0;
+		}	
+	}
+}
+
+// if you use this expect things to break also it runs automatically
+// on startup so default values will be whatever is in cfg/Recon.cfg
+/*void Robot::recon(firebot::ReconConfig &config, uint32_t level){ 
+	eStop_ 	 = config.estop;
+	//mapUpdateRate_ = config.maprate;
+	//wayUpdateRate_ = config.wayrate;
+	//robUpdateRate_ = config.robrate;
+	delay_ = config.delay; 
+
+	//lDrive_ = config.left;
+	//rDrive_ = config.right;
+	debugDrive_ = config.debug;
+	//useSpeed_ = config.usespeed;
+	//if(speed_ != config.speed) speedChange_ = true;
+	speed_ = config.speed;
+	//fudge_ = config.fudge;
+
+	/*
+	if(rampSpeed_ != config.rampspeed){
+		cout<<"%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n%\n";
+		rampSpeed_ = config.rampspeed;
+		rampTime_  = config.ramptime;
+		firstRamp_ = true;
+		ramp_ = true;
+	}//*/
+	/*
+	if(useSpeed_){
+		lDrive_ = speed_;
+		rDrive_ = speed_ * fudge_;
+	}//*/
+
+	//power2pwm();
+
+	//runPID_  = config.runpid;
+	//setPose_ = config.setpose;
+	// do these need to be member variables? probs not
+/*
+	kp_ = config.kp;
+	ki_ = config.ki;
+	kd_ = config.kd;
+	max_ = config.max;
+	min_ = config.min;
+
+	posePID_.setVals(ms_, max_, min_, kp_, kd_, ki_) ;
+	cout<<"RECONFIGURED!\n\n";
+}//*/
+
+

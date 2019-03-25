@@ -81,4 +81,6 @@ class Robot{
 
 		float distToNextPoint();
 		float toRad(float deg);
+		void testDistToStop();
+		void moveInSquare();
 };

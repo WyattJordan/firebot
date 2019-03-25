@@ -5,7 +5,7 @@
 #include <cmath>
 
 #include "pid.h"
-#include "defintions.h" // for PI2
+#include "definitions.h" // for PI2
 
 using namespace std;
 
@@ -100,7 +100,7 @@ double PIDImpl::calculate( double setpoint, double pv )
     if(error < -PI) error += PI2;
     if(error >= PI) error -= PI2;
     
-	if(*_d)std::cout<<"error = "<<error<<"\n";
+//	if(*_d)std::cout<<"error = "<<error<<"\n";
 
     // Proportional term
     double Pout = _Kp * error;
