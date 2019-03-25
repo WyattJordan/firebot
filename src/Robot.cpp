@@ -4,6 +4,7 @@
 
 #include "Robot.h"
 #include "Nav.h"
+#include "Endpoint.h"
 #include "pid.h"
 #include "definitions.h"
 #include <Eigen/Core>
@@ -33,6 +34,7 @@ using namespace Eigen;
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define clk std::chrono::steady_clock
 #define stc std::chrono
+#define ab std::abs
 
 void msleep(int t){
 	usleep(1000*t);
@@ -40,7 +42,7 @@ void msleep(int t){
 
 // check while navStack.size()>0 to wait while navigating
 void Robot::mainLogic(){
-	odomWorldLoc_   << 0,0,0; // starting pose/position
+	odomWorldLoc_   << 0,0,90.0*PI/180.0; // starting pose/position
 	//odomWorldLoc_   << WheelDist, 23.5,0; // start at back left w/ steel block
 	//odomWorldLoc_   << 123,WheelDist,PI2/4; // start at center of back wall
 	eStop_ = false;
@@ -49,7 +51,12 @@ void Robot::mainLogic(){
 	// TODO -- only works w/ 0.3 speed, something else must also be at 0.3 to make it work... 
 	cout<<"started PID while stopped speed = "<<speed_<<"\n";
 
-	testDistToStop();
+	//testDistToStop();
+	runPID_ = true;
+	vector<int> tmp;
+	//EndPoint go(80+WheelDist, 89.5, -1, tmp); // to go from line crosses on stem basement
+	EndPoint go(12, 0, -1, tmp);
+	navStack.push(go);
 }
 
 void Robot::setRamp(float s, float t){
@@ -70,7 +77,7 @@ void Robot::rampUpSpeed(){
 		speed2power(0);
 		// if ramp has overshot or is very close to value
 		//cout<<"Ramping... rampInc_ = "<<rampInc_<<" speed = "<<speed_<<"\n";
-		if((rampSpeed_ == 0 && std::abs(speed_) < std::abs(rampInc_)) ||
+		if((rampSpeed_ == 0 && ab(speed_) < ab(rampInc_)) ||
 			(rampSpeed_ < 0 && speed_ < rampSpeed_) ||
 			(rampSpeed_ > 0 && speed_ > rampSpeed_)){
 
@@ -79,7 +86,6 @@ void Robot::rampUpSpeed(){
 			cout<<"exiting ramp... speed = "<<speed_<<"\n";
 		}	
 	}
-
 }
 
 Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constructor
@@ -137,7 +143,7 @@ void Robot::executeNavStack(){
 			speed_ = 0; // make sure we are starting from a stationary position
 
 			// if the robot is already at the first point (within threshold)
-			if(dist < WayPointStartThreshold){
+			if(dist < WayPointStartThreshold){ // 2cm, everthing within this accuracy
 				navStack.pop();
 			}
 			/*else{ // if too far away from first point start turning to face it
@@ -147,20 +153,24 @@ void Robot::executeNavStack(){
 			facingFirst_ = true; // wait for first turn
 		}
 		else if(facingFirst_){ // turning to face first point
-			if(adj_ == 0){ // PID has finished turning, no adj needed
+			if(ab(adj_) < 0.1){ // PID has finished turning, no adj needed
 				facingFirst_ = false;
-				setRamp(0.5, 0.5); // start driving to next point
+				float s = dist < MinDistFor50 ? 0.2 : 0.5;
+				setRamp(s, 0.5); // start driving to next point
 			}
 
 		}
 
 		else if(navStack.size() == 1){ // slowing down as approaching final point
-			/*if(dist < determineExperimentallyForSpeedOf0.5){
-				setRamp(0, 1.5);
+			if( (ab(ab(speed_) - 0.5) < 0.05 && dist < StopDist50) ||
+			    (ab(ab(speed_) - 0.2) < 0.05 && dist < StopDist20)){
+				setRamp(0, 0.5);
 				navStack.pop();
-			}*/
+				cout<<"reached final point in navStack!\n";
+			}
 		}
 		else if(navStack.size()>1){ // standard behavior while driving
+			cout<<"too big of nav stack!\n";
 			/*if(positionUpdated){
 				// TODO - recalculate Pose to be used based on new position and wayPoint
 
@@ -182,7 +192,7 @@ float Robot::distToNextPoint(){
 	if(navStack.size()>0){
 		float xdiff = navStack.front().getx() - odomWorldLoc_(0);
 		float ydiff = navStack.front().gety() - odomWorldLoc_(1);
-		pow( pow(xdiff,2) + pow(ydiff,2), 0.5);
+		return pow( pow(xdiff,2) + pow(ydiff,2), 0.5);
 	}
 
 	cout<<"Robot::distToNextPoint called on empty stack!!!\n";
@@ -196,7 +206,7 @@ float Robot::getPoseToPoint(EndPoint pt){
 	float t = pt.getTheta();
 	
 	// TODO after getting stack nav working uncomment this to reverse bot when needed
-/*	if(std::abs(setPose_ - t) > 90){ // if the turn is > 90 reverse the bot
+/*	if(ab(setPose_ - t) > 90){ // if the turn is > 90 reverse the bot
 		// right wheel becomes left and vice versa in all instances
 		// by swapping lDrive and rDrive in the following locations
 		// 1. speed2power
@@ -451,7 +461,7 @@ bool Robot::getSerialEncoders(){
 		}
 		return true;
 	}
-	//cout<<"Could not read encs, code = "<<code<<"\n";
+	cout<<"Could not read encs, code = "<<code<<"\n";
 	return false;
 	//if(lEnc_ != 0) cout<<"left enc is "<<lEnc_<<"\n";
 	//if(rEnc_ != 0) cout<<"right enc is "<<rEnc_<<"\n\n";
@@ -492,71 +502,62 @@ void Robot::testDistToStop(){
 	<<" D - "<<kd_<<"\n"<<"speed = "<<speed_<<"adj = "<<adj_<<"\n\n";
 
 	reversed_ = false;
-	setRamp(0.5, 0.5); // slowly accelerate
+	setRamp(0.2, 0.5); // slowly accelerate
 	runPID_ = true;
-	while(speed_ !=0.5) {;} //wait to stop
+	cout<<"waiting to accelerate!!!!!!!!!!!!!!!!\n";
+	while(speed_ !=0.2) {
+		cout<<"speed = "<<speed_<<"\n";
+		if(speed_ == 0.2) break;
+		if(ab(speed_ - 0.2) < 0.001) break;
+	} //wait to stop
+	cout<<"done waiting to accelerate!!!!!!!!!!!!!!!!\n";
 	usleep(10);
-	cout<<"acceleration distance = \n"<<odomWorldLoc_<<"\n";
-
-	while(odomWorldLoc_(0) < 70){;}
+	cout<<"0.2 acceleration distance = \n"<<odomWorldLoc_<<"\n";
+	while(odomWorldLoc_(0) < 30) {;} //wait to stop
+	Vector3f after_acc = odomWorldLoc_;
 	setRamp(0, 0.5);
-/*
-	sleep(1);
-	Vector3f beforeStopping = odomWorldLoc_;
-	setRamp(0, 0.5);
-	while(speed_ !=0) {;} //wait to stop
-	msleep(1);
-	cout<<"done waiting to stop...\n";
-	Vector3f diff = odomWorldLoc_ - beforeStopping;
-	cout<<"distance for stoping w/ speed 0.5, in 0.5s: \n"<<diff;
-
-	sleep(1);
-	Vector3f start = odomWorldLoc_;
-	setRamp(0.5, 0.5);
-	while(speed_ !=0.5) {;} //wait to accelerate
-	msleep(1);
-	Vector3f diff2 = odomWorldLoc_ - start;
-	cout<<"distance for accelerating with speed 0.5, in 0.5s: \n"<<diff2;
-	cout<<"difference for dists for starting and stopping 0.5 in 0.5: \n"<<diff2-diff;
-
-	sleep(2);
-	beforeStopping = odomWorldLoc_;
-	setRamp(0, 1);
-	while(speed_ !=0) {;} //wait to stop
-	msleep(1);
-	Vector3f diff3 = odomWorldLoc_ - beforeStopping;
-	cout<<"distance for speed 0.5, in 1s: \n"<<diff3;
-*/
+	while(speed_ !=0) {;}
+	cout<<"stopping distance = \n"<<odomWorldLoc_-after_acc<<"\n";
+	//cout<<"total distance = \n"<<odomWorldLoc_<<"\n";
 }
 
 void Robot::moveInSquare(){
 	int count = 0;
 	setPose_ = 0;
 	runPID_ = true;
+	Vector3f temp;
 	while(1){
 		int idx = count%4;
 
 		if(idx==0 && odomWorldLoc_(0) > 150){
+			temp = odomWorldLoc_;
 			setPose_ = 90 + 360;
-			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
+			sleep(2);
+			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n"
+			<<" difference in x from turn: "<<odomWorldLoc_(0) - temp(0)<<"\n";
 			count++;
 
 		}
 		else if(idx==1 && odomWorldLoc_(1) > 150){
+			temp = odomWorldLoc_;
 			setPose_ = 180;
-			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
+			sleep(2);
+			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n"
+				<<" diff in y from turn: "<<odomWorldLoc_(1) - temp(1)<<"\n";
 			count++;
 
 		}	
 		else if(idx==2 && odomWorldLoc_(0) < 50){
 			setPose_ = 270;
 			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
+			sleep(2);
 			count++;
 
 		}	
 		else if(idx==3 && odomWorldLoc_(1) < 50){
 			setPose_ = 0;
 			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
+			sleep(2);
 			count++;
 			//sleep(2);
 			//speed_=0;
