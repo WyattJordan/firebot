@@ -411,6 +411,8 @@ void findLine(vector <float> xReal, vector <float> yReal){
 		}
         }
 
+	findRoom(myLines);
+
         cout << endl;
 
 
@@ -672,57 +674,82 @@ bool line::isFurniture(){
 	return furniture;
 }
 void findRoom(vector <line> lineVec){
-	bool room1;
-	bool room2;
-	bool room3;
-	bool room4;
+	int rm1 = 0;
+	int rm2 = 0;
+	int rm3 = 0;
+	int rm4 = 0;
+	bool room1 = false;
+	bool room2 = false;
+	bool room3 = false;
+	bool room4 = false;
 	bool shouldBreak = false;
 	vector <float> myLength;
 	for(int i = 0; i < lineVec.size(); i++){
 		myLength.push_back(lineVec[i].getLength());
 	}
 	for(int i = 0; i < myLength.size(); i++){
-		if((myLength[i] <.047) && (myLength[i] > .035)){
-			room1 = true;
-			room2 = room3 = room4 = false;
-			cout << endl << endl << "This is room 1" << endl << endl;
-			break;
+		if((myLength[i] <.54) && (myLength[i] > .44)){
+			rm1++;
 		}
-		else if((myLength[i] < .059) && (myLength[i] > .047)){
-			for(int j = i; j < myLength.size(); j++){
-				if ((myLength[j] < .059) && (myLength[j] > .047)){
-					room4 = true;
-					room1 = room2 = room3 = false;
-					cout << endl << endl << "This is room 4" << endl << endl;
-					shouldBreak = true;
-					break;
-				}
-				else{
-					room4 = false;
-				}
-			}
-			if(!room4){
-				room2 = true;
-				room1 = room3 = room4 = false;
-				cout << endl << endl << "This is room 2" << endl << endl;
-				break;
-			}
-			else{
-				break;
-			}
+		if((myLength[i] < .81) && (myLength[i] > .71)){
+			rm1++;
 		}
-		else if((myLength[i] < .095) && (myLength[i] > .085)){
-			room3 = true;
-			room1 = room2 = room4 = false;
-			cout << endl << endl << "This is room 3" << endl << endl;
-			break;
+
+		if((myLength[i] < 1.08) && (myLength[i] > .98)){
+			rm2++;
 		}
-		else{
-			cout << endl << endl << "Did not find the starting location" << endl << endl;
+		if((myLength[i] < .62) && (myLength[i] > .52)){
+			rm2++;
+			endpoint temp;
+			temp.setCart(lineVec[i].getEndPtX1(), lineVec[i].getEndPtY1());
+			endpoint temp2;
+			temp2.setCart(lineVec[i].getEndPtX2(), lineVec[i].getEndPtY2());
+			endpoint temp3;
+			endpoint temp4;
+			temp3.setCart(.72, .46);
+			temp4.setCart(myLength[i] + .72, .46);
+			findStartLocation(temp, temp2, temp3, temp4);
+
+
 		}
-			
+
+		if((myLength[i] < .31) && (myLength[i] > .21)){
+			rm3++;
+		}
+		if((myLength[i] < .77) && (myLength[i] > .67)){
+			rm3++;
+		}
+
+		if((myLength[i] < .79) && (myLength[i] > .69)){
+		       rm4++;
+		}
+ 		if((myLength[i] < .56) && (myLength[i] > .46)){
+			rm4++;
+		}
+		if((myLength[i] < .33) && (myLength[i] > .23)){
+			rm4++;
+		}
 	}
-	
+	cout << "room 1 counter: " << rm1 << endl;
+	cout << "room 2 counter: " << rm2 << endl;
+	cout << "room 3 counter: " << rm3 << endl;
+	cout << "room 4 counter: " << rm4 << endl;
+
+	if(room1){
+		cout << endl << endl << "This is room 1" << endl << endl;
+	}
+	else if(room2){
+		cout << endl << endl << "This is room 2" << endl << endl;
+	}
+	else if(room3){
+		cout << endl << endl << "This is room 3" << endl << endl;
+	}
+	else if(room4){
+		cout << endl << endl << "This is room 4" << endl << endl;
+	}
+	else{
+		cout << endl << endl << "Did not find the starting location" << endl << endl;
+	}
 }
 
 void findStartLocation(endpoint endR1, endpoint endR2, endpoint endG1, endpoint endG2){
@@ -739,10 +766,20 @@ void findStartLocation(endpoint endR1, endpoint endR2, endpoint endG1, endpoint 
 	else{
 		thetaD = thetaR2 - thetaR1 + 360;
 	}
-	float theta3 = asin((length2/length1)*sin(thetaD*3.14159/180));
+	cout << thetaD << endl;
+	float theta3 = asin((length2/length0)*sin(thetaD*3.14159/180));
+	cout << sin(thetaD*3.14159/180) << endl;
+	cout << length1 << endl << length2 << endl;
+	cout << theta3 << endl;
 	float x = endG1.getX() - length1*sin(theta3);
 	float y = endG1.getY() + length1*cos(theta3);
 	endG.setCart(x, y);
+	cout << "x: " << x << endl << "y: " << y << endl;
+	float num = endG1.getX() - ((endR1.getX() + x)*endG1.getY()/(endR1.getY() + y));
+	float den = ((endR1.getX() + x)*(endR1.getX() + x)/(endR1.getY() + y)) + (endR1.getY() + y);
+	float thetaG = asin(num/den)*180/3.14159;
+	cout << num << endl << den << endl;
+	cout << "Robot orientation: " << thetaG << endl;
 }
 
 
