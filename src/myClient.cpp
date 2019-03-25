@@ -5,6 +5,7 @@
 #include "incrementalLine.h"
 #include "notLine.h"
 #include <ctime>
+#include "endpoint.h"
 
 #define RAD2DEG(x) ((x)*180./M_PI)
 #define POLAR2XCART(x, y) ((x)*cos((y)*M_PI/180.)) //get the x component when given a distance and angle in degrees

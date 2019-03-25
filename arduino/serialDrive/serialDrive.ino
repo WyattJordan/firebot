@@ -65,6 +65,8 @@ void setup() {
   sDebug = true;
   writeBack = true;
   
+  //Serial.begin(9600);
+  //Serial.begin(38400);
   Serial.begin(115200);
   while (!Serial) {;} // wait for serial port to connect
 	blinkLED(3);
@@ -99,7 +101,7 @@ if(millis()-motortimestamp > 25 && !discon && setMotorsCount > 50){
 	analogWrite(rightDrivePin, 0);
 	discon = true;
 	
-}
+}//*/
   if(Serial.available()>0){
     char c = Serial.read();
     getBuff[getBuffPos++] = c;
@@ -178,8 +180,10 @@ void setMotors(){
 }
 
 void sendEncoders(){
-byte send[4] = {highByte(leftDuration), lowByte(leftDuration),
- highByte(rightDuration), lowByte(rightDuration)};
+int leftDuration2 = leftDuration; 
+int rightDuration2 = rightDuration;
+byte send[4] = {highByte(leftDuration2), lowByte(leftDuration2),
+ highByte(rightDuration2), lowByte(rightDuration2)};
 Serial.write(send,4);
 	/*Serial.write(highByte(leftDuration));
 	Serial.write(lowByte(leftDuration));
@@ -212,8 +216,6 @@ void blinkLED(int n){
 ////////////////////////////////////////////////////////////////
 void leftwheelSpeed()
 {
-zeroFlag = true;
-zeroStamp = millis();
   int Lstate = digitalRead(leftpinA);
   if((leftPinALast == LOW) && Lstate==HIGH)
   {
@@ -235,8 +237,6 @@ zeroStamp = millis();
 
 void rightwheelSpeed()
 {
-zeroFlag = true;
-zeroStamp = millis();
   int Rstate = digitalRead(rightpinA);
   if((rightPinALast == LOW) && Rstate==HIGH)
   {
