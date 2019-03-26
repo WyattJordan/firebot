@@ -54,27 +54,21 @@ void findLine(vector <float> xReal, vector <float> yReal){
 	//adjustable variables
 	//Best Vals
 	//pointThreshold:	 .02
-	//pointDistThresh:	 .4
 	float pointThreshold = 0.02;		//distance between the point and line threshold
 	float pointDistThresh = .0575;		//distance between point to point in a line (if it exceeds this threshold it will make a new line)
 
 	while (i < xReal.size()) {
 		for (i; i < xReal.size(); i++) {
 			if (i == scopeSize) {	//adding first point to a line
-				
 				tempLine.addPointEnd(xReal[i], yReal[i]);
-			//	cout << "Part 1 done" << endl;
 			}
 			else if (i == scopeSize +1){							//checking the second point
 				distToPoint = pt2PtDist(xReal[i], yReal[i], xReal[i-1], yReal[i-1]);	//checks the distance between the first and second point
-			//	cout << "Part 2 start" << endl;
 				if(distToPoint < pointDistThresh){					//if they are close enough, add second point to line
-			//		cout << "Part 2 true" << endl;
 					tempLine.addPointEnd(xReal[i], yReal[i]);
 					tempLine.setFloats();
 				}
 				else{									//otherwise send to 'not line' array
-			//		cout << "Part 2 false" << endl;
 					if(myLines.size() == 0){
 						tempLine.setFloats();
 						tempLine.setGood(false);
@@ -83,7 +77,6 @@ void findLine(vector <float> xReal, vector <float> yReal){
 					}
 					else{
 						if(myLines[myLines.size() - 1].isGoodLine()){	//checks to see if there needs to be a new group of bad points
-			//				cout << "Part 2 false a." << endl;
 							tempLine.setFloats();
 							tempLine.setGood(false);
 							myLines.push_back(tempLine);
@@ -94,38 +87,23 @@ void findLine(vector <float> xReal, vector <float> yReal){
 							myLines[myLines.size()-1].setFloats();
 						}
 					}
-
-						
 					scopeSize = i;							//saves where it breaks for the next loop
 					distToPoint = 0;
 					twoPointLine = true;
 					break;
 				}
-			//	cout << "Part 2 done" << endl;
 			}
-
-
-			
 			else if (i < scopeSize + 11) {							//checking the third point
-
-				
 				distToPoint = pt2PtDist(xReal[i], yReal[i], xReal[i-1], yReal[i-1]);
 				distToLine = tempLine.findDist(xReal[i], yReal[i]);
-			//	cout << "Check 1" << endl;
-			//	cout << distToLine << distToPoint << pointThreshold << pointDistThresh << endl;
-
 				if ((distToLine < pointThreshold)&&(distToPoint < pointDistThresh)) {	//checking the point to the line model
-			//		cout << "Check 2" << endl;
 					tempLine.addPointEnd(xReal[i], yReal[i]);
 					tempLine.setFloats();
 					if(i == scopeSize + 10){
 						myLines.push_back(tempLine);				//adds the line to a vector of lines
 					}
-			//		cout << "Check 3" << endl;
 				}
 				else {									//the point does not fit the line model
-			//		cout << "Testing..." << endl;
-			//		cout << myLines.size() << endl;
 					if (myLines.size() == 0) {
 						tempLine.setFloats();
 						tempLine.setGood(false);
@@ -134,83 +112,30 @@ void findLine(vector <float> xReal, vector <float> yReal){
 					}
 					else{
 						if (myLines[myLines.size()-2].isGoodLine()){
-			//				cout << "Check 7" << endl;
 							tempLine.setFloats();
 							tempLine.setGood(false);
 							myLines.push_back(tempLine);
 							tempLine.clearLine();
-			//				cout << "Check 8" << endl;
-						
                                         	}
                                         	else{
-			//				cout << "Check 9" << endl;
                                         		myLines[myLines.size() - 1].mergeLines(tempLine);
                                         		myLines[myLines.size() - 1].setFloats();
-			//				cout << "Check 10" << endl;
 						}
 					}
-
-
 					scopeSize = i;							//saves where it breaks for the next loop
 					break;
-
 				}
-			//	cout << "Part 3 done" << endl;
 			}
-			/*
-			else if (i < scopeSize + 11) {							//checks points 4-10
-                              	cout << "Ch1" << endl;
-			      	distToPoint = pt2PtDist(xReal[i], yReal[i], xReal[i-1], yReal[i-1]);
-                                distToLine = myLines[myLines.size()-1].findDist(xReal[i], yReal[i]);
-
-                                if ((distToLine < pointThreshold)&&(distToPoint <pointDistThresh)) {	//checking point to line model
-					cout << "Ch2" << endl;
-					myLines[myLines.size()-1].addPointEnd(xReal[i], yReal[i]);	 //adding point to line
-					myLines[myLines.size()-1].setFloats();
-                                }
-                                else {									//point did not match the line model
-					cout << "Ch3" << endl;
-					if ((myLines[myLines.size()-2].isGoodLine())||(myLines.size()==0)){
-						cout << "Ch4" << endl;
-                                        	myLines[myLines.size()-1].setFloats();
-						myLines[myLines.size()-1].setGood(false);
-                                        }
-                                        else{
-						cout << "Ch5" << endl;
-				       		myLines[myLines.size() - 2].mergeLines(myLines[myLines.size()-1]);
-                                        	cout << "Ch6" << endl;
-						myLines[myLines.size() - 2].setFloats();
-						cout << "Ch7" << endl;
-						myLines[myLines.size() - 1].clearLine();
-						cout << "Ch8" << endl;
-						myLines.erase(myLines.begin() + myLines.size() -1);
-						cout << "Ch9" << endl;
-					}
-
-
-                                        scopeSize = i;
-                                        break;
-                                }
-				cout << "Part 4 done" << endl;
-			}
-			*/
-
-
 			else {										//goes through points 11 through maxPoint
-			//	cout << "New Test" << endl;
 				myLines[myLines.size()-1].setGood(true);
 				distToPoint = pt2PtDist(xReal[i], yReal[i], xReal[i-1], yReal[i-1]);
 				distToLine = myLines[myLines.size()-1].findDist(xReal[i], yReal[i]);
-
-				//if the point is within 1 cm to the line, add the point, otherwise end the line
 				if (distToLine < pointThreshold) {
 					if(distToPoint <= pointDistThresh){
-
 						myLines[myLines.size()-1].addPointEnd(xReal[i], yReal[i]);
 						myLines[myLines.size()-1].setFloats();
 					}
 					else{
-						
 						scopeSize = i;
 						break;
 					}
@@ -283,6 +208,7 @@ void findLine(vector <float> xReal, vector <float> yReal){
                          	               myLines[myLines.size()-1].addPointEnd(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
 					       myLines[myLines.size()-1].setFloats();
                          	               myLines[j].clearPoint(g);
+					       myLines[j].setFloats();
                          	               g--;
                          	       }
                        		}
@@ -297,6 +223,7 @@ void findLine(vector <float> xReal, vector <float> yReal){
 						myLines[j-1].addPointEnd(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
 						myLines[j-1].setFloats();
 						myLines[j].clearPoint(g);
+						myLines[j].setFloats();
 						g--;
 					}
 				}
@@ -320,6 +247,7 @@ void findLine(vector <float> xReal, vector <float> yReal){
                                         	myLines[0].addPointStart(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
 						myLines[0].setFloats();
                                         	myLines[j].clearPoint(g);
+						myLines[j].setFloats();
 						g--;
                                 	}
                         	}
@@ -333,6 +261,7 @@ void findLine(vector <float> xReal, vector <float> yReal){
 						myLines[j+1].addPointStart(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
 						myLines[j+1].setFloats();
 						myLines[j].clearPoint(g);
+						myLines[j].setFloats();
 						g--;
 					}
 				}
@@ -409,6 +338,7 @@ void findLine(vector <float> xReal, vector <float> yReal){
                 	cout << endl << myLines[j].getLength() << endl << endl;
 		}
         }
+	cout << endl;
 
 	findRoom(myLines);
 
@@ -468,29 +398,35 @@ void findRoom(vector <line> lineVec){
 	int rm2 = 0;
 	int rm3 = 0;
 	int rm4 = 0;
-	bool room1 = false;
+	bool room1Pt1 = false;
+	bool room1Pt2 = false;
 	bool room2 = false;
 	bool room3 = false;
 	bool room4 = false;
 	bool shouldBreak = false;
 	vector <float> myLength;
 	for(int i = 0; i < lineVec.size(); i++){
-		myLength.push_back(lineVec[i].getLength());
+		if(lineVec[i].isGoodLine()){
+			myLength.push_back(lineVec[i].getLength());
+			cout << lineVec[i].getLength() << endl;
+		}
 	}
+	
 	for(int i = 0; i < myLength.size(); i++){
-		if((myLength[i] <.54) && (myLength[i] > .44)){
+		if((myLength[i] <.51) && (myLength[i] > .41)){
 			rm1++;
+			room1Pt1 = true;
 		}
 		if((myLength[i] < .81) && (myLength[i] > .71)){
 			rm1++;
+			room1Pt2 = true;
 		}
-
 		if((myLength[i] < 1.08) && (myLength[i] > .98)){
 			rm2++;
 		}
 		if((myLength[i] < .62) && (myLength[i] > .52)){
 			rm2++;
-			/*
+	//	/*	
 			endpoint temp;
 			temp.setCart(lineVec[i].getEndPtX1(), lineVec[i].getEndPtY1());
 			endpoint temp2;
@@ -500,17 +436,15 @@ void findRoom(vector <line> lineVec){
 			temp3.setCart(.72, .46);
 			temp4.setCart(myLength[i] + .72, .46);
 			findStartLocation(temp, temp2, temp3, temp4);
-*/
+	//	*/
 
 		}
-
 		if((myLength[i] < .31) && (myLength[i] > .21)){
 			rm3++;
 		}
 		if((myLength[i] < .77) && (myLength[i] > .67)){
 			rm3++;
 		}
-
 		if((myLength[i] < .79) && (myLength[i] > .69)){
 		       rm4++;
 		}
@@ -526,7 +460,7 @@ void findRoom(vector <line> lineVec){
 	cout << "room 3 counter: " << rm3 << endl;
 	cout << "room 4 counter: " << rm4 << endl;
 
-	if(room1){
+	if((room1Pt1)&&(room1Pt2)){
 		cout << endl << endl << "This is room 1" << endl << endl;
 	}
 	else if(room2){
@@ -566,8 +500,8 @@ void findStartLocation(endpoint endR1, endpoint endR2, endpoint endG1, endpoint 
 	float yl = endR1.getY() + y;
 	float a = endG1.getX();
 	float b = endG1.getY();
-	float num = a - (xl*b/yl);
-	float den = yl + (xl*xl/yl);
+	float num = b  - (yl*a/xl);
+	float den = xl + (yl*yl);
 	float thetaG = asin(num/den)*180/3.14159;
 	cout << num << endl << den << endl;
 	cout << "Robot orientation: " << thetaG << endl;
