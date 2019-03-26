@@ -103,4 +103,5 @@ class Robot{
 		float toRad(float deg);
 		void testDistToStop();
 		void moveInSquare();
+		void msleep(int t);
 };

@@ -3,7 +3,6 @@
 
 const byte leftpinA = 2;//A pin -> the interrupt pin 2
 const byte leftpinB = 4;//B pin -> the digital pin 4
-
 const byte rightpinA = 3;//A pin -> the interrupt pin 3
 const byte rightpinB = 5;//B pin -> the digital pin 5
 
@@ -15,22 +14,19 @@ const byte rightDrivePin = 11;
 byte leftPinALast;
 int leftDuration;//the number of the pulses
 boolean leftDirection;//the rotation direction
-
 byte rightPinALast;
 int rightDuration;//the number of the pulses
 boolean rightDirection;//the rotation direction
 
 unsigned char lPWM, rPWM, lPWM2, rPWM2;
-boolean lforward, rforward, lforward2, rforward2, zeroFlag;
-long zeroStamp;
-boolean sDebug, Error, writeBack, outputEverything;
+boolean lforward, rforward, zeroFlag;
+long disconStamp;
 
-char      msg [100]; 
 char  getBuff [100]; 
 unsigned int getBuffPos;
 int code;
 
-float time1, time2, motortimestamp, enctimestamp;
+float time1, motortimestamp, enctimestamp;
 bool ledState, discon;
 int setMotorsCount, encCount;
 
@@ -47,7 +43,7 @@ void setup() {
   attachInterrupt(0, leftwheelSpeed, CHANGE);//int.0 (pin2)
   attachInterrupt(1, rightwheelSpeed,CHANGE);//int.1 (pin3)
   zeroFlag = false;
-  zeroStamp = millis();
+  disconStamp = millis();
   
   // drive
   lPWM = rPWM = 0; // stopped
@@ -61,12 +57,6 @@ void setup() {
   digitalWrite(leftDirPin, HIGH);
   digitalWrite(rightDirPin, HIGH);  
 
-  Error = outputEverything = false;
-  sDebug = true;
-  writeBack = true;
-  
-  //Serial.begin(9600);
-  //Serial.begin(38400);
   Serial.begin(115200);
   while (!Serial) {;} // wait for serial port to connect
 	blinkLED(3);
@@ -74,11 +64,11 @@ void setup() {
   getBuffPos = 0;
   code = 0;
   time1 = 0;
-ledState = false;
-	motortimestamp = millis();
-	enctimestamp = millis();
-	setMotorsCount = encCount = 0;
-discon = false;
+  ledState = false;
+  motortimestamp = millis();
+  enctimestamp = millis();
+  setMotorsCount = encCount = 0;
+  discon = false;
 }
 
 const int num_codes = 4;
@@ -97,19 +87,24 @@ void loop() {
 if(millis()-motortimestamp > 25 && !discon && setMotorsCount > 50){
 	digitalWrite(LED_BUILTIN, HIGH);
 	getBuffPos = 0;
-	analogWrite(leftDrivePin,  0);
-	analogWrite(rightDrivePin, 0);
+	analogWrite(leftDrivePin,  lPWM2);
+	analogWrite(rightDrivePin, rPWM2);
 	discon = true;
+	disconStamp = millis();
 	
 }//*/
-  if(Serial.available()>0){
+if(millis()-disconStamp > 500){      
+      digitalWrite(LED_BUILTIN, LOW);
+}
+
+ if(Serial.available()>0){
     char c = Serial.read();
     getBuff[getBuffPos++] = c;
 //	Serial.print("getBuffPos ="); Serial.println(getBuffPos);
 	// a 2-byte int code is sent before any data
 	if(getBuffPos == 2 ){
 	     code = (getBuff[1] << 8) | getBuff[0];
-	     if(!(code * -1 < num_codes) ) { // if a weird code is sent reset
+	     if(!(abs(code) < num_codes) ) { // if a weird code is sent reset
 			code = 0;
 			getBuffPos = 0;
 		}
@@ -141,19 +136,9 @@ if(millis()-motortimestamp > 25 && !discon && setMotorsCount > 50){
 */
     //Serial.print("doing");
   }
-  if(Error){
-    sprintf(msg, "lPWM = %d rPWM = %d --- lPWM2 = %d rPWM2 = %d\n",
-    lPWM,rPWM,lPWM2,rPWM2);
-    //Serial.print(msg);
-    Error = false;
-  }
-    
   if(zeroFlag){
       //digitalWrite(LED_BUILTIN, HIGH);
       zeroFlag = false;
-  }
-  if(millis()-zeroStamp > 500){      
-      ///digitalWrite(LED_BUILTIN, LOW);
   }
 } // end of main loop
 
@@ -170,6 +155,7 @@ void outputBuff(int len, bool asIntegers){
 void setMotors(){
 	//Serial.println("Ran set Motors with buff = ");
 	//outputBuff(4,true); 
+	lPWM2 = lPWM; rPWM2 = rPWM; // make backups in case of disconnect
 	digitalWrite(leftDirPin,  getBuff[2] == 'f' ? HIGH : LOW);
 	digitalWrite(rightDirPin, getBuff[4] == 'f' ? HIGH : LOW);
 	analogWrite(leftDrivePin,  getBuff[3]);
@@ -192,8 +178,8 @@ Serial.write(send,4);
 */
 	leftDuration = 0;
 	rightDuration = 0;
-	enctimestamp = millis();
-	encCount++;
+	//enctimestamp = millis(); // not being used currently
+	//encCount++;
 }
 
 void sendI2C(){

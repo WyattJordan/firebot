@@ -30,9 +30,9 @@ void Robot::mainLogic(){
 	navStack.push_back(nav_->getWayPoint(18));
 	navStack.push_back(nav_->getWayPoint(6));
 	navStack.push_back(nav_->getWayPoint(7));
-	navStack.push_back(nav_->getWayPoint(8));
-	pt2pt_ = true;
-	startNavStack_ = true;
+	navStack.push_back(nav_->getWayPoint(8));//*/
+	pt2pt_ = false;
+	executeNavStack();
 }
 
 Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constructor
@@ -40,7 +40,7 @@ Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constru
 	fudge_ = 0.949; // accounts for difference between right and left wheel
 	speed_ = 0;      // start stopped
 	runSpeed_ = 0.5; // set speed to run at for this competition
-	eStop_ = reversed_ = positionUpdated_ = pt2pt_ = startNavStack_ = false;
+	eStop_ = reversed_ = positionUpdated_ = pt2pt_ = false;
 	firstNav_ = facingFirst_ = true;
 	ramp_ = firstRamp_ = false;
 
@@ -83,13 +83,15 @@ void Robot::outputTime(clk::time_point t1, clk::time_point t2){
 // therefore if the point being navigated to is less than 12.5 + 6.44 use 0.2 speed
 void Robot::executeNavStack(){
 	// TODO - update pose to next point when LIDAR updates position
-	// This will not run unless you set startNavStack_ to true!!
 
-	if(startNavStack_ && navStack.size()>0){
+	// pt2pt runs at 0.2 speed and stops at every waypoint in navStack
+	// otherwise faces first point then runs at 0.5 speed with rounding
+	while(navStack.size()>0){
 		float dist = distToNextPoint();
 		if(firstNav_){ // if starting to navigate!
 			firstNav_ = false;
 			speed_ = 0; // make sure we are starting from a stationary position
+			//ramp_ = false; // MIGHT NEED THIS
 
 			// if the robot is already at the first point (within threshold)
 			if(dist < WayPointStartThreshold){ // 2cm, everthing within this accuracy
@@ -103,49 +105,59 @@ void Robot::executeNavStack(){
 			facingFirst_ = true; // wait for first turn
 		}
 		else if(facingFirst_){ // turning to face first point
-			//cout<<"says something I'm giving up on you\n";
 			float error = abs(odomWorldLoc_(2)*180.0/PI - setPose_);
-			//cout<<"error is: "<<error<<"\n";
-			if(error < SamePoseThreshDeg ||
-					ab(adj_) < 0.1){ // PID has finished turning, no more adj needed
+			//ramp_ = false; // ramp is running for some reason here....
+			//cout<<"error is: "<<error<<" at speed "<<speed_<<"\n";
+			if(error < SamePoseThreshDeg || ab(adj_) < 0.1){ // PID has finished turning, no more adj needed
 				cout<<"done facing first\n";
 				facingFirst_ = false;
 				float s = dist < MinDistFor50 || pt2pt_ ? 0.2 : 0.5; // if it's very close use 20%
+				cout<<"ramping speed up to "<<s<<"\n";
 				setRamp(s, 0.5); // start driving to next point
 			}
 		}
+
 		else if(navStack.size() == 1 || pt2pt_){ // slowing down as approaching final point
-			//cout<<"here but why?\n";
 			if( (ab(ab(speed_) - 0.5) < 0.05 && dist < StopDist50) ||
 			    (ab(ab(speed_) - 0.2) < 0.05 && dist < StopDist20)){
 				setRamp(0, 0.5);
+				msleep(500);
 				cout<<"Popping marker "<<navStack.front().getID()<<" because arrived at loc\n";
 				navStack.pop_front();
-				firstNav_ = true; // this is either the first point or a pt2pt nav so reset 
-				cout<<"reached final point in navStack!\n";
+				firstNav_ = true; // this is either the last point or a pt2pt nav so reset 
 			}
 		}
 		else if(navStack.size()>1){ // fluid 90deg turns assumes running at 0.5 speed (!pt2pt_)
-			//cout<<"here2 but why?\n";
 			float poseToNext = getPoseToPoint(navStack.front()); 
 			float poseAfterTurn = getPoseToPoint(navStack.front(), &navStack.at(1));
-			float turnDiff = ab(poseToNext - poseAfterTurn); // amount it will need to turn
-			if(ab(setPose_ - poseToNext) < SamePoseThreshDeg){
+			float turnDiff = poseAfterTurn - poseToNext; // amount it will need to turn
+			if(turnDiff < -180) turnDiff += 360;
+			if(turnDiff > 180) turnDiff += 360;
+			turnDiff = ab(turnDiff);
+
+			if(turnDiff < SamePoseThreshDeg){ 
 				cout<<"Popping marker "<<navStack.front().getID()<<" because same angle\n";
+				cout<<"setPose = "<<setPose_<<" and poseToNext = "<<poseToNext<<"\n";
 				navStack.pop_front();
 			}
 			else if(positionUpdated_){
 				// TODO - recalculate Pose to be used based on new position and wayPoint
-				setPose_ = poseToNext; 
+				cout<<"POSITION UPDATED AND POSE RECALCULATED!!!\n";
+				// recalculate in case updates between poseToNext being made and this line
+				float poseToNextJustInCase = getPoseToPoint(navStack.front()); 
+				setPose_ = poseToNextJustInCase; 
 			}
 			else if(dist < StartBigTurnDist50 && turnDiff > 70){ // if large turn start early
 				// TODO - calculate next pose (usually factor of 90) and set it
 				setPose_ = poseAfterTurn;	
-				cout<<"Popping marker "<<navStack.front().getID()<<" because turning\n";
+				cout<<"BIG turning to pose: "<<poseAfterTurn<<"\n";
+				cout<<"Popping marker "<<navStack.front().getID()<<" because BIG turning\n";
 				navStack.pop_front();
 			}
 			else if(dist < StartSmallTurnDist50){
 				setPose_ = poseAfterTurn;	
+				cout<<"Popping marker "<<navStack.front().getID()<<" because SMALL turning\n";
+				navStack.pop_front();
 			}
 		}
 	}
@@ -166,12 +178,18 @@ float Robot::distToNextPoint(){
 }
 
 
-// returns in Degrees!
+// returns in Degrees from 0-360!
 float Robot::getPoseToPoint(EndPoint pt, EndPoint* pt2){
-	float x = pt2 == NULL ? odomWorldLoc_(0) : pt2->getx();
-	float y = pt2 == NULL ? odomWorldLoc_(1) : pt2->gety();
-	pt.calcPolar(x,y); // find polar with robot as origin
-	float t = pt.getTheta();
+	float t;
+	if(pt2 == NULL){
+		pt.calcPolar(odomWorldLoc_(0),odomWorldLoc_(1)); // find polar with robot as origin
+		t = pt.getTheta();
+	}
+	else{ // get angle to pt2 with pt as the origin
+		pt2->calcPolar(pt.getx(),pt.gety()); // find polar with robot as origin
+		t = pt2->getTheta();
+
+	}
 	
 	// TODO after getting stack nav working uncomment this to reverse bot when needed
 /*	if(ab(setPose_ - t) > 90){ // if the turn is > 90 reverse the bot
@@ -185,7 +203,7 @@ float Robot::getPoseToPoint(EndPoint pt, EndPoint* pt2){
 		reversed_ = !reversed_; 
 	}*/
 
-	return pt.getTheta();
+	return t;
 }
 
 // This is the main thread that runs and controls the 'bot the mainLogic
@@ -220,7 +238,7 @@ void Robot::driveLoop(){
 		auto t2 = stc::steady_clock::now(); // measure length of time remaining
 		calculateOdom(); 
 		rampUpSpeed();
-		executeNavStack();
+		//executeNavStack();
 		
 		if(runPID_){ // this should almost always be the one running
 			if(debugDrive_) cout<<"in pid, odomWorldLoc_ = "<<odomWorldLoc_(0)
@@ -392,6 +410,57 @@ void Robot::openSerial(){
 	
 }
 
+bool Robot::getSerialEncoders(){
+	int16_t mcode2[1] = {-2}; // cannot be from 0-255 (use negatives)
+	write(fd_, mcode2, 2); // Identify what info is coming next 
+
+	// normal method
+	usleep(delay_);
+	//usleep(5000);
+	unsigned char encs[4];
+	int code = read(fd_, encs, 4); // read 2 integers from the arduino
+	
+	// single char method	
+/*	unsigned char enc1[1];
+	unsigned char enc2[1];
+	unsigned char enc3[1];
+	unsigned char enc4[1];
+	int code = 0;
+
+	int del = 1000; // 1 ms delay
+	code += read(fd_, enc1, 1);
+	usleep(del);
+	code += read(fd_, enc2, 1);
+	usleep(del);
+	code += read(fd_, enc3, 1);
+	usleep(del);
+	code += read(fd_, enc4, 1);
+	usleep(del); //*/
+
+
+	if(code == 4){
+		if(!reversed_){
+			//lEnc_ = (enc1[0]<<8) | enc2[0]; // single chare method
+			//rEnc_ = (enc3[0]<<8) | enc4[0];
+			lEnc_ = (encs[0] << 8) | encs[1]; 
+			rEnc_ = (encs[2] << 8) | encs[3]; 
+		}
+		/*
+		else{ // when reversed swap which wheel is which and the direction read
+			cout<<"reversed problem in getSerialEncs\n";
+			rEnc_ = (encs[0] << 8) | encs[1]; 
+			lEnc_ = (encs[2] << 8) | encs[3]; 
+			rEnc_ *= -1;
+			lEnc_ *= -1;
+			}*/
+		return true;
+	}
+	cout<<"Could not read encs, code = "<<code<<"\n";
+	return false;
+	//if(lEnc_ != 0) cout<<"left enc is "<<lEnc_<<"\n";
+	//if(rEnc_ != 0) cout<<"right enc is "<<rEnc_<<"\n\n";
+}
+
 void Robot::setSerialMotors(){
 	if(eStop_){
 		lPWM_ = 0;
@@ -412,43 +481,19 @@ void Robot::setSerialArms(){
 	write(fd_, mdata, 5);
 }
 
-bool Robot::getSerialEncoders(){
-	int16_t mcode2[1] = {-2}; // cannot be from 0-255 (use negatives)
-	unsigned char encs[4];
-	write(fd_, mcode2, 2); // Identify what info is coming next 
-	usleep(delay_);
-	int code = read(fd_, encs, 4); // read 2 integers from the arduino
-	if(code == 4){
-		if(!reversed_){
-			lEnc_ = (encs[0] << 8) | encs[1]; 
-			rEnc_ = (encs[2] << 8) | encs[3]; 
-		}
-		else{ // when reversed swap which wheel is which and the direction read
-			rEnc_ = (encs[0] << 8) | encs[1]; 
-			lEnc_ = (encs[2] << 8) | encs[3]; 
-			rEnc_ *= -1;
-			lEnc_ *= -1;
-		}
-		return true;
-	}
-	cout<<"Could not read encs, code = "<<code<<"\n";
-	return false;
-	//if(lEnc_ != 0) cout<<"left enc is "<<lEnc_<<"\n";
-	//if(rEnc_ != 0) cout<<"right enc is "<<rEnc_<<"\n\n";
-}
 // ^^^^^^^^^^^^^^^^^^^^^^^ END SERIAL FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^
 
 void Robot::speed2power(float adj){ // note uses local adj not member
 	lDrive_ = speed_ - adj;
 	rDrive_ = speed_*fudge_ + adj;	
 	/*if(!reversed_){
-		lDrive_ = speed_ - adj;
-		rDrive_ = speed_*fudge_ + adj;	
-	}
-	else {
-		lDrive_ = (-1.0 * speed_) + adj;
-		rDrive_ = (-1.0 * speed_)*fudge_ - adj;	
-	}*/
+	  lDrive_ = speed_ - adj;
+	  rDrive_ = speed_*fudge_ + adj;	
+	  }
+	  else {
+	  lDrive_ = (-1.0 * speed_) + adj;
+	  rDrive_ = (-1.0 * speed_)*fudge_ - adj;	
+	  }*/
 	power2pwm();
 }
 
@@ -482,8 +527,8 @@ void Robot::rampUpSpeed(){
 		// if ramp has overshot or is very close to value
 		//cout<<"Ramping... rampInc_ = "<<rampInc_<<" speed = "<<speed_<<"\n";
 		if((rampSpeed_ == 0 && ab(speed_) < ab(rampInc_)) ||
-			(rampSpeed_ < 0 && speed_ < rampSpeed_) ||
-			(rampSpeed_ > 0 && speed_ > rampSpeed_)){
+				(rampSpeed_ < 0 && speed_ < rampSpeed_) ||
+				(rampSpeed_ > 0 && speed_ > rampSpeed_)){
 
 			speed_ = rampSpeed_;
 			ramp_ = false;
@@ -494,15 +539,15 @@ void Robot::rampUpSpeed(){
 
 
 float Robot::toRad(float deg){ return deg*PI2/360.0; }
-void msleep(int t){ usleep(1000*t); }
+void Robot::msleep(int t){ usleep(1000*t); }
 void Robot::setNav(Nav* nv){ nav_ = nv; }
 
 void Robot::testDistToStop(){
 	// Testing 90deg turn distance overshoot for setting StartTurnDist50 and StartTurnDist20
 	/*
-	odomWorldLoc_   << 0,0,0; // starting pose/position
-	eStop_ = false;
-	speed_ = 0;
+	   odomWorldLoc_   << 0,0,0; // starting pose/position
+	   eStop_ = false;
+	   speed_ = 0;
 
 	cout<<"set = "<<setPose_<<" P - "<<kp_<<" I - "<<ki_
 	<<" D - "<<kd_<<"\n"<<"speed = "<<speed_<<"adj = "<<adj_<<"\n\n";
