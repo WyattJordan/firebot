@@ -3,23 +3,43 @@
  * Controls drive motors and servo motors (interfaced through arduino).
  * PID loop for driving and odometry calculations.
  */
-
 #pragma once
 #include "ros/ros.h"
 #include "Nav.h"
 #include "pid.h"
+#include "Endpoint.h"
 #include "definitions.h"
+#include <dynamic_reconfigure/server.h>
 #include <firebot/ReconConfig.h>
-#include <Eigen/Core>
-#include <string>
-#include <chrono>
-#include <queue>
-#define stc std::chrono
-#define clk std::chrono::steady_clock
 
+#include <thread>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <wiringPi.h>
+#include <wiringPiI2C.h>
+
+#include <Eigen/Core>
+#include <chrono>
+#include <deque>
+
+// for serial
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <termios.h>
+
+using std::cout;
 using std::string;
-using std::queue;
+using std::deque;
 using namespace Eigen;
+
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+#define clk std::chrono::steady_clock
+#define stc std::chrono
+#define ab std::abs
+
 static void pabort(const char *s)
 {
 	perror(s);
@@ -60,8 +80,8 @@ class Robot{
 		int ms_; // ms delay between odom updates, fastest thread
 		int wayUpdateRate_, mapUpdateRate_, robUpdateRate_;
 		int delay_;
-		queue<EndPoint> navStack;
-		bool startNavStack_,facingFirst_, reversed_;
+		deque<EndPoint> navStack;
+		bool startNavStack_,facingFirst_, reversed_, positionUpdated_;
 
 		// odometry vars;
 		Matrix3f rob2world_;	// rotation matrix calculated given pose
@@ -71,8 +91,8 @@ class Robot{
 		void calculateOdom();
 		void setRamp(float s, float t);
 		void rampUpSpeed();
-		void executeNavStack();
-		float getPoseToPoint(EndPoint pt);
+		void executeNavStack(bool pt2pt=false);
+		float getPoseToPoint(EndPoint pt, EndPoint* pt2 = NULL);
 		void speed2power(float adj);
 		void power2pwm();
 

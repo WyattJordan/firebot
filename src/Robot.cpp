@@ -3,46 +3,10 @@
  */
 
 #include "Robot.h"
-#include "Nav.h"
-#include "Endpoint.h"
-#include "pid.h"
-#include "definitions.h"
-#include <Eigen/Core>
-#include <dynamic_reconfigure/server.h>
-#include <firebot/ReconConfig.h>
-
-#include <string>
-#include <iostream>
-#include <fstream>
-#include <wiringPi.h>
-#include <wiringPiI2C.h>
-
-//#include <boost/thread/thread.hpp>
-#include <thread>
-#include <chrono>
-
-// for serial
-#include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <termios.h>
-
-using std::string;
-using std::cout;
-using namespace Eigen;
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-#define clk std::chrono::steady_clock
-#define stc std::chrono
-#define ab std::abs
-
-void msleep(int t){
-	usleep(1000*t);
-}
 
 // check while navStack.size()>0 to wait while navigating
 void Robot::mainLogic(){
-	odomWorldLoc_   << 0,0,90.0*PI/180.0; // starting pose/position
+	//odomWorldLoc_   << 0,0,0; // starting pose/position
 	//odomWorldLoc_   << WheelDist, 23.5,0; // start at back left w/ steel block
 	//odomWorldLoc_   << 123,WheelDist,PI2/4; // start at center of back wall
 	eStop_ = false;
@@ -52,48 +16,19 @@ void Robot::mainLogic(){
 	cout<<"started PID while stopped speed = "<<speed_<<"\n";
 
 	//testDistToStop();
+	odomWorldLoc_   << 0,0,90.0*PI/180.0; // starting pose/position
 	runPID_ = true;
 	vector<int> tmp;
-	//EndPoint go(80+WheelDist, 89.5, -1, tmp); // to go from line crosses on stem basement
-	EndPoint go(12, 0, -1, tmp);
-	navStack.push(go);
-}
-
-void Robot::setRamp(float s, float t){
-	rampTime_ = t;
-	rampSpeed_ = s;
-	firstRamp_ = true;
-	ramp_ = true; 
-}
-
-void Robot::rampUpSpeed(){
-	if(ramp_){
-		if(firstRamp_){
-			rampInc_ = (rampSpeed_ - speed_) / (rampTime_ / (ms_ / 1000.0));
-			firstRamp_ = false;
-			cout<<"Starting ramp... rampInc_ = "<<rampInc_<<" speed = "<<speed_<<"\n";
-		}
-		speed_ = speed_ + rampInc_;
-		speed2power(0);
-		// if ramp has overshot or is very close to value
-		//cout<<"Ramping... rampInc_ = "<<rampInc_<<" speed = "<<speed_<<"\n";
-		if((rampSpeed_ == 0 && ab(speed_) < ab(rampInc_)) ||
-			(rampSpeed_ < 0 && speed_ < rampSpeed_) ||
-			(rampSpeed_ > 0 && speed_ > rampSpeed_)){
-
-			speed_ = rampSpeed_;
-			ramp_ = false;
-			cout<<"exiting ramp... speed = "<<speed_<<"\n";
-		}	
-	}
+	EndPoint go(80+WheelDist, 89.5, -1, tmp); // to go from line crosses on stem basement
+	navStack.push_back(go);
 }
 
 Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constructor
-	// default values
+	// defaults values
 	fudge_ = 0.949; // accounts for difference between right and left wheel
 	speed_ = 0;      // start stopped
 	runSpeed_ = 0.5; // set speed to run at for this competition
-	eStop_ = reversed_ = false;
+	eStop_ = reversed_ = positionUpdated_ = false;
 	ramp_ = firstRamp_ = false;
 
 	debugDrive_ = runPID_ = false;
@@ -133,7 +68,7 @@ void Robot::outputTime(clk::time_point t1, clk::time_point t2){
 // stopping distance from 0.5 speed in 1s is 22.5cm
 // acceleration distance from 0 to 0.5 in 0.5s is 6.44cm
 // therefore if the point being navigated to is less than 12.5 + 6.44 use 0.2 speed
-void Robot::executeNavStack(){
+void Robot::executeNavStack(bool pt2pt){
 	// TODO - update pose to next point when LIDAR updates position
 
 	if(navStack.size()>0){
@@ -144,7 +79,7 @@ void Robot::executeNavStack(){
 
 			// if the robot is already at the first point (within threshold)
 			if(dist < WayPointStartThreshold){ // 2cm, everthing within this accuracy
-				navStack.pop();
+				navStack.pop_front();
 			}
 			/*else{ // if too far away from first point start turning to face it
 			}*/
@@ -153,34 +88,41 @@ void Robot::executeNavStack(){
 			facingFirst_ = true; // wait for first turn
 		}
 		else if(facingFirst_){ // turning to face first point
-			if(ab(adj_) < 0.1){ // PID has finished turning, no adj needed
+			if(ab(adj_) < 0.1){ // PID has finished turning, no more adj needed
 				facingFirst_ = false;
-				float s = dist < MinDistFor50 ? 0.2 : 0.5;
+				float s = dist < MinDistFor50 ? 0.2 : 0.5; // if it's very close use 20%
 				setRamp(s, 0.5); // start driving to next point
 			}
 
 		}
 
-		else if(navStack.size() == 1){ // slowing down as approaching final point
+		else if(navStack.size() == 1 || pt2pt){ // slowing down as approaching final point
 			if( (ab(ab(speed_) - 0.5) < 0.05 && dist < StopDist50) ||
 			    (ab(ab(speed_) - 0.2) < 0.05 && dist < StopDist20)){
 				setRamp(0, 0.5);
-				navStack.pop();
+				cout<<"Popping marker "<<navStack.front().getID()<<" because arrived at loc\n";
+				navStack.pop_front();
+				if(pt2pt) startNavStack_ = true;
 				cout<<"reached final point in navStack!\n";
 			}
 		}
-		else if(navStack.size()>1){ // standard behavior while driving
-			cout<<"too big of nav stack!\n";
-			/*if(positionUpdated){
+		else if(navStack.size()>1){ // fluid 90deg turns assumes running at 0.5 speed (!pt2pt)
+			float poseToNext = getPoseToPoint(navStack.front()); 
+			if(ab(setPose_ - poseToNext) < SamePoseThreshDeg){
+				cout<<"Popping marker "<<navStack.front().getID()<<" because same angle\n";
+				navStack.pop_front();
+			}
+			else if(positionUpdated_){
 				// TODO - recalculate Pose to be used based on new position and wayPoint
+				setPose_ = poseToNext; 
 
 			}
-			if(dist < startTurnDist){
+			else if(dist < StartTurnDist50){
 				// TODO - calculate next pose (usually factor of 90) and set it
-			}*/
-
+				
+				cout<<"Popping marker "<<navStack.front().getID()<<" because turning\n";
+			}
 		}
-	
 	}
 	else if(navStack.size() == 0){ // done last navigation waiting to start again
 	   	startNavStack_ = true;
@@ -201,8 +143,12 @@ float Robot::distToNextPoint(){
 
 }
 
-float Robot::getPoseToPoint(EndPoint pt){
-	pt.getPolar(odomWorldLoc_(0),odomWorldLoc_(1)); // find polar with robot as origin
+
+// returns in Degrees!
+float Robot::getPoseToPoint(EndPoint pt, EndPoint* pt2){
+	float x = pt2 == NULL ? odomWorldLoc_(0) : pt2->getx();
+	float y = pt2 == NULL ? odomWorldLoc_(1) : pt2->gety();
+	pt.calcPolar(x,y); // find polar with robot as origin
 	float t = pt.getTheta();
 	
 	// TODO after getting stack nav working uncomment this to reverse bot when needed
@@ -383,6 +329,7 @@ void Robot::calculateTransform(float theta){
 					 sin(theta),  cos(theta);
 }
 
+// ^^^^^^^^^^^^^^^^^^^^^^^ START SERIAL FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^
 void Robot::openSerial(){
 	cout<<"opening USB connection \n";
 	//fd_ = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY); // read+write | not controlling term | ? 
@@ -466,6 +413,7 @@ bool Robot::getSerialEncoders(){
 	//if(lEnc_ != 0) cout<<"left enc is "<<lEnc_<<"\n";
 	//if(rEnc_ != 0) cout<<"right enc is "<<rEnc_<<"\n\n";
 }
+// ^^^^^^^^^^^^^^^^^^^^^^^ END SERIAL FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^
 
 void Robot::speed2power(float adj){ // note uses local adj not member
 	if(!reversed_){
@@ -490,17 +438,63 @@ void Robot::power2pwm(){
 	//if(debugDrive_) cout<<"lforward: "<<lForward_<<"  rforward: "<<rForward_<<"\n";
 }
 
-float Robot::toRad(float deg){
-	return deg*PI2/360.0;
+void Robot::setRamp(float s, float t){
+	rampTime_ = t;
+	rampSpeed_ = s;
+	firstRamp_ = true;
+	ramp_ = true; 
 }
 
+void Robot::rampUpSpeed(){
+	if(ramp_){
+		if(firstRamp_){
+			rampInc_ = (rampSpeed_ - speed_) / (rampTime_ / (ms_ / 1000.0));
+			firstRamp_ = false;
+			cout<<"Starting ramp... rampInc_ = "<<rampInc_<<" speed = "<<speed_<<"\n";
+		}
+		speed_ = speed_ + rampInc_;
+		speed2power(0);
+		// if ramp has overshot or is very close to value
+		//cout<<"Ramping... rampInc_ = "<<rampInc_<<" speed = "<<speed_<<"\n";
+		if((rampSpeed_ == 0 && ab(speed_) < ab(rampInc_)) ||
+			(rampSpeed_ < 0 && speed_ < rampSpeed_) ||
+			(rampSpeed_ > 0 && speed_ > rampSpeed_)){
+
+			speed_ = rampSpeed_;
+			ramp_ = false;
+			cout<<"exiting ramp... speed = "<<speed_<<"\n";
+		}	
+	}
+}
+
+
+float Robot::toRad(float deg){ return deg*PI2/360.0; }
+void msleep(int t){ usleep(1000*t); }
 void Robot::setNav(Nav* nv){ nav_ = nv; }
 
 void Robot::testDistToStop(){
+	// Testing 90deg turn distance overshoot for setting StartTurnDist50 and StartTurnDist20
+	/*
+	odomWorldLoc_   << 0,0,0; // starting pose/position
+	eStop_ = false;
+	speed_ = 0;
 
 	cout<<"set = "<<setPose_<<" P - "<<kp_<<" I - "<<ki_
 	<<" D - "<<kd_<<"\n"<<"speed = "<<speed_<<"adj = "<<adj_<<"\n\n";
+	reversed_ = false;
+	setRamp(0.5, 0.5); // slowly accelerate
+	runPID_ = true;
 
+	sleep(2);
+	Vector3f tmp = odomWorldLoc_;
+	setPose_ = -90;
+	msleep(800);
+	cout<<"diff is: "<<odomWorldLoc_ - tmp<<"\n";
+	speed_ = 0; */
+
+	// Testing to find MinDistFor50, StopDist50, and StopDist20
+	// Note: MinDist includes acceleration and decelleration distances
+/*	
 	reversed_ = false;
 	setRamp(0.2, 0.5); // slowly accelerate
 	runPID_ = true;
@@ -518,7 +512,7 @@ void Robot::testDistToStop(){
 	setRamp(0, 0.5);
 	while(speed_ !=0) {;}
 	cout<<"stopping distance = \n"<<odomWorldLoc_-after_acc<<"\n";
-	//cout<<"total distance = \n"<<odomWorldLoc_<<"\n";
+	//cout<<"total distance = \n"<<odomWorldLoc_<<"\n";*/
 }
 
 void Robot::moveInSquare(){

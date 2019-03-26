@@ -50,7 +50,7 @@ int EndPoint::getNeighborID(int neighI) const{
 	return neighborIDs[neighI];	
 }
 
-void EndPoint::getPolar(float Rx, float Ry){
+void EndPoint::calcPolar(float Rx, float Ry){
 	float diffx = x-Rx;
 	float diffy = y-Ry;
 	pp.R = pow(diffx*diffx + diffy*diffy, 0.5);

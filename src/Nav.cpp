@@ -126,7 +126,7 @@ void Nav::setBigRoomUpper(bool up){
 // the robot's location on the map
 void Nav::findExpected(float Rx, float Ry, vector<EndPoint> &pts){
 	for(EndPoint &ep : pts){
-		ep.getPolar(Rx, Ry); // calculate all polars
+		ep.calcPolar(Rx, Ry); // calculate all polars
 		ep.setDone(false);
 	}
 	std::sort(pts.begin(), pts.end(), 
