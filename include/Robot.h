@@ -81,7 +81,7 @@ class Robot{
 		int wayUpdateRate_, mapUpdateRate_, robUpdateRate_;
 		int delay_;
 		deque<EndPoint> navStack;
-		bool startNavStack_,facingFirst_, reversed_, positionUpdated_;
+		bool startNavStack_, firstNav_, facingFirst_, reversed_, positionUpdated_, pt2pt_;
 
 		// odometry vars;
 		Matrix3f rob2world_;	// rotation matrix calculated given pose
@@ -91,7 +91,7 @@ class Robot{
 		void calculateOdom();
 		void setRamp(float s, float t);
 		void rampUpSpeed();
-		void executeNavStack(bool pt2pt=false);
+		void executeNavStack();
 		float getPoseToPoint(EndPoint pt, EndPoint* pt2 = NULL);
 		void speed2power(float adj);
 		void power2pwm();

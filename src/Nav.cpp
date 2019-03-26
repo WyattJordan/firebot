@@ -273,6 +273,7 @@ void Nav::populateMarks(string which, string NS,
 		marks.markers[idx].color.b = 1; 
 		//sleep(1); rvizMap.publish(marks); //uncomment to see point growth from closest to robot
 	}
+	cout<<"done adding points for "<< which<<"\n";
 
 	// Now add the lines 
 	visualization_msgs::Marker mark;
@@ -299,6 +300,7 @@ void Nav::populateMarks(string which, string NS,
 
 		// loop through all the ith point's neighbors adding 	
 		// and then the main MarkerArray them to the LINE_STRIP
+		//cout<<"entering neghbor loop for the "<<i<<" time\n";
 		for(int k=0; k<(*pts)[i].getNumNeighbors(); k++){
 			
 			if(getNeighbor((*pts)[i].getID(), k, ep1, *pts) &&
@@ -309,7 +311,8 @@ void Nav::populateMarks(string which, string NS,
 				marks.markers.push_back(mark);	
 			}
 		}		
-		accountedForIDs[(*pts)[i].getID()] = true;
+//		accountedForIDs[(*pts)[i].getID()] = true; // this worked until adding waypoint w/ 4 neighs, not time to fix now
+		//cout<<"done neghbor loop for the "<<i<<" time\n";
 	}
 	if(which == "map") mapMarks_ = marks;
 	if(which == "way") wayMarks_ = marks;
@@ -467,6 +470,9 @@ void Nav::outputGraph(vector<EndPoint> &pts){
 	cout<<"////////////////////////////////////////////////////\n";
 }
 
+EndPoint Nav::getWayPoint(int id){
+	return getPoint(id, wayPoints_);
+}
 
 // gets a point given an ID, assumes in order initially then searches 
 EndPoint& Nav::getPoint(int id, vector<EndPoint> &pts){
@@ -545,7 +551,8 @@ void Nav::loadFiles(int lvl){
 		for(int i=0; i<7; i++) nums.erase(nums.begin()+0);
 	}
 
-	nums.resize(0);
+	// SAME THING FOR WAY FILE WITH SOME ADJUSTMENTS /////////////////////////////////////
+	nums.resize(0); // vector of comma delimited strings (all numbers, except for  terminating x char)
 	file.open(wayfile.c_str());
 	cout<<"outputting "<<wayfile<<"\n";
         if (file.is_open()){
@@ -556,16 +563,19 @@ void Nav::loadFiles(int lvl){
         }
 	else{ ROS_ERROR("WARNING: way file not found!\n"); }
 
-	while(nums.size()>=7){
+	while(nums.size()>=4){ // at least 4 fields for each, rest are neighbors
 		vector<int> temp;
 		// nums[3] is radius here unused 
-		if(nums[4].compare("x") != 0) temp.push_back(std::atof(nums[4].c_str())); 
-		if(nums[5].compare("x") != 0) temp.push_back(std::atof(nums[5].c_str())); 
-		if(nums[6].compare("x") != 0) temp.push_back(std::atof(nums[6].c_str())); 
+		int idx = 4;
+		int count = 0;
+		while(nums[idx].compare("x") != 0){
+			temp.push_back(std::atof(nums[idx++].c_str())); 
+			count++;
+		}
 		EndPoint tmp(std::atof(nums[0].c_str()), std::atof(nums[1].c_str()),
 		    std::atof(nums[3].c_str()),temp); // nums[2] is radius set to 10 constant
 		wayPoints_.push_back(tmp);
-		for(int i=0; i<7; i++) nums.erase(nums.begin()+0);
+		for(int i=0; i<5+count; i++) nums.erase(nums.begin()+0);
 	}
 }
 

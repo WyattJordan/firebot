@@ -41,6 +41,7 @@ int main(int argc, char **argv){
 	rob.setNav(&nav); // give the robot the nav object so they can chit chat
 	nav.makeMapMarks("marker_ns"); // make initial sets for publishing
 	nav.makeWayMarks("ways_ns");
+	//nav.outputWays();
 	//nav.setBigRoomUpper(big);
 	//nav.setSmallRoomUpper(small);
 	cout<<"made nav object and linked to rob\n";
@@ -60,7 +61,7 @@ int main(int argc, char **argv){
 		//sleep(1);
 	}
 	cout<<"\nGO!\n";
-	mainLogic = std::thread(boost::bind(&Robot::mainLogic, &rob));	
+	mainLogic = std::thread(boost::bind(&Robot::mainLogic, &rob));
 
 
 	ros::spin();

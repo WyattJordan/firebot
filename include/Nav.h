@@ -35,6 +35,7 @@ class Nav{
 
 		bool removePoint(int id, vector<EndPoint> &pts);
 		float getDistance(EndPoint &ep1, EndPoint &ep2);
+		EndPoint getWayPoint(int id);
 		EndPoint& getPoint(int id, vector<EndPoint> &pts);
 		EndPoint& getBadPoint();
 		

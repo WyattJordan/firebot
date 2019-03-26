@@ -16,11 +16,23 @@ void Robot::mainLogic(){
 	cout<<"started PID while stopped speed = "<<speed_<<"\n";
 
 	//testDistToStop();
-	odomWorldLoc_   << 0,0,90.0*PI/180.0; // starting pose/position
+	//odomWorldLoc_   << 0,0,90.0*PI/180.0; // starting at corner of STEM lines on floor 
+	odomWorldLoc_   << WheelDist, 34.5,0; // start at back left w/ steel block
 	runPID_ = true;
-	vector<int> tmp;
-	EndPoint go(80+WheelDist, 89.5, -1, tmp); // to go from line crosses on stem basement
-	navStack.push_back(go);
+/*	setPose_ = 5; // for testing PID to see min gains needed for certain accuracies
+	sleep(2);
+	cout<<"error is: "<<setPose_ - odomWorldLoc_(2)*180.0/PI<<"\n";
+*/
+	//EndPoint go1(80+WheelDist, 89.5, -1, tmp); // to go from line crosses on stem basement
+	navStack.push_back(nav_->getWayPoint(2));
+	navStack.push_back(nav_->getWayPoint(3));
+	navStack.push_back(nav_->getWayPoint(4));
+	navStack.push_back(nav_->getWayPoint(18));
+	navStack.push_back(nav_->getWayPoint(6));
+	navStack.push_back(nav_->getWayPoint(7));
+	navStack.push_back(nav_->getWayPoint(8));
+	pt2pt_ = true;
+	startNavStack_ = true;
 }
 
 Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constructor
@@ -28,7 +40,8 @@ Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constru
 	fudge_ = 0.949; // accounts for difference between right and left wheel
 	speed_ = 0;      // start stopped
 	runSpeed_ = 0.5; // set speed to run at for this competition
-	eStop_ = reversed_ = positionUpdated_ = false;
+	eStop_ = reversed_ = positionUpdated_ = pt2pt_ = startNavStack_ = false;
+	firstNav_ = facingFirst_ = true;
 	ramp_ = firstRamp_ = false;
 
 	debugDrive_ = runPID_ = false;
@@ -41,7 +54,7 @@ Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constru
 	power2pwm();
 	srand(time(NULL));
 	
-	max_ = 0.4; min_ = 0.001; kp_ = 1; kd_ = 0; ki_ = 0; // PID gains
+	max_ = 0.4; min_ = 0.001; kp_ = 2; kd_ = 0; ki_ = 0; // PID gains
 	posePID_.setVals(ms_, max_, min_, kp_, kd_, ki_) ;
 	wayCount_ = mapCount_ = robCount_ = debugCount_ = 0;
 
@@ -68,46 +81,55 @@ void Robot::outputTime(clk::time_point t1, clk::time_point t2){
 // stopping distance from 0.5 speed in 1s is 22.5cm
 // acceleration distance from 0 to 0.5 in 0.5s is 6.44cm
 // therefore if the point being navigated to is less than 12.5 + 6.44 use 0.2 speed
-void Robot::executeNavStack(bool pt2pt){
+void Robot::executeNavStack(){
 	// TODO - update pose to next point when LIDAR updates position
+	// This will not run unless you set startNavStack_ to true!!
 
-	if(navStack.size()>0){
+	if(startNavStack_ && navStack.size()>0){
 		float dist = distToNextPoint();
-		if(startNavStack_){ // if starting to navigate!
-			startNavStack_ = false;
+		if(firstNav_){ // if starting to navigate!
+			firstNav_ = false;
 			speed_ = 0; // make sure we are starting from a stationary position
 
 			// if the robot is already at the first point (within threshold)
 			if(dist < WayPointStartThreshold){ // 2cm, everthing within this accuracy
+				cout<<"removed starting point, too close\n";
 				navStack.pop_front();
 			}
-			/*else{ // if too far away from first point start turning to face it
-			}*/
 
+			// start turning to face first (or next closest) point
 			setPose_ = getPoseToPoint(navStack.front()); // 
+			cout<<"starting to face first with pose = "<<setPose_<<"\n";
 			facingFirst_ = true; // wait for first turn
 		}
 		else if(facingFirst_){ // turning to face first point
-			if(ab(adj_) < 0.1){ // PID has finished turning, no more adj needed
+			//cout<<"says something I'm giving up on you\n";
+			float error = abs(odomWorldLoc_(2)*180.0/PI - setPose_);
+			//cout<<"error is: "<<error<<"\n";
+			if(error < SamePoseThreshDeg ||
+					ab(adj_) < 0.1){ // PID has finished turning, no more adj needed
+				cout<<"done facing first\n";
 				facingFirst_ = false;
-				float s = dist < MinDistFor50 ? 0.2 : 0.5; // if it's very close use 20%
+				float s = dist < MinDistFor50 || pt2pt_ ? 0.2 : 0.5; // if it's very close use 20%
 				setRamp(s, 0.5); // start driving to next point
 			}
-
 		}
-
-		else if(navStack.size() == 1 || pt2pt){ // slowing down as approaching final point
+		else if(navStack.size() == 1 || pt2pt_){ // slowing down as approaching final point
+			//cout<<"here but why?\n";
 			if( (ab(ab(speed_) - 0.5) < 0.05 && dist < StopDist50) ||
 			    (ab(ab(speed_) - 0.2) < 0.05 && dist < StopDist20)){
 				setRamp(0, 0.5);
 				cout<<"Popping marker "<<navStack.front().getID()<<" because arrived at loc\n";
 				navStack.pop_front();
-				if(pt2pt) startNavStack_ = true;
+				firstNav_ = true; // this is either the first point or a pt2pt nav so reset 
 				cout<<"reached final point in navStack!\n";
 			}
 		}
-		else if(navStack.size()>1){ // fluid 90deg turns assumes running at 0.5 speed (!pt2pt)
+		else if(navStack.size()>1){ // fluid 90deg turns assumes running at 0.5 speed (!pt2pt_)
+			//cout<<"here2 but why?\n";
 			float poseToNext = getPoseToPoint(navStack.front()); 
+			float poseAfterTurn = getPoseToPoint(navStack.front(), &navStack.at(1));
+			float turnDiff = ab(poseToNext - poseAfterTurn); // amount it will need to turn
 			if(ab(setPose_ - poseToNext) < SamePoseThreshDeg){
 				cout<<"Popping marker "<<navStack.front().getID()<<" because same angle\n";
 				navStack.pop_front();
@@ -115,17 +137,17 @@ void Robot::executeNavStack(bool pt2pt){
 			else if(positionUpdated_){
 				// TODO - recalculate Pose to be used based on new position and wayPoint
 				setPose_ = poseToNext; 
-
 			}
-			else if(dist < StartTurnDist50){
+			else if(dist < StartBigTurnDist50 && turnDiff > 70){ // if large turn start early
 				// TODO - calculate next pose (usually factor of 90) and set it
-				
+				setPose_ = poseAfterTurn;	
 				cout<<"Popping marker "<<navStack.front().getID()<<" because turning\n";
+				navStack.pop_front();
+			}
+			else if(dist < StartSmallTurnDist50){
+				setPose_ = poseAfterTurn;	
 			}
 		}
-	}
-	else if(navStack.size() == 0){ // done last navigation waiting to start again
-	   	startNavStack_ = true;
 	}
 }
 
@@ -237,8 +259,8 @@ void Robot::driveLoop(){
 		//////// Rest in this loop is just timing and some outputs //////////
 		/////////////////////////////////////////////////////////////////////
 		int PID_time = stc::duration_cast <stc::milliseconds>(t7-t1).count();
-		if(PID_time > 14){
-			cout<<"PID took over 14ms\n";
+		if(PID_time > 80){
+			cout<<"Arduino reset inside PID!!!\n\n";
 			/*cout<<"PID takes "<<
 			stc::duration_cast <stc::milliseconds>(t7-t1).count()<<"ms and "<<
 			stc::duration_cast <stc::microseconds>(t7-t1).count()<< "us\n";
@@ -268,6 +290,7 @@ void Robot::driveLoop(){
 			stc::duration_cast <stc::microseconds>(end-start).count()<<
 			"us (hopefully) leftover\n";
 			cout<<"speed = "<<speed_<<"\n";
+			cout<<"debug says facingFirst_ = "<<facingFirst_<<"\n";
 		}
 	}
 }
@@ -416,14 +439,16 @@ bool Robot::getSerialEncoders(){
 // ^^^^^^^^^^^^^^^^^^^^^^^ END SERIAL FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^
 
 void Robot::speed2power(float adj){ // note uses local adj not member
-	if(!reversed_){
+	lDrive_ = speed_ - adj;
+	rDrive_ = speed_*fudge_ + adj;	
+	/*if(!reversed_){
 		lDrive_ = speed_ - adj;
 		rDrive_ = speed_*fudge_ + adj;	
 	}
 	else {
 		lDrive_ = (-1.0 * speed_) + adj;
 		rDrive_ = (-1.0 * speed_)*fudge_ - adj;	
-	}
+	}*/
 	power2pwm();
 }
 
