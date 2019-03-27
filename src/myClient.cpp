@@ -398,13 +398,42 @@ void findRoom(vector <line> lineVec){
 	int rm2 = 0;
 	int rm3 = 0;
 	int rm4 = 0;
+	float rat4 = 0;
+	int room4Count = 0;
+	int room4Short = 0;
+	int room4Long = 0;
 	bool room1Pt1 = false;
 	bool room1Pt2 = false;
 	bool room2 = false;
 	bool room3 = false;
 	bool room4 = false;
+	bool room4l = false;
+	bool room4s = false;
 	bool shouldBreak = false;
 	vector <float> myLength;
+	for(int i=0; i < lineVec.size(); i++){
+		for(int j=0; j < lineVec[i].lineSize(); j++){
+			if(lineVec[i].radDist(j) < .5){
+				room4Count++;
+			}
+			else if(lineVec[i].radDist(j) > 1.45){
+				room4Long++;
+			}
+		}
+	}
+	rat4 = room4Count*.0016949;
+	if(rat4 > .65){
+		if(room4Long > 5){
+			room4l = true;
+		}
+		else{
+			room4s = true;
+		}
+	}
+	
+	
+
+
 	for(int i = 0; i < lineVec.size(); i++){
 		if(lineVec[i].isGoodLine()){
 			myLength.push_back(lineVec[i].getLength());
@@ -459,6 +488,7 @@ void findRoom(vector <line> lineVec){
 	cout << "room 2 counter: " << rm2 << endl;
 	cout << "room 3 counter: " << rm3 << endl;
 	cout << "room 4 counter: " << rm4 << endl;
+	room1Pt1 = false;
 
 	if((room1Pt1)&&(room1Pt2)){
 		cout << endl << endl << "This is room 1" << endl << endl;
@@ -469,12 +499,16 @@ void findRoom(vector <line> lineVec){
 	else if(room3){
 		cout << endl << endl << "This is room 3" << endl << endl;
 	}
-	else if(room4){
-		cout << endl << endl << "This is room 4" << endl << endl;
+	else if(room4l){
+		cout << endl << endl << "This is room 4 toward the maze" << endl << endl;
+	}
+	else if(room4s){
+		cout << endl << endl << "This is room 4 toward the wall" << endl << endl;
 	}
 	else{
 		cout << endl << endl << "Did not find the starting location" << endl << endl;
 	}
+	cout << rat4 << room4Long << endl;
 }
 
 void findStartLocation(endpoint endR1, endpoint endR2, endpoint endG1, endpoint endG2){

@@ -52,6 +52,7 @@ public:
         float getLength();
         bool isCandle();
         bool isFurniture();
+	float radDist(int i);
 
 private:
         vector <float> x;

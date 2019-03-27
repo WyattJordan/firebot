@@ -205,3 +205,8 @@ bool line::isCandle(){
 bool line::isFurniture(){
         return furniture;
 }
+float line::radDist(int i){
+	float rad;
+        rad = pow(x[i]*x[i] + y[i]*y[i], 0.5);
+        return rad;
+}
