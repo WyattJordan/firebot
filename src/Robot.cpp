@@ -28,9 +28,16 @@ void Robot::mainLogic(){
 	navStack.push_back(nav_->getWayPoint(3));
 	navStack.push_back(nav_->getWayPoint(4));
 	navStack.push_back(nav_->getWayPoint(18));
+	navStack.push_back(nav_->getWayPoint(5));
+	navStack.push_back(nav_->getWayPoint(13));
+	navStack.push_back(nav_->getWayPoint(15));//*/
+	navStack.push_back(nav_->getWayPoint(16));//*/
+	navStack.push_back(nav_->getWayPoint(19));//*/
+	navStack.push_back(nav_->getWayPoint(4));//*/
+	navStack.push_back(nav_->getWayPoint(18));
 	navStack.push_back(nav_->getWayPoint(6));
 	navStack.push_back(nav_->getWayPoint(7));
-	navStack.push_back(nav_->getWayPoint(8));//*/
+	navStack.push_back(nav_->getWayPoint(8));
 	pt2pt_ = false;
 	executeNavStack();
 }
@@ -128,24 +135,27 @@ void Robot::executeNavStack(){
 			}
 		}
 		else if(navStack.size()>1){ // fluid 90deg turns assumes running at 0.5 speed (!pt2pt_)
-			float poseToNext = getPoseToPoint(navStack.front()); 
+			float poseToNextPoint = getPoseToPoint(navStack.front());  // basically the current pose
 			float poseAfterTurn = getPoseToPoint(navStack.front(), &navStack.at(1));
-			float turnDiff = poseAfterTurn - poseToNext; // amount it will need to turn
+			float turnDiff = poseAfterTurn - poseToNextPoint; // amount it will need to turn
 			if(turnDiff < -180) turnDiff += 360;
 			if(turnDiff > 180) turnDiff += 360;
 			turnDiff = ab(turnDiff);
 
 			if(turnDiff < SamePoseThreshDeg){ 
 				cout<<"Popping marker "<<navStack.front().getID()<<" because same angle\n";
-				cout<<"setPose = "<<setPose_<<" and poseToNext = "<<poseToNext<<"\n";
+				cout<<"poseToNextPoint = "<<poseToNextPoint<<" poseAfterTurn = "<<poseAfterTurn<<"\n";
+				cout<<"setPose = "<<setPose_<<" and poseToNextPoint = "<<poseToNextPoint<<" and turnDiff = "<<turnDiff<<"\n";
 				navStack.pop_front();
+				// if approaching waypoint at an angle and arriving close to it turnDiff could be low but pose needs to change
+				setPose_ = poseToNextPoint; 
 			}
 			else if(positionUpdated_){
 				// TODO - recalculate Pose to be used based on new position and wayPoint
 				cout<<"POSITION UPDATED AND POSE RECALCULATED!!!\n";
-				// recalculate in case updates between poseToNext being made and this line
-				float poseToNextJustInCase = getPoseToPoint(navStack.front()); 
-				setPose_ = poseToNextJustInCase; 
+				// recalculate in case updates between poseToNextPoint being made and this line
+				float poseToNextPointJustInCase = getPoseToPoint(navStack.front()); 
+				setPose_ = poseToNextPointJustInCase; 
 			}
 			else if(dist < StartBigTurnDist50 && turnDiff > 70){ // if large turn start early
 				// TODO - calculate next pose (usually factor of 90) and set it
