@@ -1,8 +1,12 @@
 #include "line.h"
-#include "myClient.h"
+#include "endpoint.h"
 #include <iostream>
 #include <vector>
 #include "math.h"
+
+float pt2PtDist2(float x1, float y1, float x2, float y2){
+	return pow(pow(x2-x1,2) + pow(y2-y1,2) ,0.5);
+}
 
 line::line(){
         slope = 0;
@@ -49,7 +53,7 @@ void line::setFloats() {
         slope = num / denum;
         intercept = yAvg - slope * xAvg;
         setEndpts(x[0], y[0], x[x.size()-1], y[y.size()-1]);
-        length = pt2PtDist(end1.getX(), end1.getY(), end2.getX(), end2.getY());
+        length = pt2PtDist2(end1.getX(), end1.getY(), end2.getX(), end2.getY());
         if ((length > 0.01)&&(length < 0.04)){
                 candle = true;
                 furniture = false;
@@ -157,7 +161,7 @@ void line::reverseLine(){
 void line::setEndpts(float x1, float y1, float x2, float y2){
         end1.setCart(x1, y1);
         end2.setCart(x2, y2);
-        lineDist = pt2PtDist(x1, y1, x2, y2);
+        lineDist = pt2PtDist2(x1, y1, x2, y2);
 }
 //it. getEndPt line
 float line::getEndPtX1(){
