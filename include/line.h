@@ -13,8 +13,9 @@ using namespace std;
 class line {
 public:
         line();
-        void setFloats();
+        void setFloats(float xP, float yP);
         //least squared fit
+	void setFloatsRev(float xP, float yP);
         float getSlope();
         //returns slope
         float getIntercept();
@@ -67,6 +68,12 @@ private:
         bool candle;
         bool furniture;
         float distBetPts = 6*3.14159*180/590;
+	float xAvg;
+	float yAvg;
+	float xSum;
+	float ySum;
+	float num;
+	float denum;
 };
 
 #endif

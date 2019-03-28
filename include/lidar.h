@@ -26,7 +26,7 @@ using namespace std;
 class Lidar{
 	public:
 		float pt2PtDist(float x1, float y1, float x2, float y2);
-		void findLine(vector <float> xReal, vector <float> yReal);
+		vector<line> findLine(vector <float> xReal, vector <float> yReal);
 		bool canMerge(line a, line b);
 		float myAngle(float x, float y);
 		float myRad(float x, float y);

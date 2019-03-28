@@ -19,7 +19,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 	for(int i = 0; i < count; i++) {
 		float degree = RAD2DEG(scan->angle_min + scan->angle_increment * i);
 	//	ROS_INFO(": [%f, %f]", degree, scan->ranges[i]);
-		if ((isinf(scan->ranges[i]) == 0)&&(scan->ranges[i] < 1.80)){
+		if ((isinf(scan->ranges[i]) == 0)&&(scan->ranges[i] < 1.80)&&(scan->ranges[i] > 0.16)){
 			xVal.push_back(POLAR2XCART(scan->ranges[i], degree));
 			yVal.push_back(POLAR2YCART(scan->ranges[i], degree));
 		}
@@ -37,7 +37,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 }
 
 
-void Lidar::findLine(vector <float> xReal, vector <float> yReal){
+vector<line> Lidar::findLine(vector <float> xReal, vector <float> yReal){
 	vector <line> myLines;
 	line tempLine;
 	tempLine.setGood(false);
@@ -63,18 +63,18 @@ void Lidar::findLine(vector <float> xReal, vector <float> yReal){
 				distToPoint = pt2PtDist(xReal[i], yReal[i], xReal[i-1], yReal[i-1]);	//checks the distance between the first and second point
 				if(distToPoint < pointDistThresh){					//if they are close enough, add second point to line
 					tempLine.addPointEnd(xReal[i], yReal[i]);
-					tempLine.setFloats();
+					tempLine.setFloats(xReal[i], yReal[i]);
 				}
 				else{									//otherwise send to 'not line' array
 					if(myLines.size() == 0){ // if no lines have been made yet
-						tempLine.setFloats();
+						tempLine.setFloats(xReal[i], yReal[i]);
 						tempLine.setGood(false);
 						myLines.push_back(tempLine);
 						tempLine.clearLine();
 					}
 					else{ // other lines already exist
 						if(myLines[myLines.size() - 1].isGoodLine()){	//checks to see if there needs to be a new group of bad points
-							tempLine.setFloats();
+							tempLine.setFloats(xReal[i], yReal[i]);
 							tempLine.setGood(false);
 							myLines.push_back(tempLine);
 							tempLine.clearLine();
@@ -82,7 +82,7 @@ void Lidar::findLine(vector <float> xReal, vector <float> yReal){
 						else{ 
 							if(tempLine.lineSize() == 1) { cout<<"Oh no...\n";}
 							myLines[myLines.size()-1].mergeLines(tempLine);
-							myLines[myLines.size()-1].setFloats();
+							myLines[myLines.size()-1].setFloats(xReal[i], yReal[i]);
 						}
 					}
 					scopeSize = i;							//saves where it breaks for the next loop
@@ -97,28 +97,28 @@ void Lidar::findLine(vector <float> xReal, vector <float> yReal){
 				distToLine = tempLine.findDist(xReal[i], yReal[i]);
 				if ((distToLine < pointThreshold)&&(distToPoint < pointDistThresh)) {	//checking the point to the line model
 					tempLine.addPointEnd(xReal[i], yReal[i]);
-					tempLine.setFloats();
+					tempLine.setFloats(xReal[i], yReal[i]);
 					if(i == scopeSize + 10){
 						myLines.push_back(tempLine);				//adds the line to a vector of lines
 					}
 				}
 				else {									//the point does not fit the line model
 					if (myLines.size() == 0) {
-						tempLine.setFloats();
+						tempLine.setFloats(xReal[i], yReal[i]);
 						tempLine.setGood(false);
 						myLines.push_back(tempLine);
 						tempLine.clearLine();
 					}
 					else{
 						if (myLines[myLines.size()-2].isGoodLine()){
-							tempLine.setFloats();
+							tempLine.setFloats(xReal[i], yReal[i]);
 							tempLine.setGood(false);
 							myLines.push_back(tempLine);
 							tempLine.clearLine();
                                         	}
                                         	else{
                                         		myLines[myLines.size() - 1].mergeLines(tempLine);
-                                        		myLines[myLines.size() - 1].setFloats();
+                                        		myLines[myLines.size() - 1].setFloats(xReal[i], yReal[i]);
 						}
 					}
 					scopeSize = i;							//saves where it breaks for the next loop
@@ -133,7 +133,7 @@ void Lidar::findLine(vector <float> xReal, vector <float> yReal){
 				if (distToLine < pointThreshold) {
 					if(distToPoint <= pointDistThresh){
 						myLines[myLines.size()-1].addPointEnd(xReal[i], yReal[i]);
-						myLines[myLines.size()-1].setFloats();
+						myLines[myLines.size()-1].setFloats(xReal[i], yReal[i]);
 					}
 					else{
 						scopeSize = i;
@@ -154,61 +154,23 @@ void Lidar::findLine(vector <float> xReal, vector <float> yReal){
 	cout << "Lines have been made" << endl;
 
 
-//        cout << "real lines before fake lines are added" << endl;
         int numFake = 0;
         int numReal = 0;
-  /*      
-	for (int j = 0; j < myLines.size(); j++) {
-		if(myLines[j].isCandle()){
-			cout << endl << "This is a candle" << endl;
-		}
-		else if(myLines[j].isFurniture()){
-			cout << endl << "This is furniture" << endl;
-		}
-                if(myLines[j].isGoodLine()){
-                        numReal++;
-                        float ang1, ang2, rad1, rad2;
-                        ang1 = myLines[j].endPAngle(1);
-                        ang2 = myLines[j].endPAngle(2);
-                        rad1 = myLines[j].endPRad(1);
-                        rad2 = myLines[j].endPRad(2);
-                        cout << endl << "Line: " << numReal << " size: " << myLines[j].lineSize();
-                        cout <<" Slope: " << myLines[j].getSlope() << " Intercept: " << myLines[j].getIntercept();
-                        cout << " Endpoints: (" << myLines[j].getEndPtX1() << ", " << myLines[j].getEndPtY1();
-                        cout << ") Angle: " << ang1;
-                        cout << " Distance: " << rad1 << endl;
-                        cout << "          (" << myLines[j].getEndPtX2() << ", " << myLines[j].getEndPtY2();
-                        cout << ") Angle:" <<  ang2;
-                        cout << " Distance: " << rad2 << endl;
-                        cout << "Point distance: " << pt2PtDist(myLines[j].getEndPtX1(),myLines[j].getEndPtY1(), myLines[j].getEndPtX2(), myLines[j].getEndPtY2()) << endl;
-                	myLines[j].printLine();
-		}
-                else{
-                        //stopped here
-                        //need to fix print, change fakelines to mylines, fix iterator
-                        numFake++;
-                        cout << endl << "fake line " << numFake << endl;
-                        myLines[j].printLine();
-                        cout << endl << myLines[j].getLength() << endl << endl;
-                }
-        }
-	*/
 	cout << endl << endl;
 
 	for(int j = 0; j < myLines.size(); j++){
 		if(myLines[j].isGoodLine()==false){
 			//check before and after the fake line
 			if(j == 0){
-			//	cout << "Test 1" << endl;
 				for(int g =0; g < myLines[j].lineSize(); g++){
                          	       distToLine = myLines[myLines.size()-1].findDist(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
                          	       distToPoint = pt2PtDist(myLines[j].getXPoint(g), myLines[j].getYPoint(g), myLines[myLines.size()-1].getEndPtX2(),myLines[myLines.size()-1].getEndPtY2());
                          	       if((distToLine < pointThreshold)&&(distToPoint < pointDistThresh)){
                          	               //add the point to the line and delete it from the fake line
                          	               myLines[myLines.size()-1].addPointEnd(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
-					       myLines[myLines.size()-1].setFloats();
+					       myLines[myLines.size()-1].setFloats(myLines[i].getXPoint(g), myLines[j].getYPoint(g));
                          	               myLines[j].clearPoint(g);
-					       myLines[j].setFloats();
+					       myLines[j].setFloatsRev(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
                          	               g--;
                          	       }
                        		}
@@ -221,9 +183,9 @@ void Lidar::findLine(vector <float> xReal, vector <float> yReal){
 					if((distToLine < pointThreshold)&&(distToPoint < pointDistThresh)){
 						//add the point to the line and delete it from the fake line
 						myLines[j-1].addPointEnd(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
-						myLines[j-1].setFloats();
+						myLines[j-1].setFloats(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
 						myLines[j].clearPoint(g);
-						myLines[j].setFloats();
+						myLines[j].setFloatsRev(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
 						g--;
 					}
 				}
@@ -245,9 +207,9 @@ void Lidar::findLine(vector <float> xReal, vector <float> yReal){
                                 	distToPoint = pt2PtDist(myLines[j].getXPoint(g), myLines[j].getYPoint(g), myLines[0].getEndPtX1(), myLines[0].getEndPtY1());
                                 	if((distToLine < pointThreshold)&&(distToPoint < pointDistThresh)){
                                         	myLines[0].addPointStart(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
-						myLines[0].setFloats();
+						myLines[0].setFloats(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
                                         	myLines[j].clearPoint(g);
-						myLines[j].setFloats();
+						myLines[j].setFloatsRev(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
 						g--;
                                 	}
                         	}
@@ -259,9 +221,9 @@ void Lidar::findLine(vector <float> xReal, vector <float> yReal){
 					distToPoint = pt2PtDist(myLines[j].getXPoint(g), myLines[j].getYPoint(g), myLines[j+1].getEndPtX1(), myLines[j+1].getEndPtY1());
 					if((distToLine < pointThreshold)&&(distToPoint < pointDistThresh)){
 						myLines[j+1].addPointStart(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
-						myLines[j+1].setFloats();
+						myLines[j+1].setFloats(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
 						myLines[j].clearPoint(g);
-						myLines[j].setFloats();
+						myLines[j].setFloatsRev(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
 						g--;
 					}
 				}
@@ -282,14 +244,12 @@ void Lidar::findLine(vector <float> xReal, vector <float> yReal){
 				//	cout << "Lines merged" << endl;
 					if((g == myLines.size()-1)&&(h == 0)){
 						myLines[g].mergeLines(myLines[h]);
-						myLines[g].setFloats();
 						myLines.erase(myLines.begin());
 						g--;
 						h--;
 					}
 					else{
                                         	myLines[h].mergeLines(myLines[g]);
-                                        	myLines[h].setFloats();
 				//		cout << "new slope: " << myLines[h].getSlope() << endl;
                                         	myLines.erase(myLines.begin() + g);
                                         	g--;
@@ -338,15 +298,11 @@ void Lidar::findLine(vector <float> xReal, vector <float> yReal){
                 	cout << endl << myLines[j].getLength() << endl << endl;
 		}
         }
-	cout << endl;
-
-	findRoom(myLines);
-
-        cout << endl;
 
 
 //	cout<<"Lines made\n";
 	float distToEnd = 0;
+	return myLines;
 };
 
 //it. canMerge
@@ -565,14 +521,13 @@ void Lidar::findStartLocation(endpoint endR1, endpoint endR2, endpoint endG1, en
 	float y = endG1.getY() + length1*cos(theta3);
 	endG.setCart(x, y);
 	cout << "x: " << x << endl << "y: " << y << endl;
-	float xl = endR1.getX() + x;
-	float yl = endR1.getY() + y;
-	float a = endG1.getX();
-	float b = endG1.getY();
-	float num = b  - (yl*a/xl);
-	float den = xl + (yl*yl);
-	float thetaG = asin(num/den)*180/3.14159;
-	cout << num << endl << den << endl;
+
+	float xAng = endG1.getX() - x;
+	float yAng = endG1.getY() - y;
+	float thetaG = atan2(yAng, xAng)*180/3.14159 - endR1.findAngle();
+
+
+	cout << xAng << endl << yAng << endl;
 	cout << "Robot orientation: " << thetaG << endl;
 }
 
