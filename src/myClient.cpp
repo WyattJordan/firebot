@@ -54,7 +54,7 @@ void findLine(vector <float> xReal, vector <float> yReal){
 	//adjustable variables
 	//Best Vals
 	//pointThreshold:	 .02
-	float pointThreshold = 0.02;		//distance between the point and line threshold
+	float pointThreshold = 0.025;		//distance between the point and line threshold
 	float pointDistThresh = .0575;		//distance between point to point in a line (if it exceeds this threshold it will make a new line)
 
 	while (i < xReal.size()) {
@@ -398,12 +398,16 @@ void findRoom(vector <line> lineVec){
 	int rm2 = 0;
 	int rm3 = 0;
 	int rm4 = 0;
+	float ratMult = 0.0016949;
+	float rat23 = 0;
 	float rat4 = 0;
+	float maxDist = 0;
+	int room23Count = 0;
 	int room4Count = 0;
 	int room4Short = 0;
 	int room4Long = 0;
-	bool room1Pt1 = false;
-	bool room1Pt2 = false;
+	bool room1a = false;
+	bool room1b = false;
 	bool room2 = false;
 	bool room3 = false;
 	bool room4 = false;
@@ -413,17 +417,17 @@ void findRoom(vector <line> lineVec){
 	vector <float> myLength;
 	for(int i=0; i < lineVec.size(); i++){
 		for(int j=0; j < lineVec[i].lineSize(); j++){
-			if(lineVec[i].radDist(j) < .5){
+			if(lineVec[i].radDist(j) < .45){
 				room4Count++;
 			}
-			else if(lineVec[i].radDist(j) > 1.45){
+			else if(lineVec[i].radDist(j) > 1.35){
 				room4Long++;
 			}
 		}
 	}
-	rat4 = room4Count*.0016949;
+	rat4 = room4Count*ratMult;
 	if(rat4 > .65){
-		if(room4Long > 5){
+		if(room4Long > 3){
 			room4l = true;
 		}
 		else{
@@ -431,31 +435,42 @@ void findRoom(vector <line> lineVec){
 		}
 	}
 	
-	
+	for(int i=0; i<lineVec.size(); i++){
+		for(int j=0; j < lineVec[i].lineSize(); j++){
+			if(lineVec[i].radDist(j) > maxDist){
+				maxDist = lineVec[i].radDist(j);
+			}
+			if(lineVec[i].radDist(j) < .7){
+				room23Count++;
+			}
+		}
+	}	
+	rat23 = room23Count*ratMult;
 
+	if(rat23 > .7){
+		for(int i = 0; i < lineVec.size(); i++){
+				myLength.push_back(lineVec[i].getLength());
+		}
 
-	for(int i = 0; i < lineVec.size(); i++){
-		if(lineVec[i].isGoodLine()){
-			myLength.push_back(lineVec[i].getLength());
-			cout << lineVec[i].getLength() << endl;
+		for(int i=0; i<myLength.size(); i++){
+			if(lineVec[i].findDist(0,0) < .65){
+				if((myLength[i] < 1.35) && (myLength[i] > 1.24)){
+					rm3++;
+				}
+				if((myLength[i] < 0.31) && (myLength[i] > 0.23)){
+					rm3++;
+				}
+			}			
+		}
+		cout << endl << endl;
+		if(rm2 > rm3){
+			room2 = true;
+		}
+		else {
+			room3 = true;
 		}
 	}
-	
-	for(int i = 0; i < myLength.size(); i++){
-		if((myLength[i] <.51) && (myLength[i] > .41)){
-			rm1++;
-			room1Pt1 = true;
-		}
-		if((myLength[i] < .81) && (myLength[i] > .71)){
-			rm1++;
-			room1Pt2 = true;
-		}
-		if((myLength[i] < 1.08) && (myLength[i] > .98)){
-			rm2++;
-		}
-		if((myLength[i] < .62) && (myLength[i] > .52)){
-			rm2++;
-	//	/*	
+		/*	
 			endpoint temp;
 			temp.setCart(lineVec[i].getEndPtX1(), lineVec[i].getEndPtY1());
 			endpoint temp2;
@@ -465,50 +480,73 @@ void findRoom(vector <line> lineVec){
 			temp3.setCart(.72, .46);
 			temp4.setCart(myLength[i] + .72, .46);
 			findStartLocation(temp, temp2, temp3, temp4);
-	//	*/
-
+		*/
+	if((!room4l) && (!room4s) && (room2) && (!room3)){
+		for(int i=0; i < lineVec.size(); i++){
+			for(int j=0; j < lineVec[i].lineSize(); j++){
+				if((lineVec[i].radDist(j) < 1.5) && (lineVec[i].radDist(j) > 1)){
+					rm1++;
+				}
+			}
 		}
-		if((myLength[i] < .31) && (myLength[i] > .21)){
-			rm3++;
-		}
-		if((myLength[i] < .77) && (myLength[i] > .67)){
-			rm3++;
-		}
-		if((myLength[i] < .79) && (myLength[i] > .69)){
-		       rm4++;
-		}
- 		if((myLength[i] < .56) && (myLength[i] > .46)){
-			rm4++;
-		}
-		if((myLength[i] < .33) && (myLength[i] > .23)){
-			rm4++;
-		}
+		if(rm1 > 47) {room1b = true;}
+		else {room1a = true;}
 	}
-	cout << "room 1 counter: " << rm1 << endl;
-	cout << "room 2 counter: " << rm2 << endl;
-	cout << "room 3 counter: " << rm3 << endl;
-	cout << "room 4 counter: " << rm4 << endl;
-	room1Pt1 = false;
-
-	if((room1Pt1)&&(room1Pt2)){
-		cout << endl << endl << "This is room 1" << endl << endl;
-	}
-	else if(room2){
-		cout << endl << endl << "This is room 2" << endl << endl;
-	}
-	else if(room3){
-		cout << endl << endl << "This is room 3" << endl << endl;
-	}
-	else if(room4l){
+	if(room4l){
 		cout << endl << endl << "This is room 4 toward the maze" << endl << endl;
+		for(int i = 0; i < lineVec.size(); i++){
+			if((myLength[i] > 0.24) && (myLength[i] < .3)){
+				cout << "Gotcha, bitch!" << endl;
+			}
+			else if((myLength[i] > 0.68) && (myLength[i] < 0.74)){
+				cout << "Gotcha again, bitch!" << endl;
+			}
+		}
 	}
 	else if(room4s){
 		cout << endl << endl << "This is room 4 toward the wall" << endl << endl;
+		for(int i = 0; i < lineVec.size(); i++){
+			if((myLength[i] > 0.24) && (myLength[i] < .3)){
+				cout << "Gotcha, bitch!" << endl;
+			}
+			else if((myLength[i] > 0.68) && (myLength[i] < 0.74)){
+				cout << "Gotcha again, bitch!" << endl;
+			}
+		}
+	}
+	else if(room2){
+		cout << endl << endl << "This is room 2" << endl << endl;
+		for(int i = 0; i < lineVec.size(); i++){
+                        if((myLength[i] > 0.95) && (myLength[i] < 1.08)){
+                                cout << "Gotcha, bitch!" << endl;
+                        }
+                        else if((myLength[i] > 0.50) && (myLength[i] < 0.64)){
+                                cout << "Gotcha again, bitch!" << endl;
+                        }
+                }
+	}
+	else if(room3){
+		cout << endl << endl << "This is room 3" << endl << endl;
+		for(int i = 0; i < lineVec.size(); i++){
+                        if((myLength[i] > 1.2) && (myLength[i] < 1.37)){
+                                cout << "Gotcha, bitch!" << endl;
+                        }
+                        else if((myLength[i] > 0.23) && (myLength[i] < 0.31)){
+                                cout << "Gotcha again, bitch!" << endl;
+                        }
+                }
+	}
+	else if(room1a){
+		cout << endl << endl << "This is room 1 maze side" << endl << endl;
+	}
+	else if(room1b){
+		cout << endl << endl << "This is room 1 wall side" << endl << endl;
 	}
 	else{
 		cout << endl << endl << "Did not find the starting location" << endl << endl;
 	}
-	cout << rat4 << room4Long << endl;
+	cout << rat4 << endl << rat23 << endl;
+	cout << "room 1 counter: " << rm1 << endl;
 }
 
 void findStartLocation(endpoint endR1, endpoint endR2, endpoint endG1, endpoint endG2){
