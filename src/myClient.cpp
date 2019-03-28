@@ -1,7 +1,7 @@
 
 #include "ros/ros.h"
-#include "lidar.h"
 #include "sensor_msgs/LaserScan.h"
+#include "lidar.h"
 #include "math.h"
 #include "line.h"
 #include "endpoint.h"
@@ -15,7 +15,7 @@ int main(int argc, char **argv)
 
 	Lidar lid;
 
-//	ros::Subscriber sub = n.subscribe<sensor_msgs::LaserScan>("/scan", 1000, scanCallback);
+	ros::Subscriber sub = n.subscribe<sensor_msgs::LaserScan>("/scan", 1000, &Lidar::scanCallback, &lid);
 
 	ros::spin();
 
