@@ -15,4 +15,5 @@
 #define PI2	  6.28319
 #define PI	  3.14159 
 
+#define ab std::abs
 

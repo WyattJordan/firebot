@@ -33,7 +33,7 @@ int main(int argc, char **argv){
 	cout<<"made nav object and linked to rob\n";
 	
 	// Create and link lidar class
-	Lidar lid;
+	Lidar lid(&rob);
 	ros::Subscriber sub = n.subscribe<sensor_msgs::LaserScan>("/scan", 1000, &Lidar::scanCallback, &lid);
 
 

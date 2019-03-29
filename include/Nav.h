@@ -22,7 +22,7 @@ class Nav{
 		Nav(); // don't use
 		Nav(int lvl, ros::Publisher *pub); // read map and way from file given level
 
-		void setOdomLoc(Vector3f &od);	 // rob obj sends data over
+		void setOdomLoc(Vector3f od);	 // rob obj sends data over
 		void setSmallRoomUpper(bool up); // reconfigure the rooms
 		void setBigRoomUpper(bool up);   // "
 
@@ -51,7 +51,7 @@ class Nav{
 
 		visualization_msgs::MarkerArray mapMarks_, wayMarks_, robMarks_;// for rviz
 		ros::Publisher *markerPub_; 	// publisher for all MarkerArrays
-		Vector3f navOdomCpy_;		// copy of loc in world frame from odom data
+		Vector3f odomWorldLocCpy_;		// copy of loc in world frame from Robot, READ ONLY
 
 		void loadFiles(int lvl); // get data from config files
 		void initRobotMarks();   // sets type, ns, frame, color

@@ -379,7 +379,7 @@ void Robot::periodicOutput(){
 		wayCount_ = 0;
 	}
 	if(robUpdateRate_ > 0 && robCount_ >= 1000 / (ms_ * robUpdateRate_)){
-		nav_->setOdomLoc(odomWorldLoc_); // give the Nav class the odom loc
+		nav_->setOdomLoc(odomWorldLoc_);
 		nav_->pubRob_ = true;
 		robCount_ = 0;
 	}
@@ -587,6 +587,7 @@ void Robot::rampUpSpeed(){
 float Robot::toRad(float deg){ return deg*PI2/360.0; }
 void Robot::msleep(int t){ usleep(1000*t); }
 void Robot::setNav(Nav* nv){ nav_ = nv; }
+Vector3f Robot::getOdomWorlLoc(){return odomWorldLoc_;};
 
 void Robot::testDistToStop(){
 	// Testing 90deg turn distance overshoot for setting StartTurnDist50 and StartTurnDist20
