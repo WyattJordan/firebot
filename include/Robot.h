@@ -40,6 +40,16 @@ using namespace Eigen;
 #define stc std::chrono
 #define ab std::abs
 
+#define sw1Pin  4
+#define sw2Pin 21
+#define sw3Pin 23
+#define blueLEDPin 7
+#define redLEDPin 22
+#define greenLEDPin 3
+#define IR1Pin 29
+#define IR2Pin 25
+
+
 static void pabort(const char *s)
 {
 	perror(s);
@@ -54,6 +64,7 @@ class Robot{
 		void driveLoop();
 		void recon(firebot::ReconConfig &config, uint32_t level);
 		void lidarCallback(); // runs everytime a new lidar scan comes in
+		void pinThread();
 		void openSerial();
 		void setSerialMotors();
 		bool getSerialEncoders();

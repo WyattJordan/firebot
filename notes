@@ -1,0 +1,4 @@
+Switching USB for LIDAR / Arduino
+	1. Change in rplidar.launch
+	2. Change in node.cpp
+	3. Change in Robot.cpp

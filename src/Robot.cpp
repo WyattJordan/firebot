@@ -4,6 +4,32 @@
 
 #include "Robot.h"
 
+void Robot::pinThread(){
+	bool sw1, sw2, sw3;
+	bool sw = false;
+	while(1){
+		/*sw1 = digitalRead(sw1Pin);
+		sw2 = digitalRead(sw2Pin);
+		sw3 = digitalRead(sw3Pin);
+		digitalWrite(blueLEDPin, sw1 ? HIGH : LOW);
+		digitalWrite(redLEDPin,  sw2 ? HIGH : LOW);
+		digitalWrite(greenLEDPin,sw3 ? HIGH : LOW);*/
+		digitalWrite(blueLEDPin, sw ? HIGH : LOW);
+		digitalWrite(redLEDPin,  sw ? HIGH : LOW);
+		digitalWrite(greenLEDPin,sw ? HIGH : LOW);
+		sw = !sw;
+
+
+		//cout<<"sw1 = "<<sw1<<" sw2 = "<<sw2<<" sw3 = "<<sw3<<"\n";
+		int ir1 = analogRead(IR1Pin);
+		int ir2 = analogRead(IR2Pin);
+		cout<<"ir1 = "<<ir1<<" ir2 = "<<ir2<<" sw = "<<sw<<"\n";
+
+		usleep(1000*400);
+	}
+}
+
+
 // check while navStack.size()>0 to wait while navigating
 void Robot::mainLogic(){
 	//odomWorldLoc_   << 0,0,0; // starting pose/position
@@ -75,6 +101,16 @@ Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constru
 	//odomWorldLoc_   << 123,WheelDist,PI2/4; // start at center of back wall
 
 	wiringPiSetup();
+	pinMode(blueLEDPin, OUTPUT);
+	pinMode(redLEDPin, OUTPUT);
+	pinMode(greenLEDPin, OUTPUT);
+
+	pinMode(sw1Pin, INPUT);
+	pinMode(sw2Pin, INPUT);
+	pinMode(sw3Pin, INPUT);
+	pinMode(IR1Pin, INPUT);
+	pinMode(IR2Pin, INPUT);
+	
 	openSerial();
 } 
 
@@ -383,7 +419,7 @@ void Robot::calculateTransform(float theta){
 // ^^^^^^^^^^^^^^^^^^^^^^^ START SERIAL FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^
 void Robot::openSerial(){
 	cout<<"opening USB connection \n";
-	//fd_ = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY); // read+write | not controlling term | ? 
+	//fd_ = open("/dev/??", O_RDWR | O_NOCTTY | O_NDELAY); // read+write | not controlling term | ? 
 	fd_ = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY); // read+write | not controlling term 
 
 	perror("open_port: /dev/ttyUSB0 - ");

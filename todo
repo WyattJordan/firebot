@@ -1,4 +1,7 @@
 On this computer:
+	Determine pre-emptive turn distance
+		make sure less than dist between 5 and 6 waypts
+	
 	PID tuning - make it go in a rectangle accurately
 
 	Thread Planning

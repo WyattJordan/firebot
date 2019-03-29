@@ -1,3 +1,4 @@
+
 cmake_minimum_required(VERSION 2.8.3)
 project(firebot)
 
@@ -11,7 +12,7 @@ add_compile_options(-std=c++11)
 
 set(RPLIDAR_SDK_PATH "./sdk/")
 
-FILE(GLOB RPLIDAR_SDK_SRC 
+FILE(GLOB RPLIDAR_SDK_SRC
   "${RPLIDAR_SDK_PATH}/src/arch/linux/*.cpp"
   "${RPLIDAR_SDK_PATH}/src/hal/*.cpp"
   "${RPLIDAR_SDK_PATH}/src/*.cpp"
@@ -19,7 +20,7 @@ FILE(GLOB RPLIDAR_SDK_SRC
 
 
 add_custom_command(
-	OUTPUT . 
+	OUTPUT .
 	WORKING_DIR .
  	COMMAND ctags -R)
 ## Compile as C++11, supported in ROS Kinetic and newer
@@ -188,11 +189,11 @@ target_link_libraries(launcher ${catkin_LIBRARIES})
 target_link_libraries(launcher wiringPi)
 
 
-# Stuff for LIDAR
-add_executable(rplidarNode src/node.cpp src/endpoint.cpp ${RPLIDAR_SDK_SRC})
+#Stuff for LIDAR
+add_executable(rplidarNode src/node.cpp ${RPLIDAR_SDK_SRC})
 target_link_libraries(rplidarNode ${catkin_LIBRARIES})
 
-add_executable(rplidarNodeClient src/myClient.cpp)
+add_executable(rplidarNodeClient src/myClient.cpp src/lidar.cpp src/line.cpp src/endpoint.cpp)
 target_link_libraries(rplidarNodeClient ${catkin_LIBRARIES})
 
 install(TARGETS rplidarNode rplidarNodeClient
