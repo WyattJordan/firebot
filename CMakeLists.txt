@@ -188,6 +188,12 @@ add_dependencies(launcher ${PROJECT_NAME}_gencfg)
 target_link_libraries(launcher ${catkin_LIBRARIES})
 target_link_libraries(launcher wiringPi)
 
+add_executable(everything src/everything.cpp src/Robot.cpp src/Endpoint.cpp src/Nav.cpp src/pid.cpp src/lidar.cpp src/endpoint.cpp src/line.cpp)
+#target_compile_options(launcher PRIVATE -lwiringPi -lcrypt -lm -lrt)
+add_dependencies(everything ${PROJECT_NAME}_gencfg)
+target_link_libraries(everything ${catkin_LIBRARIES})
+target_link_libraries(everything wiringPi)
+
 
 #Stuff for LIDAR
 add_executable(rplidarNode src/node.cpp ${RPLIDAR_SDK_SRC})
