@@ -424,12 +424,12 @@ void Lidar::findRoom(vector <line> lineVec){
 		}
 	}
 		/*	
-			endpoint temp;
+			refpoint temp;
 			temp.setCart(lineVec[i].getEndPtX1(), lineVec[i].getEndPtY1());
-			endpoint temp2;
+			refpoint temp2;
 			temp2.setCart(lineVec[i].getEndPtX2(), lineVec[i].getEndPtY2());
-			endpoint temp3;
-			endpoint temp4;
+			refpoint temp3;
+			refpoint temp4;
 			temp3.setCart(.72, .46);
 			temp4.setCart(myLength[i] + .72, .46);
 			findStartLocation(temp, temp2, temp3, temp4);
@@ -502,8 +502,8 @@ void Lidar::findRoom(vector <line> lineVec){
 	cout << "room 1 counter: " << rm1 << endl;
 }
 
-void Lidar::findStartLocation(endpoint endR1, endpoint endR2, endpoint endG1, endpoint endG2){
-	endpoint endG;
+void Lidar::findStartLocation(refpoint endR1, refpoint endR2, refpoint endG1, refpoint endG2){
+	refpoint endG;
 	float length0 = pt2PtDist(endR1.getX(), endR1.getY(), endR2.getX(), endR2.getY());
 	float length1 = endR1.findRad();
 	float length2 = endR2.findRad();
