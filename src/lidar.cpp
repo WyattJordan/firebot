@@ -1,7 +1,7 @@
 #include "lidar.h"
 
 float Lidar::pt2PtDist(float x1, float y1, float x2, float y2){
-	return pow(pow(x2-x1,2) + pow(y2-y1,2) ,0.5);
+	return pow(pow(x2-x1,2) + pow(y2-y1,2) ,50);
 }
 
 
@@ -19,7 +19,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 	for(int i = 0; i < count; i++) {
 		float degree = RAD2DEG(scan->angle_min + scan->angle_increment * i);
 	//	ROS_INFO(": [%f, %f]", degree, scan->ranges[i]);
-		if ((isinf(scan->ranges[i]) == 0)&&(scan->ranges[i] < 1.80)&&(scan->ranges[i] > 0.16)){
+		if ((isinf(scan->ranges[i]) == 0)&&(scan->ranges[i] < 180)&&(scan->ranges[i] > 18)){
 			xVal.push_back(POLAR2XCART(scan->ranges[i], degree));
 			yVal.push_back(POLAR2YCART(scan->ranges[i], degree));
 		}
@@ -50,8 +50,8 @@ vector<line> Lidar::findLine(vector <float> xReal, vector <float> yReal){
 	//adjustable variables
 	//Best Vals
 	//pointThreshold:	 .02
-	float pointThreshold = 0.025;		//distance between the point and line threshold
-	float pointDistThresh = .0575;		//distance between point to point in a line (if it exceeds this threshold it will make a new line)
+	float pointThreshold = 2.5;		//distance between the point and line threshold
+	float pointDistThresh = 5.75;		//distance between point to point in a line (if it exceeds this threshold it will make a new line)
 
 	while (i < xReal.size()) {
 		for (i; i < xReal.size(); i++) {
@@ -80,7 +80,6 @@ vector<line> Lidar::findLine(vector <float> xReal, vector <float> yReal){
 							tempLine.clearLine();
 						}
 						else{ 
-							if(tempLine.lineSize() == 1) { cout<<"Oh no...\n";}
 							myLines[myLines.size()-1].mergeLines(tempLine);
 							myLines[myLines.size()-1].setFloats();
 						}
@@ -153,10 +152,47 @@ vector<line> Lidar::findLine(vector <float> xReal, vector <float> yReal){
 
 	cout << "Lines have been made" << endl;
 
+	for(int j = 0; j<myLines.size(); j++){
+		if(j == myLines.size()-1){
+			float xEnd2 = myLines[j].getEndPtX2();                                                                                                      
+                        float yEnd2 = myLines[j].getEndPtY2();                                                                                                      
+                        float xPrev = myLines[j].getXPoint(myLines[j].lineSize()-2);                                                                                
+                        float yPrev = myLines[j].getYPoint(myLines[j].lineSize()-2);                                                                                
+                        float xEnd1 = myLines[0].getEndPtX1();                                                                                                    
+                        float yEnd1 = myLines[0].getEndPtY1();
+			float endPt2PrevPt=pt2PtDist(xEnd2, yEnd2, xPrev, yPrev);
+                        float endPt2NextPt = pt2PtDist(xEnd2, yEnd2, xEnd1, yEnd1);
+                        if(endPt2NextPt < endPt2PrevPt){
+                                myLines[0].addPointStart(xEnd2, yEnd2);
+				myLines[j].clearPoint(myLines[j].lineSize() - 1);
+				myLines[0].setFloats();
+				myLines[j].setFloats();
+			}
+
+		}
+		else{
+			float xEnd2 = myLines[j].getEndPtX2();
+			float yEnd2 = myLines[j].getEndPtY2();
+			float xPrev = myLines[j].getXPoint(myLines[j].lineSize()-2);
+			float yPrev = myLines[j].getYPoint(myLines[j].lineSize()-2);
+			float xEnd1 = myLines[j+1].getEndPtX1();
+			float yEnd1 = myLines[j+1].getEndPtY1();
+			float endPt2PrevPt=pt2PtDist(xEnd2, yEnd2, xPrev, yPrev);
+			float endPt2NextPt = pt2PtDist(xEnd2, yEnd2, xEnd1, yEnd1);
+			if(endPt2NextPt < endPt2PrevPt){
+				myLines[j+1].addPointStart(xEnd2, yEnd2);
+				myLines[j].clearPoint(myLines[j].lineSize() - 1);
+				myLines[j+1].setFloats();
+				myLines[j].setFloats();
+			}
+		}
+	}
+
+
 
         int numFake = 0;
         int numReal = 0;
-	cout << endl << endl;
+	//cout << endl << endl;
 
 	for(int j = 0; j < myLines.size(); j++){
 		if(myLines[j].isGoodLine()==false){
@@ -264,6 +300,7 @@ vector<line> Lidar::findLine(vector <float> xReal, vector <float> yReal){
         
 
 //	cout << endl << "real lines after fake lines are added" << endl;
+//	Output results to console for debugging
 	numFake = 0;
 	numReal = 0;
 	for (int j = 0; j < myLines.size(); j++) {
@@ -288,18 +325,18 @@ vector<line> Lidar::findLine(vector <float> xReal, vector <float> yReal){
                 	cout << "          (" << myLines[j].getEndPtX2() << ", " << myLines[j].getEndPtY2();
                 	cout << ") Angle:" <<  ang2;
                 	cout << " Distance: " << rad2 << endl;
-			cout << "Point distance: " << pt2PtDist(myLines[j].getEndPtX1(),myLines[j].getEndPtY1(), myLines[j].getEndPtX2(), myLines[j].getEndPtY2()) << endl;
+			cout << "Line length: " << myLines[j].getLength() << endl; 
 		//	myLines[j].printLine();
 		}
 		else{
 			numFake++;
-			cout << endl << "fake line " << numFake << "size: " << myLines[j].lineSize() << endl;
-                //	myLines[j].printLine();
-                	cout << endl << myLines[j].getLength() << endl << endl;
+			cout << endl << "Fake line num " << numFake << " has size: " << myLines[j].lineSize() << 
+				" getLength returns "<< myLines[j].getLength() << endl;
 		}
         }
 
 
+	cout << numMerge << endl;
 //	cout<<"Lines made\n";
 	float distToEnd = 0;
 	return myLines;
@@ -307,14 +344,10 @@ vector<line> Lidar::findLine(vector <float> xReal, vector <float> yReal){
 
 //it. canMerge
 bool Lidar::canMerge(line a, line b){
-	float slopeThresh = 7;
-        float interceptThresh = 7;
-        float sizeThresh = 100; 
-	float distThresh = .0575;
+	float distThresh = 5.75;
 	float myDist;
 	float tempDist;
 	float slopeMult;
-
 
 	
 	myDist = pt2PtDist(a.getEndPtX1(), a.getEndPtY1(), b.getEndPtX1(), b.getEndPtY1());
@@ -370,16 +403,16 @@ void Lidar::findRoom(vector <line> lineVec){
 	vector <float> myLength;
 	for(int i=0; i < lineVec.size(); i++){
 		for(int j=0; j < lineVec[i].lineSize(); j++){
-			if(lineVec[i].radDist(j) < .45){
+			if(lineVec[i].radDist(j) < 45){
 				room4Count++;
 			}
-			else if(lineVec[i].radDist(j) > 1.35){
+			else if(lineVec[i].radDist(j) > 135){
 				room4Long++;
 			}
 		}
 	}
 	rat4 = room4Count*ratMult;
-	if(rat4 > .65){
+	if(rat4 >0.65){
 		if(room4Long > 3){
 			room4l = true;
 		}
@@ -390,10 +423,10 @@ void Lidar::findRoom(vector <line> lineVec){
 	
 	for(int i=0; i<lineVec.size(); i++){
 		for(int j=0; j < lineVec[i].lineSize(); j++){
-			if(lineVec[i].radDist(j) > maxDist){
+			if(lineVec[i].radDist(j) > 70){
 				maxDist = lineVec[i].radDist(j);
 			}
-			if(lineVec[i].radDist(j) < .7){
+			if(lineVec[i].radDist(j) < 70){
 				room23Count++;
 			}
 		}
@@ -406,11 +439,11 @@ void Lidar::findRoom(vector <line> lineVec){
 		}
 
 		for(int i=0; i<myLength.size(); i++){
-			if(lineVec[i].findDist(0,0) < .65){
-				if((myLength[i] < 1.35) && (myLength[i] > 1.24)){
+			if(lineVec[i].findDist(0,0) < 65){
+				if((myLength[i] < 135) && (myLength[i] > 124)){
 					rm3++;
 				}
-				if((myLength[i] < 0.31) && (myLength[i] > 0.23)){
+				if((myLength[i] < 31) && (myLength[i] > 23)){
 					rm3++;
 				}
 			}			
@@ -437,7 +470,7 @@ void Lidar::findRoom(vector <line> lineVec){
 	if((!room4l) && (!room4s) && (room2) && (!room3)){
 		for(int i=0; i < lineVec.size(); i++){
 			for(int j=0; j < lineVec[i].lineSize(); j++){
-				if((lineVec[i].radDist(j) < 1.5) && (lineVec[i].radDist(j) > 1)){
+				if((lineVec[i].radDist(j) < 150) && (lineVec[i].radDist(j) > 100)){
 					rm1++;
 				}
 			}
@@ -448,10 +481,10 @@ void Lidar::findRoom(vector <line> lineVec){
 	if(room4l){
 		cout << endl << endl << "This is room 4 toward the maze" << endl << endl;
 		for(int i = 0; i < lineVec.size(); i++){
-			if((myLength[i] > 0.24) && (myLength[i] < .3)){
+			if((myLength[i] > 24) && (myLength[i] < 30)){
 				cout << "Gotcha, bitch!" << endl;
 			}
-			else if((myLength[i] > 0.68) && (myLength[i] < 0.74)){
+			else if((myLength[i] > 68) && (myLength[i] < 74)){
 				cout << "Gotcha again, bitch!" << endl;
 			}
 		}
@@ -459,10 +492,10 @@ void Lidar::findRoom(vector <line> lineVec){
 	else if(room4s){
 		cout << endl << endl << "This is room 4 toward the wall" << endl << endl;
 		for(int i = 0; i < lineVec.size(); i++){
-			if((myLength[i] > 0.24) && (myLength[i] < .3)){
+			if((myLength[i] > 24) && (myLength[i] < 30)){
 				cout << "Gotcha, bitch!" << endl;
 			}
-			else if((myLength[i] > 0.68) && (myLength[i] < 0.74)){
+			else if((myLength[i] > 68) && (myLength[i] < 74)){
 				cout << "Gotcha again, bitch!" << endl;
 			}
 		}
@@ -470,10 +503,10 @@ void Lidar::findRoom(vector <line> lineVec){
 	else if(room2){
 		cout << endl << endl << "This is room 2" << endl << endl;
 		for(int i = 0; i < lineVec.size(); i++){
-                        if((myLength[i] > 0.95) && (myLength[i] < 1.08)){
+                        if((myLength[i] > 95) && (myLength[i] < 108)){
                                 cout << "Gotcha, bitch!" << endl;
                         }
-                        else if((myLength[i] > 0.50) && (myLength[i] < 0.64)){
+                        else if((myLength[i] > 50) && (myLength[i] < 64)){
                                 cout << "Gotcha again, bitch!" << endl;
                         }
                 }
@@ -481,10 +514,10 @@ void Lidar::findRoom(vector <line> lineVec){
 	else if(room3){
 		cout << endl << endl << "This is room 3" << endl << endl;
 		for(int i = 0; i < lineVec.size(); i++){
-                        if((myLength[i] > 1.2) && (myLength[i] < 1.37)){
+                        if((myLength[i] > 120) && (myLength[i] < 137)){
                                 cout << "Gotcha, bitch!" << endl;
                         }
-                        else if((myLength[i] > 0.23) && (myLength[i] < 0.31)){
+                        else if((myLength[i] > 23) && (myLength[i] < 31)){
                                 cout << "Gotcha again, bitch!" << endl;
                         }
                 }

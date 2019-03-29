@@ -38,7 +38,7 @@ Nav::Nav(int lvl, ros::Publisher* pub){
 	cmapMark_ = {1.0, 0.1, 0.1};
 	cwayLine_ = {0.1, 0.9, 0.9};
 	cwayMark_ = {0.8, 0.1, 0.9};
-	worldFrame_ = "map2";
+	worldFrame_ = "global";
 
 	cout<<"going to load files\n";
 	loadFiles(lvl);	
