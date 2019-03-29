@@ -18,13 +18,6 @@ line::line(){
         length = 0;
         candle = false;
         furniture = false;
-	xAvg = 0;
-	yAvg = 0;
-	xSum = 0;
-	ySum = 0;
-	num = 0;
-	denum = 0;
-	
 }
 void line::setSlope(float s){
         slope = s;
@@ -42,10 +35,9 @@ float line::getYPoint(int point){
         return y[point];
 };
 
-void line::setFloats(float xP, float yP) {
-	/*
-        xAvg = 0;
-       	yAvg = 0;
+void line::setFloats() {
+        float xAvg = 0;
+       	float yAvg = 0;
         for (int i = 0; i < x.size(); i++) {
                 xAvg += x[i];
                 yAvg += y[i];
@@ -54,30 +46,20 @@ void line::setFloats(float xP, float yP) {
 
         xAvg /= (x.size());
         yAvg /= (y.size());
-	*/
-	xSum += xP;
-	ySum += yP;
-	xAvg = xSum/x.size();
-	yAvg = ySum/y.size();
-
-	num += (xP - xAvg)*(yP - yAvg);
-        denum += pow(xP - xAvg, 2);
-	/*
 	float num = 0, denum = 0;
         for (int i = 0; i < x.size(); i++) {
                 num += (x[i] - xAvg)*(y[i] - yAvg);
                 denum += pow(x[i] - xAvg, 2);
         };
-	*/
         slope = num / denum;
         intercept = yAvg - slope * xAvg;
         setEndpts(x[0], y[0], x[x.size()-1], y[y.size()-1]);
         length = pt2PtDist2(end1.getX(), end1.getY(), end2.getX(), end2.getY());
-        if ((length > 0.01)&&(length < 0.04)){
+        if ((length > 1)&&(length < 4)){
                 candle = true;
                 furniture = false;
         }
-        else if ((length > 0.09)&&(length < 0.13)){
+        else if ((length > 9)&&(length < 13)){
                 candle = false;
                 furniture = true;
         }
@@ -90,42 +72,6 @@ void line::setFloats(float xP, float yP) {
                isLine = false;
         }
 };
-void line::setFloatsRev(float xP, float yP){
-	xSum -= xP;
-        ySum -= yP;
-        xAvg = xSum/x.size();
-        yAvg = ySum/y.size();
-
-        num -= (xP - xAvg)*(yP - yAvg);
-        denum -= pow(xP - xAvg, 2);
-        /*
-        float num = 0, denum = 0;
-        for (int i = 0; i < x.size(); i++) {
-                num += (x[i] - xAvg)*(y[i] - yAvg);
-                denum += pow(x[i] - xAvg, 2);
-        };
-        */
-        slope = num / denum;
-        intercept = yAvg - slope * xAvg;
-        setEndpts(x[0], y[0], x[x.size()-1], y[y.size()-1]);
-        length = pt2PtDist2(end1.getX(), end1.getY(), end2.getX(), end2.getY());
-        if ((length > 0.01)&&(length < 0.04)){
-                candle = true;
-                furniture = false;
-        }
-        else if ((length > 0.09)&&(length < 0.13)){
-                candle = false;
-                furniture = true;
-        }
-        else{
-                candle = false;
-                furniture = false;
-        }
-        if(isLine){}
-        else{
-               isLine = false;
-        }
-}
 
 float line::getIntercept() {
 
@@ -236,12 +182,12 @@ void line::mergeLines(line a) {//line a gets merged into the main line
         for(int i = 0; i < a.lineSize(); i++){
                 x.push_back(a.getXPoint(i));
                 y.push_back(a.getYPoint(i));
-		setFloats(a.getXPoint(i), a.getYPoint(i));
                 //x.insert(x.begin(), a.getXPoint(a.lineSize() - i));
                 //y.insert(y.begin(), a.getYPoint(a.lineSize() - i));
                 //still have to delete the line a in findLine
         }
         a.clearLine();
+	setFloats();
 
 }
 //it. getLineDist

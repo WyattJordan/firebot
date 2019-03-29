@@ -1,16 +1,8 @@
-/* Launcher.cpp
- * Creates the main Robot object which handles pretty much everything.
- * Sets up all the publisher and subscriber methods for that Robot object.
- * May be responsible for launching some threads in the future.
- * Note: Robot obj may need to be warned when member data is being written
- * and read at the same time to avoid collisions!
- *
- * arguments are:
- * run {x, y} ways {big, small}
- */
+/* everything.cpp */
 
 #include "ros/ros.h"
 #include "Robot.h"
+#include "lidar.h"
 #include <ros/console.h>
 #include "sensor_msgs/LaserScan.h"
 #include <firebot/ReconConfig.h>
@@ -18,19 +10,12 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <thread>     // 3 for thread and sharedptr
 #include <iostream> 
-using std::cout;
-void setupServer(Robot rob);
 
+using std::cout;
+
+// RUNNING EVERYTHING
 int main(int argc, char **argv){
 	ros::init(argc,argv,"robot"); // start the node with name "robot"
-
-	// handle input arguments, p deprecated at this point
-	float x=0, y=0;
-	bool ways = false, run = false, big = false, small = false;
-	if(argc >= 2){ run = atoi(argv[1]) == 1; }
-	if(argc >= 4){ x = atof(argv[2]); y = atof(argv[3]);}
-	if(argc >= 5){ ways = atoi(argv[4]) == 1;} 
-	if(argc >= 7){ big = atoi(argv[5]) == 1; small = atoi(argv[6]) == 1;}
 
 	ROS_INFO("running main launcher, going to create robot\n");
 	Robot rob;
@@ -46,6 +31,10 @@ int main(int argc, char **argv){
 	//nav.setBigRoomUpper(big);
 	//nav.setSmallRoomUpper(small);
 	cout<<"made nav object and linked to rob\n";
+	
+	// Create and link lidar class
+	Lidar lid(&rob);
+	ros::Subscriber sub = n.subscribe<sensor_msgs::LaserScan>("/scan", 1000, &Lidar::scanCallback, &lid);
 
 
 	// Spin off threads
@@ -77,13 +66,3 @@ int main(int argc, char **argv){
 	return 0;
 }
 
-// seems to be causing issues, be careful if this is used
-/*void setupServer(Robot rob){
-	cout<<"setting up server... ";
-	dynamic_reconfigure::Server<firebot::ReconConfig> server;
-	dynamic_reconfigure::Server<firebot::ReconConfig>::CallbackType f;
-	// callback recquires a function then an instance of the class (here Robot)
-	f = boost::bind(&Robot::recon, &rob, _1, _2);
-	server.setCallback(f);
-	cout<<"server running\n";
-}*/

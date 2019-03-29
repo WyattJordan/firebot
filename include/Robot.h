@@ -38,7 +38,6 @@ using namespace Eigen;
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define clk std::chrono::steady_clock
 #define stc std::chrono
-#define ab std::abs
 
 #define sw1Pin  4
 #define sw2Pin 21
@@ -70,6 +69,7 @@ class Robot{
 		bool getSerialEncoders();
 		void setSerialArms();
 		void setNav(Nav* nv);
+		Vector3f getOdomWorlLoc();
 
 	private:
 		Nav *nav_;

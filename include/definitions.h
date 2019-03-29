@@ -10,9 +10,10 @@
 #define StartSmallTurnDist50 10 // for <70 deg turns get closer to the point (center of map has slight turns)
 #define StopDist50 13.0
 #define StopDist20 3.8
-#define SamePoseThreshDeg 3 // if pose is within 3deg for next pt just pop from nav stack
+#define SamePoseThreshDeg 1 // if pose is within 3deg for next pt just pop from nav stack
 
 #define PI2	  6.28319
 #define PI	  3.14159 
 
+#define ab std::abs
 

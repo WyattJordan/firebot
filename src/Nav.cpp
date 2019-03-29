@@ -38,15 +38,15 @@ Nav::Nav(int lvl, ros::Publisher* pub){
 	cmapMark_ = {1.0, 0.1, 0.1};
 	cwayLine_ = {0.1, 0.9, 0.9};
 	cwayMark_ = {0.8, 0.1, 0.9};
-	worldFrame_ = "map2";
+	worldFrame_ = "global";
 
 	cout<<"going to load files\n";
 	loadFiles(lvl);	
 	cout<<"going to init marks\n";
 	initRobotMarks();
 }
-void Nav::setOdomLoc(Vector3f &od){
-	navOdomCpy_ = od;
+void Nav::setOdomLoc(Vector3f od){
+	odomWorldLocCpy_ = od;
 }
 
 // Robot.cpp drive loop sets the bool flags at set rates
@@ -55,7 +55,7 @@ void Nav::publishLoop(){
 		if(pubWays_ || pubMap_ || pubRob_){
 		// 	cout<<"pubbing ways: "<<pubWays_<<" with size "<<wayMarks_.markers.size()<<
 		//		" and map: "<<pubMap_<<" with size "<<mapMarks_.markers.size()<<"\n";
-			///cout<<"published ways/map/robot\n";
+			cout<<"published ways/map/robot\n";
 			if(pubMap_){
 				markerPub_->publish(wayMarks_);
 				pubWays_ = false;
@@ -620,22 +620,22 @@ void Nav::calcRobotMarks(){
 	// robMarks_[0] is arrow, [1] is sphere
 	int z = 6;
 	float len = 23.0; // length of the arrow
-	float tipx = navOdomCpy_(0) + len*cos(navOdomCpy_(2)); 
-	float tipy = navOdomCpy_(1) + len*sin(navOdomCpy_(2)); 
-       	robMarks_.markers[0].points[0].x = navOdomCpy_(0);
-	robMarks_.markers[0].points[0].y = navOdomCpy_(1);
+	float tipx = odomWorldLocCpy_(0) + len*cos(odomWorldLocCpy_(2)); 
+	float tipy = odomWorldLocCpy_(1) + len*sin(odomWorldLocCpy_(2)); 
+       	robMarks_.markers[0].points[0].x = odomWorldLocCpy_(0);
+	robMarks_.markers[0].points[0].y = odomWorldLocCpy_(1);
 	robMarks_.markers[0].points[0].z = z;
 	robMarks_.markers[0].points[1].x = tipx;
 	robMarks_.markers[0].points[1].y = tipy;
 	robMarks_.markers[0].points[1].z = z; 
 
 
-	robMarks_.markers[1].pose.position.x = navOdomCpy_(0);
-	robMarks_.markers[1].pose.position.y = navOdomCpy_(1);
+	robMarks_.markers[1].pose.position.x = odomWorldLocCpy_(0);
+	robMarks_.markers[1].pose.position.y = odomWorldLocCpy_(1);
 	robMarks_.markers[1].pose.position.z = z;
 	robMarks_.markers[1].pose.orientation.x = 0;
 	robMarks_.markers[1].pose.orientation.y = 0;
-	robMarks_.markers[1].pose.orientation.z = navOdomCpy_(2);
+	robMarks_.markers[1].pose.orientation.z = odomWorldLocCpy_(2);
 	robMarks_.markers[1].pose.orientation.w = 1;
 }
 

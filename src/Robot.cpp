@@ -6,6 +6,7 @@
 
 void Robot::pinThread(){
 	bool sw1, sw2, sw3;
+	bool sw = false;
 	while(1){
 		/*sw1 = digitalRead(sw1Pin);
 		sw2 = digitalRead(sw2Pin);
@@ -13,13 +14,19 @@ void Robot::pinThread(){
 		digitalWrite(blueLEDPin, sw1 ? HIGH : LOW);
 		digitalWrite(redLEDPin,  sw2 ? HIGH : LOW);
 		digitalWrite(greenLEDPin,sw3 ? HIGH : LOW);*/
+		digitalWrite(blueLEDPin, sw ? HIGH : LOW);
+		digitalWrite(redLEDPin,  sw ? HIGH : LOW);
+		digitalWrite(greenLEDPin,sw ? HIGH : LOW);
+		sw = !sw;
 
-		cout<<"sw1 = "<<sw1<<" sw2 = "<<sw2<<" sw3 = "<<sw3<<"\n";
+
+		//cout<<"sw1 = "<<sw1<<" sw2 = "<<sw2<<" sw3 = "<<sw3<<"\n";
 		int ir1 = analogRead(IR1Pin);
 		int ir2 = analogRead(IR2Pin);
-		cout<<"ir1 = "<<ir1<<" ir2 = "<<ir2<<"\n";
+		cout<<"ir1 = "<<ir1<<" ir2 = "<<ir2<<" sw = "<<sw<<"\n";
 
 		usleep(1000*400);
+	}
 }
 
 
@@ -47,9 +54,16 @@ void Robot::mainLogic(){
 	navStack.push_back(nav_->getWayPoint(3));
 	navStack.push_back(nav_->getWayPoint(4));
 	navStack.push_back(nav_->getWayPoint(18));
+	navStack.push_back(nav_->getWayPoint(5));
+	navStack.push_back(nav_->getWayPoint(13));
+	navStack.push_back(nav_->getWayPoint(15));//*/
+	navStack.push_back(nav_->getWayPoint(16));//*/
+	navStack.push_back(nav_->getWayPoint(19));//*/
+	navStack.push_back(nav_->getWayPoint(4));//*/
+	navStack.push_back(nav_->getWayPoint(18));
 	navStack.push_back(nav_->getWayPoint(6));
 	navStack.push_back(nav_->getWayPoint(7));
-	navStack.push_back(nav_->getWayPoint(8));//*/
+	navStack.push_back(nav_->getWayPoint(8));
 	pt2pt_ = false;
 	executeNavStack();
 }
@@ -157,24 +171,27 @@ void Robot::executeNavStack(){
 			}
 		}
 		else if(navStack.size()>1){ // fluid 90deg turns assumes running at 0.5 speed (!pt2pt_)
-			float poseToNext = getPoseToPoint(navStack.front()); 
+			float poseToNextPoint = getPoseToPoint(navStack.front());  // basically the current pose
 			float poseAfterTurn = getPoseToPoint(navStack.front(), &navStack.at(1));
-			float turnDiff = poseAfterTurn - poseToNext; // amount it will need to turn
+			float turnDiff = poseAfterTurn - poseToNextPoint; // amount it will need to turn
 			if(turnDiff < -180) turnDiff += 360;
 			if(turnDiff > 180) turnDiff += 360;
 			turnDiff = ab(turnDiff);
 
 			if(turnDiff < SamePoseThreshDeg){ 
 				cout<<"Popping marker "<<navStack.front().getID()<<" because same angle\n";
-				cout<<"setPose = "<<setPose_<<" and poseToNext = "<<poseToNext<<"\n";
+				cout<<"poseToNextPoint = "<<poseToNextPoint<<" poseAfterTurn = "<<poseAfterTurn<<"\n";
+				cout<<"setPose = "<<setPose_<<" and poseToNextPoint = "<<poseToNextPoint<<" and turnDiff = "<<turnDiff<<"\n";
 				navStack.pop_front();
+				// if approaching waypoint at an angle and arriving close to it turnDiff could be low but pose needs to change
+				setPose_ = poseToNextPoint; 
 			}
 			else if(positionUpdated_){
 				// TODO - recalculate Pose to be used based on new position and wayPoint
 				cout<<"POSITION UPDATED AND POSE RECALCULATED!!!\n";
-				// recalculate in case updates between poseToNext being made and this line
-				float poseToNextJustInCase = getPoseToPoint(navStack.front()); 
-				setPose_ = poseToNextJustInCase; 
+				// recalculate in case updates between poseToNextPoint being made and this line
+				float poseToNextPointJustInCase = getPoseToPoint(navStack.front()); 
+				setPose_ = poseToNextPointJustInCase; 
 			}
 			else if(dist < StartBigTurnDist50 && turnDiff > 70){ // if large turn start early
 				// TODO - calculate next pose (usually factor of 90) and set it
@@ -362,7 +379,7 @@ void Robot::periodicOutput(){
 		wayCount_ = 0;
 	}
 	if(robUpdateRate_ > 0 && robCount_ >= 1000 / (ms_ * robUpdateRate_)){
-		nav_->setOdomLoc(odomWorldLoc_); // give the Nav class the odom loc
+		nav_->setOdomLoc(odomWorldLoc_);
 		nav_->pubRob_ = true;
 		robCount_ = 0;
 	}
@@ -402,7 +419,7 @@ void Robot::calculateTransform(float theta){
 // ^^^^^^^^^^^^^^^^^^^^^^^ START SERIAL FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^
 void Robot::openSerial(){
 	cout<<"opening USB connection \n";
-	//fd_ = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY); // read+write | not controlling term | ? 
+	//fd_ = open("/dev/??", O_RDWR | O_NOCTTY | O_NDELAY); // read+write | not controlling term | ? 
 	fd_ = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY); // read+write | not controlling term 
 
 	perror("open_port: /dev/ttyUSB0 - ");
@@ -570,6 +587,7 @@ void Robot::rampUpSpeed(){
 float Robot::toRad(float deg){ return deg*PI2/360.0; }
 void Robot::msleep(int t){ usleep(1000*t); }
 void Robot::setNav(Nav* nv){ nav_ = nv; }
+Vector3f Robot::getOdomWorlLoc(){return odomWorldLoc_;};
 
 void Robot::testDistToStop(){
 	// Testing 90deg turn distance overshoot for setting StartTurnDist50 and StartTurnDist20

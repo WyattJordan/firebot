@@ -13,9 +13,8 @@ using namespace std;
 class line {
 public:
         line();
-        void setFloats(float xP, float yP);
+        void setFloats();
         //least squared fit
-	void setFloatsRev(float xP, float yP);
         float getSlope();
         //returns slope
         float getIntercept();
