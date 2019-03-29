@@ -1,5 +1,12 @@
 #include "lidar.h"
+Lidar::Lidar(){;} // do not use this
 
+Lidar::Lidar(Robot *robRef){
+
+	prevOdom_ << -100, -100, 0;
+	rob_ = robRef;
+
+}
 float Lidar::pt2PtDist(float x1, float y1, float x2, float y2){
 	return pow(pow(x2-x1,2) + pow(y2-y1,2) ,0.5);
 }
@@ -7,6 +14,17 @@ float Lidar::pt2PtDist(float x1, float y1, float x2, float y2){
 
 void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 {
+
+	bool updatePosition = false;
+//	Vector3f currentPos = rob_->getOdomWorlLoc(); // this is an undefined ref for some reason...
+	Vector3f currentPos;
+	if(! (prevOdom_(0) == -100 && prevOdom_(1) == -100)) // if not the first run (default odom loc) 
+	{
+		// if the angle has changed less than 5deg between the two positions
+		if(abs(prevOdom_(2) - currentPos(2))*180/PI < 5) updatePosition = true;
+	
+	}
+
 	int count = scan->scan_time / scan->time_increment;
 	ROS_INFO("Testing %s[%d]:", scan->header.frame_id.c_str(), count);
 	ROS_INFO("angle_range, %f, %f", RAD2DEG(scan->angle_min), RAD2DEG(scan->angle_max));
@@ -31,6 +49,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 	ROS_INFO("Finished findLine...");
 	time(&finish);
 	cout << "Time of program is " << difftime(finish, start) << " seconds" << endl;
+	prevOdom_ = currentPos;
 //	for(int i = 0; i < xVal.size(); i++){
 //		ROS_INFO(" Testing: X = %f, Y = %f", xVal[i], yVal[i]);
 //	}
