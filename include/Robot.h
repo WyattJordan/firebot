@@ -69,7 +69,7 @@ class Robot{
 		bool getSerialEncoders();
 		void setSerialArms();
 		void setNav(Nav* nv);
-		Vector3f getOdomWorlLoc();
+		Vector3f getOdomWorldLoc();
 
 	private:
 		Nav *nav_;

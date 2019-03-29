@@ -1,5 +1,5 @@
-#ifndef ENDPOINT_INCLUDE
-#define ENDPOINT_INCLUDE
+#ifndef REFPOINT_INCLUDE
+#define REFPOINT_INCLUDE
 
 #include <iostream>
 #include <cmath>
@@ -8,7 +8,7 @@
 
 using namespace std;
 
-class endpoint {
+class refpoint {
 public:
 	void setCart(float xIn, float yIn);
 	float getX();

@@ -1,28 +1,28 @@
-#include "endpoint.h"
+#include "refpoint.h"
 
 
-void endpoint::setCart(float xIn, float yIn){
+void refpoint::setCart(float xIn, float yIn){
         x = xIn;
         y = yIn;
 }
-float endpoint::getX(){
+float refpoint::getX(){
         return x;
 }
-float endpoint::getY(){
+float refpoint::getY(){
         return y;
 }
-float endpoint::findAngle(){
+float refpoint::findAngle(){
         float angle;
         float t = atan2(y, x) * 180 / 3.14159;
         angle = t>0 ? t : t + 360; // polar vals range 0:360
         return angle;
 }
-float endpoint::findRad(){
+float refpoint::findRad(){
         float rad;
         rad = pow(x*x + y*y, 0.5);
         return rad;
 }
-void endpoint::clear(){
+void refpoint::clear(){
         x = 0;
         y = 0;
 }

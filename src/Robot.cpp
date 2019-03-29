@@ -4,32 +4,6 @@
 
 #include "Robot.h"
 
-void Robot::pinThread(){
-	bool sw1, sw2, sw3;
-	bool sw = false;
-	while(1){
-		/*sw1 = digitalRead(sw1Pin);
-		sw2 = digitalRead(sw2Pin);
-		sw3 = digitalRead(sw3Pin);
-		digitalWrite(blueLEDPin, sw1 ? HIGH : LOW);
-		digitalWrite(redLEDPin,  sw2 ? HIGH : LOW);
-		digitalWrite(greenLEDPin,sw3 ? HIGH : LOW);*/
-		digitalWrite(blueLEDPin, sw ? HIGH : LOW);
-		digitalWrite(redLEDPin,  sw ? HIGH : LOW);
-		digitalWrite(greenLEDPin,sw ? HIGH : LOW);
-		sw = !sw;
-
-
-		//cout<<"sw1 = "<<sw1<<" sw2 = "<<sw2<<" sw3 = "<<sw3<<"\n";
-		int ir1 = analogRead(IR1Pin);
-		int ir2 = analogRead(IR2Pin);
-		cout<<"ir1 = "<<ir1<<" ir2 = "<<ir2<<" sw = "<<sw<<"\n";
-
-		usleep(1000*400);
-	}
-}
-
-
 // check while navStack.size()>0 to wait while navigating
 void Robot::mainLogic(){
 	//odomWorldLoc_   << 0,0,0; // starting pose/position
@@ -43,7 +17,7 @@ void Robot::mainLogic(){
 
 	//testDistToStop();
 	//odomWorldLoc_   << 0,0,90.0*PI/180.0; // starting at corner of STEM lines on floor 
-	odomWorldLoc_   << WheelDist, 34.5,0; // start at back left w/ steel block
+	odomWorldLoc_   << 15+2, 34.5,0; // start at back left w/ steel block
 	runPID_ = true;
 /*	setPose_ = 5; // for testing PID to see min gains needed for certain accuracies
 	sleep(2);
@@ -64,9 +38,33 @@ void Robot::mainLogic(){
 	navStack.push_back(nav_->getWayPoint(6));
 	navStack.push_back(nav_->getWayPoint(7));
 	navStack.push_back(nav_->getWayPoint(8));
-	pt2pt_ = false;
+	pt2pt_ = true;
 	executeNavStack();
 }
+
+void Robot::pinThread(){
+	bool sw1, sw2, sw3;
+	bool sw = false;
+	while(1){
+		/*sw1 = digitalRead(sw1Pin);
+		sw2 = digitalRead(sw2Pin);
+		sw3 = digitalRead(sw3Pin);
+		digitalWrite(blueLEDPin, sw1 ? HIGH : LOW);
+		digitalWrite(redLEDPin,  sw2 ? HIGH : LOW);
+		digitalWrite(greenLEDPin,sw3 ? HIGH : LOW);*/
+		digitalWrite(blueLEDPin, sw ? HIGH : LOW);
+		digitalWrite(redLEDPin,  sw ? HIGH : LOW);
+		digitalWrite(greenLEDPin,sw ? HIGH : LOW);
+		sw = !sw;
+
+		//cout<<"sw1 = "<<sw1<<" sw2 = "<<sw2<<" sw3 = "<<sw3<<"\n";
+		int ir1 = analogRead(IR1Pin);
+		int ir2 = analogRead(IR2Pin);
+		cout<<"ir1 = "<<ir1<<" ir2 = "<<ir2<<" sw = "<<sw<<"\n";
+		usleep(1000*400);
+	}
+}
+
 
 Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constructor
 	// defaults values
@@ -152,10 +150,10 @@ void Robot::executeNavStack(){
 			//ramp_ = false; // ramp is running for some reason here....
 			//cout<<"error is: "<<error<<" at speed "<<speed_<<"\n";
 			if(error < SamePoseThreshDeg || ab(adj_) < 0.1){ // PID has finished turning, no more adj needed
-				cout<<"done facing first\n";
+				//cout<<"done facing first\n";
 				facingFirst_ = false;
 				float s = dist < MinDistFor50 || pt2pt_ ? 0.2 : 0.5; // if it's very close use 20%
-				cout<<"ramping speed up to "<<s<<"\n";
+				//cout<<"ramping speed up to "<<s<<"\n";
 				setRamp(s, 0.5); // start driving to next point
 			}
 		}
@@ -566,7 +564,7 @@ void Robot::rampUpSpeed(){
 		if(firstRamp_){
 			rampInc_ = (rampSpeed_ - speed_) / (rampTime_ / (ms_ / 1000.0));
 			firstRamp_ = false;
-			cout<<"Starting ramp... rampInc_ = "<<rampInc_<<" speed = "<<speed_<<"\n";
+			//cout<<"Starting ramp... rampInc_ = "<<rampInc_<<" speed = "<<speed_<<"\n";
 		}
 		speed_ = speed_ + rampInc_;
 		speed2power(0);
@@ -578,7 +576,7 @@ void Robot::rampUpSpeed(){
 
 			speed_ = rampSpeed_;
 			ramp_ = false;
-			cout<<"exiting ramp... speed = "<<speed_<<"\n";
+			//cout<<"exiting ramp... speed = "<<speed_<<"\n";
 		}	
 	}
 }
@@ -587,7 +585,7 @@ void Robot::rampUpSpeed(){
 float Robot::toRad(float deg){ return deg*PI2/360.0; }
 void Robot::msleep(int t){ usleep(1000*t); }
 void Robot::setNav(Nav* nv){ nav_ = nv; }
-Vector3f Robot::getOdomWorlLoc(){return odomWorldLoc_;};
+Vector3f Robot::getOdomWorldLoc(){return odomWorldLoc_;};
 
 void Robot::testDistToStop(){
 	// Testing 90deg turn distance overshoot for setting StartTurnDist50 and StartTurnDist20

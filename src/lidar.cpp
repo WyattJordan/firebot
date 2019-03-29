@@ -1,12 +1,12 @@
 #include "lidar.h"
 Lidar::Lidar(){;} // do not use this
-
+/*
 Lidar::Lidar(Robot *robRef){
 
 	prevOdom_ << -100, -100, 0;
 	rob_ = robRef;
+}*/
 
-}
 float Lidar::pt2PtDist(float x1, float y1, float x2, float y2){
 	return pow(pow(x2-x1,2) + pow(y2-y1,2) ,0.5);
 }
@@ -15,19 +15,20 @@ float Lidar::pt2PtDist(float x1, float y1, float x2, float y2){
 void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 {
 
+	/*
 	bool updatePosition = false;
-//	Vector3f currentPos = rob_->getOdomWorlLoc(); // this is an undefined ref for some reason...
-	Vector3f currentPos;
+	Vector3f currentPos = rob_->getOdomWorldLoc(); // this is an undefined ref for some reason...
+	//Vector3f currentPos;
 	if(! (prevOdom_(0) == -100 && prevOdom_(1) == -100)) // if not the first run (default odom loc) 
 	{
 		// if the angle has changed less than 5deg between the two positions
 		if(abs(prevOdom_(2) - currentPos(2))*180/PI < 5) updatePosition = true;
 	
-	}
+	}*/ //stuff for position updates
 
 	int count = scan->scan_time / scan->time_increment;
-	ROS_INFO("Testing %s[%d]:", scan->header.frame_id.c_str(), count);
-	ROS_INFO("angle_range, %f, %f", RAD2DEG(scan->angle_min), RAD2DEG(scan->angle_max));
+	//ROS_INFO("Testing %s[%d]:", scan->header.frame_id.c_str(), count);
+	//ROS_INFO("angle_range, %f, %f", RAD2DEG(scan->angle_min), RAD2DEG(scan->angle_max));
 	time_t start, finish;
 	std::vector <float> xVal;
 	std::vector <float> yVal;
@@ -44,18 +45,17 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 		
 
 	}
-	ROS_INFO("Starting findLine...");
+/*	ROS_INFO("Starting findLine...");
 	findLine(xVal, yVal);
 	ROS_INFO("Finished findLine...");
 	time(&finish);
-	cout << "Time of program is " << difftime(finish, start) << " seconds" << endl;
-	prevOdom_ = currentPos;
+	cout << "Time of program is " << difftime(finish, start) << " seconds" << endl;*/
 //	for(int i = 0; i < xVal.size(); i++){
 //		ROS_INFO(" Testing: X = %f, Y = %f", xVal[i], yVal[i]);
 //	}
 
 	// publish transformation from global to laser_frame
-	static tf::TransformBroadcaster br;	
+/*	static tf::TransformBroadcaster br;	
 	tf::Transform trans;
 	trans.setOrigin(tf::Vector3(currentPos(0), currentPos(1), 0));
 	tf::Quaternion q;
@@ -63,6 +63,8 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 	trans.setRotation(q);
 	// determine the frame laser_frame in the global frame
 	br.sendTransform(tf::StampedTransform(trans, ros::Time::now(), "laser_frame", "global"));
+	cout<<"sent tf frame via broacaster\n";
+	prevOdom_ = currentPos;*/
 }
 
 
@@ -487,12 +489,12 @@ void Lidar::findRoom(vector <line> lineVec){
 		}
 	}
 		/*	
-			endpoint temp;
+			refpoint temp;
 			temp.setCart(lineVec[i].getEndPtX1(), lineVec[i].getEndPtY1());
-			endpoint temp2;
+			refpoint temp2;
 			temp2.setCart(lineVec[i].getEndPtX2(), lineVec[i].getEndPtY2());
-			endpoint temp3;
-			endpoint temp4;
+			refpoint temp3;
+			refpoint temp4;
 			temp3.setCart(.72, .46);
 			temp4.setCart(myLength[i] + .72, .46);
 			findStartLocation(temp, temp2, temp3, temp4);
@@ -565,8 +567,8 @@ void Lidar::findRoom(vector <line> lineVec){
 	cout << "room 1 counter: " << rm1 << endl;
 }
 
-void Lidar::findStartLocation(endpoint endR1, endpoint endR2, endpoint endG1, endpoint endG2){
-	endpoint endG;
+void Lidar::findStartLocation(refpoint endR1, refpoint endR2, refpoint endG1, refpoint endG2){
+	refpoint endG;
 	float length0 = pt2PtDist(endR1.getX(), endR1.getY(), endR2.getX(), endR2.getY());
 	float length1 = endR1.findRad();
 	float length2 = endR2.findRad();

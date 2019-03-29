@@ -6,7 +6,7 @@
 #include <tf/transform_broadcaster.h>
 #include "Robot.h"
 #include "line.h"
-#include "endpoint.h"
+#include "refpoint.h"
 #include "definitions.h"
 #include <Eigen/Core>
 #include <iostream>
@@ -30,7 +30,7 @@ using namespace std;
 class Lidar{
 	public:
 		Lidar();
-		Lidar(Robot *robRef);
+//		Lidar(Robot *robRef);
 		float pt2PtDist(float x1, float y1, float x2, float y2);
 		vector<line> findLine(vector <float> xReal, vector <float> yReal);
 		bool canMerge(line a, line b);
@@ -38,10 +38,10 @@ class Lidar{
 		float myRad(float x, float y);
 		void findRoom(vector <line> lineVec);
 		void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan);
-		void findStartLocation(endpoint endR1, endpoint endR2, endpoint endG1, endpoint endG2);
+		void findStartLocation(refpoint endR1, refpoint endR2, refpoint endG1, refpoint endG2);
 	private:
 		Vector3f prevOdom_;
-		Robot* rob_;
+//		Robot* rob_;
 
 };
 

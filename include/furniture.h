@@ -3,7 +3,7 @@
 
 #include "line.h"
 #include "lidar.h"
-#include "endpoint.h"
+#include "refpoint.h"
 #include <iostream>
 #include <vector>
 
