@@ -3,6 +3,7 @@
 
 #include "ros/ros.h"
 #include "sensor_msgs/LaserScan.h"
+#include <tf/transform_broadcaster.h>
 #include "Robot.h"
 #include "line.h"
 #include "endpoint.h"

@@ -53,6 +53,16 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 //	for(int i = 0; i < xVal.size(); i++){
 //		ROS_INFO(" Testing: X = %f, Y = %f", xVal[i], yVal[i]);
 //	}
+
+	// publish transformation from global to laser_frame
+	static tf::TransformBroadcaster br;	
+	tf::Transform trans;
+	trans.setOrigin(tf::Vector3(currentPos(0), currentPos(1), 0));
+	tf::Quaternion q;
+	q.setRPY(0,0,currentPos(2));
+	trans.setRotation(q);
+	// determine the frame laser_frame in the global frame
+	br.sendTransform(tf::StampedTransform(trans, ros::Time::now(), "laser_frame", "global"));
 }
 
 

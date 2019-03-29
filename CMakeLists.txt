@@ -36,6 +36,7 @@ find_package(catkin REQUIRED COMPONENTS
   dynamic_reconfigure
   rosconsole
   sensor_msgs
+  tf
 )
 
 ## System dependencies are found with CMake's conventions
