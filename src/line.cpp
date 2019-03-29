@@ -55,11 +55,11 @@ void line::setFloats() {
         intercept = yAvg - slope * xAvg;
         setEndpts(x[0], y[0], x[x.size()-1], y[y.size()-1]);
         length = pt2PtDist2(end1.getX(), end1.getY(), end2.getX(), end2.getY());
-        if ((length > 0.01)&&(length < 0.04)){
+        if ((length > 1)&&(length < 4)){
                 candle = true;
                 furniture = false;
         }
-        else if ((length > 0.09)&&(length < 0.13)){
+        else if ((length > 9)&&(length < 13)){
                 candle = false;
                 furniture = true;
         }
