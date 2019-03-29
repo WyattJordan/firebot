@@ -1,7 +1,7 @@
 #include "lidar.h"
 
 float Lidar::pt2PtDist(float x1, float y1, float x2, float y2){
-	return pow(pow(x2-x1,2) + pow(y2-y1,2) ,50);
+	return pow(pow(x2-x1,2) + pow(y2-y1,2) ,0.5);
 }
 
 
@@ -82,6 +82,7 @@ vector<line> Lidar::findLine(vector <float> xReal, vector <float> yReal){
 						else{ 
 							myLines[myLines.size()-1].mergeLines(tempLine);
 							myLines[myLines.size()-1].setFloats();
+							tempLine.clearLine();
 						}
 					}
 					scopeSize = i;							//saves where it breaks for the next loop
