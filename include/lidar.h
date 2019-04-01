@@ -18,8 +18,8 @@
 #include "math.h"
 
 #define RAD2DEG(x) ((x)*180./M_PI)
-#define POLAR2XCART(x, y) ((x)*cos((y)*M_PI/180.)) //get the x component when given a distance and angle in degrees
-#define POLAR2YCART(x, y) ((x)*sin((y)*M_PI/180.)) //get the y component when given a distance and angle in degrees
+#define POLAR2XCART(r, t) ((r)*cos((t)*M_PI/180.)) //get the x component when given a distance and angle in degrees
+#define POLAR2YCART(r, t) ((r)*sin((t)*M_PI/180.)) //get the y component when given a distance and angle in degrees
 
 using namespace std;
 
@@ -36,10 +36,19 @@ class Lidar{
 		bool canMerge(line a, line b);
 		float myAngle(float x, float y);
 		float myRad(float x, float y);
-		void findRoom(vector <line> lineVec);
+		void findRoom();
+		void findRoomFromJumps();
+		void findJumps();
 		void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan);
 		void findStartLocation(refpoint endR1, refpoint endR2, refpoint endG1, refpoint endG2);
 	private:
+		vector<float> xVal;
+		vector<float> yVal;
+		vector<float> degrees;
+		vector<float> rad;
+		vector<int> jump;
+		void removePt(int i);
+		int getEndIdx(int s);
 		Vector3f prevOdom_;
 //		Robot* rob_;
 

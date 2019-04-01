@@ -26,25 +26,49 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 	
 	}*/ //stuff for position updates
 
-	int count = scan->scan_time / scan->time_increment;
+	cout<<"\nentered callback...";
+	int num = scan->scan_time / scan->time_increment;
 	//ROS_INFO("Testing %s[%d]:", scan->header.frame_id.c_str(), count);
 	//ROS_INFO("angle_range, %f, %f", RAD2DEG(scan->angle_min), RAD2DEG(scan->angle_max));
 	time_t start, finish;
-	std::vector <float> xVal;
-	std::vector <float> yVal;
-	float XRange[scan->ranges.size()];
-	float YRange[scan->ranges.size()];
+	xVal.resize(0); // resize member variables for this scan
+	yVal.resize(0);
+	degrees.resize(0);
+	rad.resize(0);
 	time(&start);
-	for(int i = 0; i < count; i++) {
-		float degree = RAD2DEG(scan->angle_min + scan->angle_increment * i);
-	//	ROS_INFO(": [%f, %f]", degree, scan->ranges[i]);
-		if ((isinf(scan->ranges[i]) == 0)&&(scan->ranges[i] < 180)&&(scan->ranges[i] > 18)){
-			xVal.push_back(POLAR2XCART(scan->ranges[i], degree));
-			yVal.push_back(POLAR2YCART(scan->ranges[i], degree));
-		}
-		
+	bool crossed = false;
+	vector<float> tRad, tDeg, tX, tY;
 
+	float prevdeg = scan->angle_min;
+
+	for(int i = 0; i < num; i++) { // why use the count instead of the 
+		//	ROS_INFO(": [%f, %f]", degree, scan->ranges[i]);
+		float radius = scan->ranges[i];
+		if ((isinf(radius) == 0)&&(radius < 180)&&(radius > 18)){
+			float degree = RAD2DEG(scan->angle_min + scan->angle_increment * i);
+			float ang = degree>0 ? degree : degree + 360;
+			///if(degree<prevdeg || crossed){
+			if(degree<prevdeg ){
+				crossed = true;
+				cout<<"HIT A CROSSING!!!\n\n";
+			//	tRad.push_back(radius);
+			//	tDeg.push_back(ang);
+
+			}
+			//else{
+				// save angle, radius, x, and y as vector class variables
+				degrees.push_back(ang);
+				rad.push_back(radius);
+				xVal.push_back(POLAR2XCART(radius, ang));
+				yVal.push_back(POLAR2YCART(radius, ang));
+			//}
+			prevdeg = degree;
+		}
 	}
+	//findJumps();
+	//cout<<"num jumps = "<<jump.size()<<"\n";
+	//findRoomFromJumps();
+	
 /*	ROS_INFO("Starting findLine...");
 	findLine(xVal, yVal);
 	ROS_INFO("Finished findLine...");
@@ -67,6 +91,73 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 	prevOdom_ = currentPos;*/
 }
 
+
+void Lidar::removePt(int i){
+	rad.erase(rad.begin() + i );
+	degrees.erase(degrees.begin() + i );
+	xVal.erase(xVal.begin() + i );
+	yVal.erase(yVal.begin() + i );
+}
+
+int Lidar::getEndIdx(int s){
+	return s+1 < rad.size() ? s+1 : 0;
+}
+
+void Lidar::findJumps(){
+	float bigJump = 40;
+	bool checkNext = false;
+	jump.resize(0);
+	cout<<"finding jumps\n";
+	for(int i=0; i<rad.size(); i++){
+		float diff = abs(rad[i] - rad[(i+1)%rad.size()]);
+		if(diff > bigJump){ 
+			float avgPre = 0;// creates avg from for -4 to idx+1 and idx+1 to +6 looping over end of array
+			float avgPost = 0; // this omits idx+1 because that could be the nasty pt
+			for(int a=-4; a<1; a++){ avgPre += rad[(i+a)%rad.size()]; }
+			for(int a=2; a<7; a++){ avgPost += rad[(i+a)%rad.size()]; }
+			avgPre /= 5; 
+			avgPost/=5;
+
+			// for a good jump would expect the max to be close to 2*average, add wiggle room
+		//	if(max(rad[i],rad[(i+1)%rad.size()]) < 2.0*avg * 1.2){
+			if(abs(avgPre - avgPost) > 30){
+				/* // debugging for checking what becomes a line
+				cout<<"Pre: ";
+				for(int a=-4; a<1; a++){ cout<<rad[(i+a)%rad.size()]<<"  "; }
+				cout<<" Center: "<<rad[i+1]<<"   Post: ";
+				for(int a=2; a<7; a++){ cout<<rad[(i+a)%rad.size()]<<"  "; }
+				cout<<"AvgPre = "<<avgPre<<" AvgPost = "<<avgPost<<"\n";
+				*/
+				jump.push_back(i);
+			}
+		}
+		// if there are two jumps right next to eachother delete both (caused by bad pt)
+		if(jump.size()>1 && jump[jump.size()-2] == i-1){
+			cout<<"Two jumps next to eachother at angles: "<<degrees[i]<<" and "<<degrees[i-1]<<"\n";
+	//		jump.erase(jump.begin() + jump.size()-1);
+	//		jump.erase(jump.begin() + jump.size()-1);
+		}
+	}
+
+	cout<<"jumps at angles: ";
+	for(int i=0; i<jump.size(); i++) cout<<degrees[jump[i]]<<"   ";
+	cout<<"\n";
+	
+	/*
+	for(int j=0; j<jump.size(); j++)
+		cout<<"at i="<<jump[j]<<" rad is "<<rad[jump[j]]<<" xval is: "<<xVal[jump[j]] <<" yVal is: "<<yVal[jump[j]]<<"  ";
+	cout<<"total i="<<rad.size()<<"\n";
+	}*/	
+
+	/*
+	for(int j : jump){
+		cout<<"prev Pt i="<<j-1<<" angle="<<degrees[j-1]<<" rad ="<<rad[j-1]<<"  ";
+		cout<<"Pt i="<<j<<" angle="<<degrees[j]<<" rad ="<<rad[j]<<"  ";
+		cout<<"next Pt i="<<j+1<<" angle="<<degrees[j+1]<<" rad ="<<rad[j+1]<<"  ";
+		cout<<"next Pt i="<<j+2<<" angle="<<degrees[j+2]<<" rad ="<<rad[j+2]<<"  ";
+		cout<<"\n";
+	}*/
+}
 
 vector<line> Lidar::findLine(vector <float> xReal, vector <float> yReal){
 	vector <line> myLines;
@@ -333,6 +424,7 @@ vector<line> Lidar::findLine(vector <float> xReal, vector <float> yReal){
 
 //	cout << endl << "real lines after fake lines are added" << endl;
 //	Output results to console for debugging
+///*
 	numFake = 0;
 	numReal = 0;
 	for (int j = 0; j < myLines.size(); j++) {
@@ -369,6 +461,7 @@ vector<line> Lidar::findLine(vector <float> xReal, vector <float> yReal){
 
 
 	cout << numMerge << endl;
+//	*/
 //	cout<<"Lines made\n";
 	float distToEnd = 0;
 	return myLines;
@@ -411,7 +504,20 @@ bool Lidar::canMerge(line a, line b){
 		return false;
 }
 
-void Lidar::findRoom(vector <line> lineVec){
+// to detect furniture look at dist between endpoint of first jump and start of second jump
+void Lidar::findRoomFromJumps(){
+	cout<<"finding room from jumps\n";
+	float nearLimit = 70; // for finding room 4 (if 2 jumps under near limit)
+	int closeJumpCount = 0;
+	for(int j=0; j<jump.size(); j++){
+		if(rad[jump[j]] < nearLimit || rad[jump[j]+1] < nearLimit){
+			closeJumpCount++;
+		}
+	}
+	cout<<"closeJumpCount = "<<closeJumpCount<<"\n";
+}
+
+void Lidar::findRoom(){
 	int rm1 = 0;
 	int rm2 = 0;
 	int rm3 = 0;
@@ -421,7 +527,6 @@ void Lidar::findRoom(vector <line> lineVec){
 	float rat4 = 0;
 	float maxDist = 0;
 	int room23Count = 0;
-	int room4Count = 0;
 	int room4Short = 0;
 	int room4Long = 0;
 	bool room1a = false;
@@ -433,18 +538,29 @@ void Lidar::findRoom(vector <line> lineVec){
 	bool room4s = false;
 	bool shouldBreak = false;
 	vector <float> myLength;
-	for(int i=0; i < lineVec.size(); i++){
-		for(int j=0; j < lineVec[i].lineSize(); j++){
-			if(lineVec[i].radDist(j) < 45){
-				room4Count++;
-			}
-			else if(lineVec[i].radDist(j) > 135){
-				room4Long++;
-			}
+	//vector <line> lineVec = findLine(xVal,yVal);
+
+	float room4Vshort = 0;
+	for(int i=0; i < rad.size(); i++){
+		if(rad[i] < 45){ // max possible distance in Room4 is 65 cm
+			room4Vshort++;
+		}
+		if(rad[i] < 65){ // max possible distance in Room4 is 65 cm
+			room4Short++;
+		}
+		else if(rad[i] > 170){
+			room4Long++;
 		}
 	}
-	rat4 = room4Count*ratMult;
-	if(rat4 >0.65){
+	
+	rat4 = room4Short*ratMult;
+
+	float percentShort = (float) room4Short / (float) rad.size();
+	float percentVshort = (float) room4Vshort / (float) rad.size();
+	cout<<"Room 4 \% below 45 = "<<percentVshort<<" below 65cm = "<<percentShort<<" and "<< room4Long <<" long lines > 170cm\n";
+	if(percentShort > 0.70){
+		cout<<"Should be in room 4!!!\n";
+		room4 = true;
 		if(room4Long > 3){
 			room4l = true;
 		}
@@ -453,14 +569,10 @@ void Lidar::findRoom(vector <line> lineVec){
 		}
 	}
 	
-	for(int i=0; i<lineVec.size(); i++){
-		for(int j=0; j < lineVec[i].lineSize(); j++){
-			if(lineVec[i].radDist(j) > 70){
-				maxDist = lineVec[i].radDist(j);
-			}
-			if(lineVec[i].radDist(j) < 70){
-				room23Count++;
-			}
+	/*
+	for(int i=0; i<rad.size(); i++){
+		if(rad[i] < 70){
+			room23Count++;
 		}
 	}	
 	rat23 = room23Count*ratMult;
@@ -481,11 +593,11 @@ void Lidar::findRoom(vector <line> lineVec){
 			}			
 		}
 		cout << endl << endl;
-		if(rm2 > rm3){
-			room2 = true;
+		if(rm3 > 0){
+			room3 = true;
 		}
 		else {
-			room3 = true;
+			room2 = true;
 		}
 	}
 		/*	
@@ -499,58 +611,87 @@ void Lidar::findRoom(vector <line> lineVec){
 			temp4.setCart(myLength[i] + .72, .46);
 			findStartLocation(temp, temp2, temp3, temp4);
 		*/
-	if((!room4l) && (!room4s) && (room2) && (!room3)){
-		for(int i=0; i < lineVec.size(); i++){
-			for(int j=0; j < lineVec[i].lineSize(); j++){
-				if((lineVec[i].radDist(j) < 150) && (lineVec[i].radDist(j) > 100)){
-					rm1++;
-				}
+	/*
+	if((!room4l) && (!room4s) && (!room2) && (!room3)){
+		for(int i=0; i < rad.size(); i++){
+			if((rad[i] < 150) && (rad[i] > 100)){
+				rm1++;
 			}
 		}
 		if(rm1 > 47) {room1b = true;}
 		else {room1a = true;}
 	}
+	bool line1 = false;
+	bool line2 = false;
 	if(room4l){
 		cout << endl << endl << "This is room 4 toward the maze" << endl << endl;
 		for(int i = 0; i < lineVec.size(); i++){
-			if((myLength[i] > 24) && (myLength[i] < 30)){
-				cout << "Gotcha, bitch!" << endl;
+			line1 = line2 = false;
+			if((lineVec[i].getLength() > 20) && (lineVec[i].getLength() < 34)){
+				cout << i << " Gotcha!" << endl;
+				line1 = true;
 			}
-			else if((myLength[i] > 68) && (myLength[i] < 74)){
-				cout << "Gotcha again, bitch!" << endl;
+			else if((lineVec[i].getLength() > 64) && (lineVec[i].getLength() < 78)){
+				cout << i << " Gotcha again!" << endl;
+				line2 = true;
+			}
+			if(line1){
+				refpoint temp1;
+				refpoint temp2;
+				refpoint temp3;
+				refpoint temp4;
+				temp1.setCart(lineVec[i].getEndPtX1(), lineVec[i].getEndPtY1());
+				temp2.setCart(lineVec[i].getEndPtX2(), lineVec[i].getEndPtY2());
+				temp3.setCart(164, 141);//point 19 164, 141
+				temp4.setCart(188, 141);//point 14
+				findStartLocation(temp1, temp2, temp3, temp4);
+			}
+			else if(line2){
+				refpoint temp1;
+				refpoint temp2;
+				refpoint temp3;
+				refpoint temp4;
+				temp1.setCart(lineVec[i].getEndPtX1(), lineVec[i].getEndPtY1());
+				temp2.setCart(lineVec[i].getEndPtX2(), lineVec[i].getEndPtY2());
+				temp3.setCart(188, 192);//point 13
+				temp4.setCart(118, 192);//point 12
+				findStartLocation(temp1, temp2, temp3, temp4);
 			}
 		}
+			
 	}
 	else if(room4s){
 		cout << endl << endl << "This is room 4 toward the wall" << endl << endl;
 		for(int i = 0; i < lineVec.size(); i++){
-			if((myLength[i] > 24) && (myLength[i] < 30)){
-				cout << "Gotcha, bitch!" << endl;
+			if((lineVec[i].getLength() > 20) && (lineVec[i].getLength() < 34)){
+				cout << "Gotcha!" << endl;
+				line1 = true;
 			}
-			else if((myLength[i] > 68) && (myLength[i] < 74)){
-				cout << "Gotcha again, bitch!" << endl;
+			else if((lineVec[i].getLength() > 64) && (lineVec[i].getLength() < 78)){
+				cout << "Gotcha again!" << endl;
+				line2 = true;
 			}
 		}
 	}
 	else if(room2){
 		cout << endl << endl << "This is room 2" << endl << endl;
 		for(int i = 0; i < lineVec.size(); i++){
-                        if((myLength[i] > 95) && (myLength[i] < 108)){
-                                cout << "Gotcha, bitch!" << endl;
+                        if((lineVec[i].getLength() > 95) && (lineVec[i].getLength() < 108)){
+                                cout << "Gotcha!" << endl;
                         }
-                        else if((myLength[i] > 50) && (myLength[i] < 64)){
-                                cout << "Gotcha again, bitch!" << endl;
+                        else if((lineVec[i].getLength() > 50) && (lineVec[i].getLength() < 64)){
+                                cout << "Gotcha again!" << endl;
                         }
                 }
 	}
 	else if(room3){
 		cout << endl << endl << "This is room 3" << endl << endl;
 		for(int i = 0; i < lineVec.size(); i++){
-                        if((myLength[i] > 120) && (myLength[i] < 137)){
-                                cout << "Gotcha, bitch!" << endl;
+                        if((lineVec[i].getLength() > 120) && (lineVec[i].getLength() < 137)){
+                                cout << "Gotcha!" << endl;
                         }
-                        else if((myLength[i] > 23) && (myLength[i] < 31)){
-                                cout << "Gotcha again, bitch!" << endl;
+                        else if((lineVec[i].getLength() > 23) && (lineVec[i].getLength() < 31)){
+                                cout << "Gotcha again!" << endl;
                         }
                 }
 	}
@@ -563,12 +704,14 @@ void Lidar::findRoom(vector <line> lineVec){
 	else{
 		cout << endl << endl << "Did not find the starting location" << endl << endl;
 	}
-	cout << rat4 << endl << rat23 << endl;
-	cout << "room 1 counter: " << rm1 << endl;
+	cout << room1a << " " << room1b << " " << room2 << " " << room3 << " " << room4l << " " << room4s << endl;
+//	cout << rat4 << endl << rat23 << endl;
+//	cout << "room 1 counter: " << rm1 << endl;
+//	*/
 }
 
 void Lidar::findStartLocation(refpoint endR1, refpoint endR2, refpoint endG1, refpoint endG2){
-	refpoint endG;
+	refpoint endG; //lidar location
 	float length0 = pt2PtDist(endR1.getX(), endR1.getY(), endR2.getX(), endR2.getY());
 	float length1 = endR1.findRad();
 	float length2 = endR2.findRad();
