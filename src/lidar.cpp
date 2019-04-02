@@ -37,7 +37,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	for(int i = 0; i < num; i++) { 
 		float radius = scan->ranges[i];
 		if ((isinf(radius) == 0)/*&&(radius < 180)*/&&(radius > 18)){ // check if acceptable range measurement
-			//if(radius > 180)radius == 180;
+			if(radius > 180) radius = 180;
 			float degree = RAD2DEG(scan->angle_min + scan->angle_increment * i);
 			float ang = degree>0 ? degree : degree + 360;
 			if(ang<prevAng && crossed == -1){
@@ -62,7 +62,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		}
 	}
 
-	findJumps();
+	findJumps(true);
 	cout<<"num jumps = "<<jump_.size()<<"\n";
 	findRoomFromJumps();
 	
@@ -169,28 +169,40 @@ void Lidar::findRoomFromJumps(){
 void Lidar::room1Localization(){
 }
 
-void Lidar::getAveragePrePost(float &pre, float &post, int center, int offset){
+void Lidar::getAveragePrePost(float &pre, float &post, int center, int offset, bool debug){
 	// determine averages excluding the jump pt (center + 1)
 	if(offset<1){ cout<<"bad call to getAveragePrePost\n"; return;}
 	float aPre = 0;
 	float aPost = 0;
 
-	for(int a=-(offset-1); a<1; a++){ aPre += rad[(center+a)%rad.size()]; }
-	for(int a=2; a<(offset+2); a++){ aPost += rad[(center+a)%rad.size()]; }
+	if(debug) cout<<"Prev: ";
+	for(int a=-offset; a<0; a++){ 
+		aPre += rad[(center+a)%rad.size()];
+		if(debug) cout<<rad[(center+a)%rad.size()]<<"  ";
+       
+	}
+	if(debug) cout<<"Center: "<<rad[center%rad.size()]<<" ";
+	if(debug) cout<<"Post: ";
+	for(int a=1; a<(offset+1); a++){ 
+		aPost += rad[(center+a)%rad.size()];
+		if(debug) cout<<rad[(center+a)%rad.size()]<<"  ";
+       	}
+	if(debug) cout<<"\n";
 	pre = aPre / (float) offset;
 	post = aPost / (float) offset;
 }
 
-void Lidar::findJumps(){
+void Lidar::findJumps(bool findBig){
 	jump_.resize(0);
+	furnJump.resize(0);
 	cout<<"finding jumps\n";
 	for(int i=0; i<rad.size(); i++){
 		float diff = abs(rad[i] - rad[(i+1)%rad.size()]);
-		if(diff > DoorJumpDist){ 
+		if(diff > DoorJumpDist && findBig){ 
 			float avgPre, avgPost; // new method using function
-			getAveragePrePost(avgPre,avgPost,i,5); // this omits idx+1 because that could be the nasty pt
+			getAveragePrePost(avgPre,avgPost,i+1,5); // this omits idx+1 because that could be the nasty pt
 
-			if(abs(avgPre - avgPost) > doorJump*0.75){
+			if(abs(avgPre - avgPost) > DoorJumpDist*0.75){
 				/* // debugging for checking what becomes a line
 				cout<<"Pre: ";
 				for(int a=-4; a<1; a++){ cout<<rad[(i+a)%rad.size()]<<"  "; }
@@ -203,12 +215,12 @@ void Lidar::findJumps(){
 				// if there are two jumps right next to eachother delete both (caused by bad pt)
 				// nearness can behave oddly since the LIDAR filters out points above 180cm
 				if(jump_.size()>1 && abs(jump_[jump_.size()-2] - jump_[jump_.size()-1]) == 1){
-					cout<<"Pre: ";
-					for(int a=-4; a<1; a++){ cout<<rad[(i+a)%rad.size()]<<"  "; }
-					cout<<" Center: "<<rad[i+1]<<"   Post: ";
-					for(int a=2; a<7; a++){ cout<<rad[(i+a)%rad.size()]<<"  "; }
-					cout<<"AvgPre = "<<avgPre<<" AvgPost = "<<avgPost<<"\n";
-					cout<<"Two jumps next to eachother at angles: "<<degrees[i]<<" and "<<degrees[i-1]<<"\n";
+					/*cout<<"Two jumps next to eachother at angles: "<<degrees[i]<<" and "<<degrees[i-1]<<"\n";
+					float d1, d2;
+					cout<<"Previous jump: \n";
+					getAveragePrePost(d1,d2, i, 5, 1); 
+					cout<<"Current jump: \n";
+					getAveragePrePost(d1,d2, i+1, 5,1); */
 					//jump_.erase(jump_.begin() + jump_.size()-1);
 					//jump_.erase(jump_.begin() + jump_.size()-1);
 					//also erase from furnJump if this is reinstated
@@ -220,19 +232,19 @@ void Lidar::findJumps(){
 			// With the LIDAR getting 500pts/scan it's angle between pts is 0.0127 rad
 			// which means the dist. between pts is R*0.0127, which equals 3cm at R = 238cm
 			float avgPre, avgPost;
-			getAveragePrePost(avgPre, avgPost, i, 3); // do 3pt averages before and after
-			if(abs(avgPre - avgPost) > furnJump*0.75){ // filter out random bad pts
+			getAveragePrePost(avgPre, avgPost, i+1, 3); // do 3pt averages before and after
+			if(abs(avgPre - avgPost) > FurnJumpDist*0.75){ // filter out random bad pts
 				furnJump.push_back(i);
 			}
 		}
 	}
 
 	cout<<"Big jumps at angles: ";
-	for(int i=0; i<jump_.size(); i++) {cout<<degrees[jump_[i]]<<" "<<rad[jump_[i]]<<"   ";}
+	for(int i=0; i<jump_.size(); i++) {cout<<degrees[jump_[i]]<<" "<<std::min(rad[jump_[i]],rad[getEndIdx(jump_[i])])<<"   ";}
 	cout<<"\n";
 	
 	cout<<"furn jumps at angles: ";
-	for(int i=0; i<furnJump.size(); i++) {cout<<degrees[furnJump[i]]<<" "<<rad[furnJump[i]]<<"   ";}
+	for(int i=0; i<furnJump.size(); i++) {cout<<degrees[furnJump[i]]<<" "<<std::min(rad[furnJump[i]],rad[getEndIdx(furnJump[i])])<<"   ";}
 	cout<<"\n";
 	
 	/*

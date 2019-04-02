@@ -19,6 +19,6 @@
 
 // Definitions for lidar class
 #define DoorJumpDist 40.0 // 40cm or more to be labeled as a jump in jumps_ for detecting door edges
-#define FurnJumpDist 10.0 // 10cm or more to be labeled as a potential furn jump
+#define FurnJumpDist 12.0 // 10cm or more to be labeled as a potential furn jump
 
 

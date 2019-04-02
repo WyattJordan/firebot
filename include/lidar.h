@@ -40,7 +40,7 @@ class Lidar{
 		float myRad(float x, float y);
 		void findRoom();
 		void findRoomFromJumps();
-		void findJumps();
+		void findJumps(bool findBig); // finds either big jumps and furniture jumps or only furn jumps
 		void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan);
 		void findStartLocation(EndPoint endR1, EndPoint endR2, EndPoint endG1, EndPoint endG2);
 	private:
@@ -56,7 +56,7 @@ class Lidar{
 		void room4Localization(vector<int> closeJumps);
 		void room1Localization();
 		void localizeFromPt(EndPoint l, EndPoint g);
-		void getAveragePrePost(float &pre, float &post, int center, int offset);
+		void getAveragePrePost(float &pre, float &post, int center, int offset,bool degug=false);
 		Vector3f prevOdom_;
 		Nav* nav_;
 //		Robot* rob_;
