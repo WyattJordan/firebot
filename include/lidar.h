@@ -7,7 +7,7 @@
 #include "Robot.h"
 #include "Nav.h"
 #include "line.h"
-#include "refpoint.h"
+//#include "EndPoint.h"
 #include "Endpoint.h"
 #include "definitions.h"
 #include <Eigen/Core>
@@ -42,7 +42,7 @@ class Lidar{
 		void findRoomFromJumps();
 		void findJumps();
 		void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan);
-		void findStartLocation(refpoint endR1, refpoint endR2, refpoint endG1, refpoint endG2);
+		void findStartLocation(EndPoint endR1, EndPoint endR2, EndPoint endG1, EndPoint endG2);
 	private:
 		vector<float> xVal;
 		vector<float> yVal;

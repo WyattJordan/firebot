@@ -119,7 +119,7 @@ void Lidar::room4Localization(vector<int> closeJumps){
 		ep2 = nav_->getMapPoint(18);
 	}
 
-	EndPoint globalPt((ep1.getx() + ep2.getx()) / 2.0, (ep1.gety() + ep2.gety()) / 2.0);
+	EndPoint globalPt((ep1.getX() + ep2.getX()) / 2.0, (ep1.getY() + ep2.getY()) / 2.0);
 	EndPoint localPt((xVal[closest] + xVal[nextClosest]) / 2.0, (yVal[closest] + yVal[nextClosest]) / 2.0);
 	
 	localizeFromPt(localPt, globalPt);
@@ -652,12 +652,12 @@ void Lidar::findRoom(){
 		}
 	}
 		/*	
-			refpoint temp;
+			EndPoint temp;
 			temp.setCart(lineVec[i].getEndPtX1(), lineVec[i].getEndPtY1());
-			refpoint temp2;
+			EndPoint temp2;
 			temp2.setCart(lineVec[i].getEndPtX2(), lineVec[i].getEndPtY2());
-			refpoint temp3;
-			refpoint temp4;
+			EndPoint temp3;
+			EndPoint temp4;
 			temp3.setCart(.72, .46);
 			temp4.setCart(myLength[i] + .72, .46);
 			findStartLocation(temp, temp2, temp3, temp4);
@@ -687,10 +687,10 @@ void Lidar::findRoom(){
 				line2 = true;
 			}
 			if(line1){
-				refpoint temp1;
-				refpoint temp2;
-				refpoint temp3;
-				refpoint temp4;
+				EndPoint temp1;
+				EndPoint temp2;
+				EndPoint temp3;
+				EndPoint temp4;
 				temp1.setCart(lineVec[i].getEndPtX1(), lineVec[i].getEndPtY1());
 				temp2.setCart(lineVec[i].getEndPtX2(), lineVec[i].getEndPtY2());
 				temp3.setCart(164, 141);//point 19 164, 141
@@ -698,10 +698,10 @@ void Lidar::findRoom(){
 				findStartLocation(temp1, temp2, temp3, temp4);
 			}
 			else if(line2){
-				refpoint temp1;
-				refpoint temp2;
-				refpoint temp3;
-				refpoint temp4;
+				EndPoint temp1;
+				EndPoint temp2;
+				EndPoint temp3;
+				EndPoint temp4;
 				temp1.setCart(lineVec[i].getEndPtX1(), lineVec[i].getEndPtY1());
 				temp2.setCart(lineVec[i].getEndPtX2(), lineVec[i].getEndPtY2());
 				temp3.setCart(188, 192);//point 13
@@ -761,8 +761,8 @@ void Lidar::findRoom(){
 //	*/
 }
 
-void Lidar::findStartLocation(refpoint endR1, refpoint endR2, refpoint endG1, refpoint endG2){
-	refpoint endG; //lidar location
+void Lidar::findStartLocation(EndPoint endR1, EndPoint endR2, EndPoint endG1, EndPoint endG2){
+	EndPoint endG; //lidar location
 	float length0 = pt2PtDist(endR1.getX(), endR1.getY(), endR2.getX(), endR2.getY());
 	float length1 = endR1.findRad();
 	float length2 = endR2.findRad();

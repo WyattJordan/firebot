@@ -37,8 +37,8 @@ class EndPoint{
 		//void setNeighbors(int n1, int n2);
 
 		int getID() const;
-		float getx() const;
-		float gety() const;
+		float getX() const;
+		float getY() const;
 		float getCalculatedR() const;
 		float getCalculatedTheta() const;
 		bool getDone() const;
@@ -48,7 +48,7 @@ class EndPoint{
 
 		// migrated from refpoint
 		void setCart(float xIn, float yIn);
-		float getAngle() const;
+		float findAngle() const;
 		float findRad() const;
 		void clear();
 };

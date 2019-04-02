@@ -171,8 +171,8 @@ void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry, vector<E
 			}
 			else{
 				float theta = p.getCalculatedTheta();
-				bool vert = ep1.getx() == ep2.getx() ? 1 : 0; // otherwise horiz line	
-				bool above = (vert && Rx < ep1.getx()) || (!vert && Ry < ep1.gety());
+				bool vert = ep1.getX() == ep2.getX() ? 1 : 0; // otherwise horiz line	
+				bool above = (vert && Rx < ep1.getX()) || (!vert && Ry < ep1.getY());
 				float start = std::min(ep1.getCalculatedTheta(),ep2.getCalculatedTheta());
 				float end =   std::max(ep1.getCalculatedTheta(),ep2.getCalculatedTheta());
 				bool cross = false;
@@ -183,10 +183,10 @@ void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry, vector<E
 				if( ((!cross && theta > start - margin && theta < end + margin) ||
 					(cross && (theta > end - margin || theta < start + margin))) 
 					&&   (	
-					( vert &&  above && p.getx() > ep1.getx()) ||
-					( vert && !above && p.getx() < ep1.getx()) ||
-					(!vert &&  above && p.gety() > ep1.gety()) ||
-					(!vert && !above && p.gety() < ep1.gety())    )
+					( vert &&  above && p.getX() > ep1.getX()) ||
+					( vert && !above && p.getX() < ep1.getX()) ||
+					(!vert &&  above && p.getY() > ep1.getY()) ||
+					(!vert && !above && p.getY() < ep1.getY())    )
 				  ){  
 					p.setVisible(false);
 					p.setDone(true);
@@ -234,11 +234,11 @@ void Nav::populateMarks(string which, string NS,
 		marks.markers[i].action = visualization_msgs::Marker::ADD;
 		
 		marks.markers[i].points.resize(2);
-		marks.markers[i].points[0].x = (*pts)[i].getx();
-		marks.markers[i].points[0].y = (*pts)[i].gety();
+		marks.markers[i].points[0].x = (*pts)[i].getX();
+		marks.markers[i].points[0].y = (*pts)[i].getY();
 		marks.markers[i].points[0].z = 0;
-		marks.markers[i].points[1].x = (*pts)[i].getx();
-		marks.markers[i].points[1].y = (*pts)[i].gety();
+		marks.markers[i].points[1].x = (*pts)[i].getX();
+		marks.markers[i].points[1].y = (*pts)[i].getY();
 		marks.markers[i].points[1].z = 10; // 10cm tall 
 
 		marks.markers[i].scale.x = 3; 
@@ -260,8 +260,8 @@ void Nav::populateMarks(string which, string NS,
 		marks.markers[idx].scale.x = 3;
 		marks.markers[idx].scale.y = 3;
 		marks.markers[idx].scale.z = 8.0; // text height	
-		marks.markers[idx].pose.position.x = (*pts)[i].getx();
-		marks.markers[idx].pose.position.y = (*pts)[i].gety();
+		marks.markers[idx].pose.position.x = (*pts)[i].getX();
+		marks.markers[idx].pose.position.y = (*pts)[i].getY();
 		marks.markers[idx].pose.position.z = 15;
 		marks.markers[idx].pose.orientation.x = 0;
 		marks.markers[idx].pose.orientation.y = 0;
@@ -295,8 +295,8 @@ void Nav::populateMarks(string which, string NS,
 
 	// LINE_STRIP is defined by n points, here n always = 2
 	for(int i=0; i<pts->size(); i++){ 
-		mark.points[0].x = (*pts)[i].getx(); // add the ith point to the line
-		mark.points[0].y = (*pts)[i].gety();
+		mark.points[0].x = (*pts)[i].getX(); // add the ith point to the line
+		mark.points[0].y = (*pts)[i].getY();
 
 		// loop through all the ith point's neighbors adding 	
 		// and then the main MarkerArray them to the LINE_STRIP
@@ -305,8 +305,8 @@ void Nav::populateMarks(string which, string NS,
 			
 			if(getNeighbor((*pts)[i].getID(), k, ep1, *pts) &&
 				       	!accountedForIDs[ep1.getID()]){
-				mark.points[1].x = ep1.getx();
-				mark.points[1].y = ep1.gety();
+				mark.points[1].x = ep1.getX();
+				mark.points[1].y = ep1.getY();
 				mark.id = (*pts)[i].getID() * 10000 + k; 
 				marks.markers.push_back(mark);	
 			}
@@ -452,8 +452,8 @@ void Nav::outputGraph(vector<EndPoint> &pts){
 	cout<<"////////////////////////////////////////////////////\n";
 	for(int i=0; i<pts.size(); i++){
 		cout<<" id: "<<pts[i].getID();
-		cout<<"\tx: "<<pts[i].getx();
-		cout<<"\ty: "<<pts[i].gety();
+		cout<<"\tx: "<<pts[i].getX();
+		cout<<"\ty: "<<pts[i].getY();
 		cout<<"\tNEIGH: "<< pts[i].getNumNeighbors();
 		for(int k=0; k<pts[i].getNumNeighbors(); k++){
 			// for some reason this check needs to be here...
@@ -500,7 +500,7 @@ bool Nav::removePoint(int id, vector<EndPoint> &pts){
 }
 
 float Nav::getDistance(EndPoint &ep1, EndPoint &ep2){
-	return pow(pow(ep1.getx() - ep2.getx(),2) + pow(ep1.gety() - ep2.gety(),2), 0.5);
+	return pow(pow(ep1.getX() - ep2.getX(),2) + pow(ep1.getY() - ep2.getY(),2), 0.5);
 }
 
 void Nav::publishMapAndWays(){

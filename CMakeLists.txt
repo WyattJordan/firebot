@@ -192,7 +192,7 @@ target_link_libraries(launcher wiringPi)
 ]]
 
 #[[
-add_executable(everything src/everything.cpp src/Robot.cpp src/pid.cpp src/Nav.cpp src/Endpoint.cpp src/lidar.cpp src/refpoint.cpp src/line.cpp)
+add_executable(everything src/everything.cpp src/Robot.cpp src/pid.cpp src/Nav.cpp src/Endpoint.cpp src/lidar.cpp src/Endpoint.cpp src/line.cpp)
 #target_compile_options(launcher PRIVATE -lwiringPi -lcrypt -lm -lrt)
 add_dependencies(everything ${PROJECT_NAME}_gencfg)
 target_link_libraries(everything ${catkin_LIBRARIES})
@@ -204,8 +204,8 @@ target_link_libraries(everything wiringPi)
 add_executable(rplidarNode src/node.cpp ${RPLIDAR_SDK_SRC})
 target_link_libraries(rplidarNode ${catkin_LIBRARIES})
 
-#add_executable(rplidarNodeClient src/myClient.cpp src/lidar.cpp src/Robot.cpp src/line.cpp src/refpoint.cpp)
-add_executable(rplidarNodeClient src/myClient.cpp src/lidar.cpp src/line.cpp src/refpoint.cpp src/Endpoint.cpp src/Nav.cpp)
+#add_executable(rplidarNodeClient src/myClient.cpp src/lidar.cpp src/Robot.cpp src/line.cpp src/Endpoint.cpp)
+add_executable(rplidarNodeClient src/myClient.cpp src/lidar.cpp src/line.cpp src/Endpoint.cpp src/Nav.cpp)
 target_link_libraries(rplidarNodeClient ${catkin_LIBRARIES})
 
 install(TARGETS rplidarNode rplidarNodeClient 

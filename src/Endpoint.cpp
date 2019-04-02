@@ -72,15 +72,17 @@ int EndPoint::getNeighborID(int neighI) const{
 
 vector<int> EndPoint::getNeighborList() const{ return neighborIDs; }
 
-float EndPoint::getx()  const {  return x;}
-float EndPoint::gety()  const {  return y;}
+float EndPoint::getX()  const {  return x;}
+float EndPoint::getY()  const {  return y;}
 float EndPoint::getCalculatedTheta() const{ return pp.theta;}
-float EndPoint::getAngle() const{ return atan2(y,x)*180.0/PI;}
 float EndPoint::getCalculatedR() const{ return pp.R; }
 int   EndPoint::getID() const { return id;}
 bool  EndPoint::getDone() const {return done;}
 bool  EndPoint::isVisible() const {return visible;}
 int   EndPoint::getNumNeighbors() const{ return neighborIDs.size();}
+
+float EndPoint::findAngle() const{ return atan2(y,x)*180.0/PI;}
+float EndPoint::findRad() const{ return pow(x*x + y*y, 0.5);}
+
 void  EndPoint::setDone(bool d) {done = d;}
 void  EndPoint::setVisible(bool s) {visible = s;}
-
