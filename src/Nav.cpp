@@ -131,7 +131,7 @@ void Nav::findExpected(float Rx, float Ry, vector<EndPoint> &pts){
 	}
 	std::sort(pts.begin(), pts.end(), 
 			[](const EndPoint& lhs, const EndPoint &rhs){
-			return	lhs.getR() < rhs.getR();	
+			return	lhs.getCalculatedR() < rhs.getCalculatedR();	
 		}); // sort by points closest to robot
 
 	EndPoint ep;
@@ -165,16 +165,16 @@ void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry, vector<E
 	for(EndPoint &p : pts){
 		if(!p.getDone()){
 
-			if(p.getR()<15 || p.getR() > 130){ // must be within LIDAR range
+			if(p.getCalculatedR()<15 || p.getCalculatedR() > 130){ // must be within LIDAR range
 				p.setVisible(false);
 				p.setDone(true);
 			}
 			else{
-				float theta = p.getTheta();
+				float theta = p.getCalculatedTheta();
 				bool vert = ep1.getx() == ep2.getx() ? 1 : 0; // otherwise horiz line	
 				bool above = (vert && Rx < ep1.getx()) || (!vert && Ry < ep1.gety());
-				float start = std::min(ep1.getTheta(),ep2.getTheta());
-				float end =   std::max(ep1.getTheta(),ep2.getTheta());
+				float start = std::min(ep1.getCalculatedTheta(),ep2.getCalculatedTheta());
+				float end =   std::max(ep1.getCalculatedTheta(),ep2.getCalculatedTheta());
 				bool cross = false;
 				if(end - start> 180) { // they are crossing the 0 
 					cross = true;	
@@ -469,12 +469,17 @@ void Nav::outputGraph(vector<EndPoint> &pts){
 	}
 	cout<<"////////////////////////////////////////////////////\n";
 }
-
+// gets a point given an ID, assumes in order initially then searches 
 EndPoint Nav::getWayPoint(int id){
 	return getPoint(id, wayPoints_);
 }
 
-// gets a point given an ID, assumes in order initially then searches 
+EndPoint Nav::getMapPoint(int id){
+	return getPoint(id, mapPoints_);
+}
+
+
+
 EndPoint& Nav::getPoint(int id, vector<EndPoint> &pts){
 	if(pts.size() > 0 && pts[id].getID() == id) return pts[id];
 	for(int i=0; i<pts.size(); i++){

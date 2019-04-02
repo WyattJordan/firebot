@@ -205,7 +205,7 @@ add_executable(rplidarNode src/node.cpp ${RPLIDAR_SDK_SRC})
 target_link_libraries(rplidarNode ${catkin_LIBRARIES})
 
 #add_executable(rplidarNodeClient src/myClient.cpp src/lidar.cpp src/Robot.cpp src/line.cpp src/refpoint.cpp)
-add_executable(rplidarNodeClient src/myClient.cpp src/lidar.cpp src/line.cpp src/refpoint.cpp)
+add_executable(rplidarNodeClient src/myClient.cpp src/lidar.cpp src/line.cpp src/refpoint.cpp src/Endpoint.cpp src/Nav.cpp)
 target_link_libraries(rplidarNodeClient ${catkin_LIBRARIES})
 
 install(TARGETS rplidarNode rplidarNodeClient 

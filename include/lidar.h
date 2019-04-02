@@ -5,8 +5,10 @@
 #include "sensor_msgs/LaserScan.h"
 #include <tf/transform_broadcaster.h>
 #include "Robot.h"
+#include "Nav.h"
 #include "line.h"
 #include "refpoint.h"
+#include "Endpoint.h"
 #include "definitions.h"
 #include <Eigen/Core>
 #include <iostream>
@@ -30,7 +32,7 @@ using namespace std;
 class Lidar{
 	public:
 		Lidar();
-//		Lidar(Robot *robRef);
+//		Lidar(Robot *robRef, Nav *navRef);
 		float pt2PtDist(float x1, float y1, float x2, float y2);
 		vector<line> findLine(vector <float> xReal, vector <float> yReal);
 		bool canMerge(line a, line b);
@@ -49,7 +51,11 @@ class Lidar{
 		vector<int> jump;
 		void removePt(int i);
 		int getEndIdx(int s);
+		void room4Localization(vector<int> closeJumps);
+		void room1Localization();
+		void localizeFromPt(EndPoint l, EndPoint g);
 		Vector3f prevOdom_;
+		Nav* nav_;
 //		Robot* rob_;
 
 };

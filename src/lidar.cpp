@@ -11,12 +11,10 @@ float Lidar::pt2PtDist(float x1, float y1, float x2, float y2){
 	return pow(pow(x2-x1,2) + pow(y2-y1,2) ,0.5);
 }
 
-
 void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 {
 
-	/*
-	bool updatePosition = false;
+	/* bool updatePosition = false;
 	Vector3f currentPos = rob_->getOdomWorldLoc(); // this is an undefined ref for some reason...
 	//Vector3f currentPos;
 	if(! (prevOdom_(0) == -100 && prevOdom_(1) == -100)) // if not the first run (default odom loc) 
@@ -28,8 +26,6 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 
 	cout<<"\nentered callback...\n";
 	int num = scan->scan_time / scan->time_increment;
-	//ROS_INFO("Testing %s[%d]:", scan->header.frame_id.c_str(), count);
-	//ROS_INFO("angle_range, %f, %f", RAD2DEG(scan->angle_min), RAD2DEG(scan->angle_max));
 	time_t start, finish;
 	degrees.resize(0);
 	rad.resize(0);
@@ -41,7 +37,6 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 
 	// formats the data so that angle increases from 0 to 360
 	for(int i = 0; i < num; i++) { 
-		//	ROS_INFO(": [%f, %f]", degree, scan->ranges[i]);
 		float radius = scan->ranges[i];
 		if ((isinf(radius) == 0)&&(radius < 180)&&(radius > 18)){ // check if acceptable range measurement
 			float degree = RAD2DEG(scan->angle_min + scan->angle_increment * i);
@@ -64,13 +59,14 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 			//}
 			prevAng = ang;
 		}
-		else if(crossed != -1){
-			crossed++; // since the ith was removed must adjust the crossed point
+		else if(crossed != -1){// when range measurement is skipped
+			crossed++;         // must adjust the crossed point
 		}
 	}
+
 	findJumps();
 	cout<<"num jumps = "<<jump.size()<<"\n";
-	//findRoomFromJumps();
+	findRoomFromJumps();
 	
 /*	ROS_INFO("Starting findLine...");
 	findLine(xVal, yVal);
@@ -94,21 +90,81 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 	prevOdom_ = currentPos;*/
 }
 
+void Lidar::room4Localization(vector<int> closeJumps){
+	int closest = -1;
+	int nextClosest = -2;
+	float min = 99999999.9;
+	for(int i=0; i<2; i++){
+		for(int j : closeJumps){
+			float thismin = std::min(rad[j],rad[getEndIdx(j+1)]);
+			if(thismin < min)
+					min = thismin;
+					if(i==0) {closest = j;}
+					else{nextClosest = j;}
+		}
+		// remove closest and reset min to find next min
+		closeJumps.erase(std::remove(closeJumps.begin(), closeJumps.end(), closest), closeJumps.end());
+		min = 99999999.9;
+	}
 
-void Lidar::removePt(int i){
-	rad.erase(rad.begin() + i );
-	degrees.erase(degrees.begin() + i );
-	xVal.erase(xVal.begin() + i );
-	yVal.erase(yVal.begin() + i );
+	int r4long = 0;
+	for(float d : rad) {if(d>160) r4long++;}
+	EndPoint ep1, ep2;
+	if(r4long > 5){	
+		ep1 = nav_->getMapPoint(11);
+		ep2 = nav_->getMapPoint(19);
+	}
+	else{
+		ep1 = nav_->getMapPoint(13);
+		ep2 = nav_->getMapPoint(18);
+	}
+
+	EndPoint globalPt((ep1.getx() + ep2.getx()) / 2.0, (ep1.gety() + ep2.gety()) / 2.0);
+	EndPoint localPt((xVal[closest] + xVal[nextClosest]) / 2.0, (yVal[closest] + yVal[nextClosest]) / 2.0);
+	
+	localizeFromPt(localPt, globalPt);
 }
 
-int Lidar::getEndIdx(int s){
-	return s+1 < rad.size() ? s+1 : 0;
+void Lidar::localizeFromPt(EndPoint l, EndPoint g){
+
+}
+
+// to detect furniture look at dist between endpoint of first jump and start of second jump
+void Lidar::findRoomFromJumps(){
+	cout<<"finding room from jumps\n";
+
+	// Check room4 first, if there are two close big jumps (the doorway) it's room 4
+	float room4NearLimit = 70; 
+	vector<int> closeJumps;
+	for(int j : jump){
+		if(rad[j] < room4NearLimit || rad[getEndIdx(j+1)] < room4NearLimit){
+			closeJumps.push_back(j);
+		}
+	}
+	cout<<"closeJumpCount = "<<closeJumps.size()<<"\n";
+
+	if(closeJumps.size() >= 2){
+		cout<<"localizing for room4\n";
+		room4Localization(closeJumps);
+	}
+	else if(jump.size() > 1){ // rooms 2 and 3 only have one jump but room 1 has at least 2
+		cout<<"localizing for room1\n";
+		room1Localization();
+	}
+	else{
+		// TODO determine if it's room2 or room3 somehow...
+		cout<<"localizing for room 2 or 3\n";
+	}
+
+}
+
+
+void Lidar::room1Localization(){
 }
 
 void Lidar::findJumps(){
-	float bigJump = 40;
 	jump.resize(0);
+	float bigJump = 40;
 	cout<<"finding jumps\n";
 	for(int i=0; i<rad.size(); i++){
 		float diff = abs(rad[i] - rad[(i+1)%rad.size()]);
@@ -129,6 +185,7 @@ void Lidar::findJumps(){
 				cout<<"AvgPre = "<<avgPre<<" AvgPost = "<<avgPost<<"\n";
 				*/
 				jump.push_back(i);
+				// nearness can behave oddly since the LIDAR filters out points above 180cm
 				if(jump.size()>1 && abs(jump[jump.size()-2] - jump[jump.size()-1]) == 1){
 					cout<<"Two jumps next to eachother at angles: "<<degrees[i]<<" and "<<degrees[i-1]<<"\n";
 					//jump.erase(jump.begin() + jump.size()-1);
@@ -157,6 +214,15 @@ void Lidar::findJumps(){
 		cout<<"\n";
 	}*/
 }
+
+void Lidar::removePt(int i){
+	rad.erase(rad.begin() + i );
+	degrees.erase(degrees.begin() + i );
+	xVal.erase(xVal.begin() + i );
+	yVal.erase(yVal.begin() + i );
+}
+
+int Lidar::getEndIdx(int s){ return s+1 < rad.size() ? s+1 : 0; }
 
 vector<line> Lidar::findLine(vector <float> xReal, vector <float> yReal){
 	vector <line> myLines;
@@ -502,20 +568,6 @@ bool Lidar::canMerge(line a, line b){
 	else
 		return false;
 }
-
-// to detect furniture look at dist between endpoint of first jump and start of second jump
-void Lidar::findRoomFromJumps(){
-	cout<<"finding room from jumps\n";
-	float nearLimit = 70; // for finding room 4 (if 2 jumps under near limit)
-	int closeJumpCount = 0;
-	for(int j=0; j<jump.size(); j++){
-		if(rad[jump[j]] < nearLimit || rad[jump[j]+1] < nearLimit){
-			closeJumpCount++;
-		}
-	}
-	cout<<"closeJumpCount = "<<closeJumpCount<<"\n";
-}
-
 void Lidar::findRoom(){
 	int rm1 = 0;
 	int rm2 = 0;

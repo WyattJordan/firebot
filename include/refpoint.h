@@ -10,6 +10,8 @@ using namespace std;
 
 class refpoint {
 public:
+	refpoint();
+	refpoint(float X, float Y);
 	void setCart(float xIn, float yIn);
 	float getX();
 	float getY();

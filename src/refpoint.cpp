@@ -1,5 +1,8 @@
 #include "refpoint.h"
 
+refpoint::refpoint(){}
+
+refpoint::refpoint(float X, float Y) : y(Y), x(X){}
 
 void refpoint::setCart(float xIn, float yIn){
         x = xIn;

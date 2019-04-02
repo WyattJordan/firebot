@@ -227,11 +227,11 @@ float Robot::getPoseToPoint(EndPoint pt, EndPoint* pt2){
 	float t;
 	if(pt2 == NULL){
 		pt.calcPolar(odomWorldLoc_(0),odomWorldLoc_(1)); // find polar with robot as origin
-		t = pt.getTheta();
+		t = pt.getCalculatedTheta();
 	}
 	else{ // get angle to pt2 with pt as the origin
 		pt2->calcPolar(pt.getx(),pt.gety()); // find polar with robot as origin
-		t = pt2->getTheta();
+		t = pt2->getCalculatedTheta();
 
 	}
 	
