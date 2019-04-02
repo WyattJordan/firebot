@@ -26,47 +26,50 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 	
 	}*/ //stuff for position updates
 
-	cout<<"\nentered callback...";
+	cout<<"\nentered callback...\n";
 	int num = scan->scan_time / scan->time_increment;
 	//ROS_INFO("Testing %s[%d]:", scan->header.frame_id.c_str(), count);
 	//ROS_INFO("angle_range, %f, %f", RAD2DEG(scan->angle_min), RAD2DEG(scan->angle_max));
 	time_t start, finish;
-	xVal.resize(0); // resize member variables for this scan
-	yVal.resize(0);
 	degrees.resize(0);
 	rad.resize(0);
+	xVal.resize(0); 
+	yVal.resize(0);
 	time(&start);
-	bool crossed = false;
-	vector<float> tRad, tDeg, tX, tY;
+	int crossed = -1;
+	float prevAng = 0;
 
-	float prevdeg = scan->angle_min;
-
-	for(int i = 0; i < num; i++) { // why use the count instead of the 
+	// formats the data so that angle increases from 0 to 360
+	for(int i = 0; i < num; i++) { 
 		//	ROS_INFO(": [%f, %f]", degree, scan->ranges[i]);
 		float radius = scan->ranges[i];
-		if ((isinf(radius) == 0)&&(radius < 180)&&(radius > 18)){
+		if ((isinf(radius) == 0)&&(radius < 180)&&(radius > 18)){ // check if acceptable range measurement
 			float degree = RAD2DEG(scan->angle_min + scan->angle_increment * i);
 			float ang = degree>0 ? degree : degree + 360;
-			///if(degree<prevdeg || crossed){
-			if(degree<prevdeg ){
-				crossed = true;
-				cout<<"HIT A CROSSING!!!\n\n";
-			//	tRad.push_back(radius);
-			//	tDeg.push_back(ang);
-
+			if(ang<prevAng && crossed == -1){
+				crossed = i;
 			}
+
+			/*if(crossed !=-1){ // once the crossover is hit start inserting from beginning
+				degrees.insert(degrees.begin() + (i-crossed), ang);
+				rad.insert(        rad.begin() + (i-crossed), radius);
+				xVal.insert(      xVal.begin() + (i-crossed), POLAR2XCART(radius, ang));
+				yVal.insert(      yVal.begin() + (i-crossed), POLAR2XCART(radius, ang));
+			}*/
 			//else{
-				// save angle, radius, x, and y as vector class variables
 				degrees.push_back(ang);
 				rad.push_back(radius);
 				xVal.push_back(POLAR2XCART(radius, ang));
 				yVal.push_back(POLAR2YCART(radius, ang));
 			//}
-			prevdeg = degree;
+			prevAng = ang;
+		}
+		else if(crossed != -1){
+			crossed++; // since the ith was removed must adjust the crossed point
 		}
 	}
-	//findJumps();
-	//cout<<"num jumps = "<<jump.size()<<"\n";
+	findJumps();
+	cout<<"num jumps = "<<jump.size()<<"\n";
 	//findRoomFromJumps();
 	
 /*	ROS_INFO("Starting findLine...");
@@ -105,7 +108,6 @@ int Lidar::getEndIdx(int s){
 
 void Lidar::findJumps(){
 	float bigJump = 40;
-	bool checkNext = false;
 	jump.resize(0);
 	cout<<"finding jumps\n";
 	for(int i=0; i<rad.size(); i++){
@@ -118,8 +120,6 @@ void Lidar::findJumps(){
 			avgPre /= 5; 
 			avgPost/=5;
 
-			// for a good jump would expect the max to be close to 2*average, add wiggle room
-		//	if(max(rad[i],rad[(i+1)%rad.size()]) < 2.0*avg * 1.2){
 			if(abs(avgPre - avgPost) > 30){
 				/* // debugging for checking what becomes a line
 				cout<<"Pre: ";
@@ -129,18 +129,18 @@ void Lidar::findJumps(){
 				cout<<"AvgPre = "<<avgPre<<" AvgPost = "<<avgPost<<"\n";
 				*/
 				jump.push_back(i);
+				if(jump.size()>1 && abs(jump[jump.size()-2] - jump[jump.size()-1]) == 1){
+					cout<<"Two jumps next to eachother at angles: "<<degrees[i]<<" and "<<degrees[i-1]<<"\n";
+					//jump.erase(jump.begin() + jump.size()-1);
+					//jump.erase(jump.begin() + jump.size()-1);
+				}
 			}
 		}
 		// if there are two jumps right next to eachother delete both (caused by bad pt)
-		if(jump.size()>1 && jump[jump.size()-2] == i-1){
-			cout<<"Two jumps next to eachother at angles: "<<degrees[i]<<" and "<<degrees[i-1]<<"\n";
-	//		jump.erase(jump.begin() + jump.size()-1);
-	//		jump.erase(jump.begin() + jump.size()-1);
-		}
 	}
 
 	cout<<"jumps at angles: ";
-	for(int i=0; i<jump.size(); i++) cout<<degrees[jump[i]]<<"   ";
+	for(int i=0; i<jump.size(); i++) {cout<<degrees[jump[i]]<<" "<<rad[jump[i]]<<"   ";}
 	cout<<"\n";
 	
 	/*
@@ -148,7 +148,6 @@ void Lidar::findJumps(){
 		cout<<"at i="<<jump[j]<<" rad is "<<rad[jump[j]]<<" xval is: "<<xVal[jump[j]] <<" yVal is: "<<yVal[jump[j]]<<"  ";
 	cout<<"total i="<<rad.size()<<"\n";
 	}*/	
-
 	/*
 	for(int j : jump){
 		cout<<"prev Pt i="<<j-1<<" angle="<<degrees[j-1]<<" rad ="<<rad[j-1]<<"  ";
