@@ -23,6 +23,7 @@
 #define POLAR2XCART(r, t) ((r)*cos((t)*M_PI/180.)) //get the x component when given a distance and angle in degrees
 #define POLAR2YCART(r, t) ((r)*sin((t)*M_PI/180.)) //get the y component when given a distance and angle in degrees
 
+
 using namespace std;
 
 //void leastSquareFit(vector <float> &x, vector <float> &y, float &slope, float &b);
@@ -48,7 +49,8 @@ class Lidar{
 		vector<float> yVal;
 		vector<float> degrees;
 		vector<float> rad;
-		vector<int> jump;
+		vector<int> jump; // jumps greater than doorJump definition in size
+		vector<int> fJump;// jumps greater than furnJump defn in size
 		void removePt(int i);
 		int getEndIdx(int s);
 		void room4Localization(vector<int> closeJumps);

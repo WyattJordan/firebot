@@ -17,3 +17,8 @@
 
 #define ab std::abs
 
+
+// Definitions for lidar class
+#define doorJump 40.0 // 40cm or more to be labeled as a jump in jumps_ for detecting door edges
+#define furnJump 10.0 // 10cm or more to be labeled as a potential furn jump
+

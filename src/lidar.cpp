@@ -65,7 +65,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 	}
 
 	findJumps();
-	cout<<"num jumps = "<<jump.size()<<"\n";
+	cout<<"num jumps = "<<jump_.size()<<"\n";
 	findRoomFromJumps();
 	
 /*	ROS_INFO("Starting findLine...");
@@ -90,39 +90,48 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 	prevOdom_ = currentPos;*/
 }
 
-void Lidar::room4Localization(vector<int> closeJumps){
+void Lidar::room4Localization(vector<int> cJumps){
+	// get closest two big jumps (edges of doorway leaving room 4)
 	int closest = -1;
-	int nextClosest = -2;
+	int nClosest = -2;
 	float min = 99999999.9;
 	for(int i=0; i<2; i++){
-		for(int j : closeJumps){
+		for(int j : cJumps){
 			float thismin = std::min(rad[j],rad[getEndIdx(j+1)]);
 			if(thismin < min)
 					min = thismin;
 					if(i==0) {closest = j;}
-					else{nextClosest = j;}
+					else{nClosest = j;}
 		}
 		// remove closest and reset min to find next min
-		closeJumps.erase(std::remove(closeJumps.begin(), closeJumps.end(), closest), closeJumps.end());
+		cJumps.erase(std::remove(cJumps.begin(), cJumps.end(), closest), cJumps.end());
 		min = 99999999.9;
 	}
 
+	// determine which side the door is on from longer range measurements
 	int r4long = 0;
 	for(float d : rad) {if(d>160) r4long++;}
 	EndPoint ep1, ep2;
 	if(r4long > 5){	
 		ep1 = nav_->getMapPoint(11);
 		ep2 = nav_->getMapPoint(19);
+		cout<<"room4 door faces (0,0)\n";
 	}
 	else{
 		ep1 = nav_->getMapPoint(13);
 		ep2 = nav_->getMapPoint(18);
+		cout<<"room4 door faces top of maze\n";
 	}
 
-	EndPoint globalPt((ep1.getX() + ep2.getX()) / 2.0, (ep1.getY() + ep2.getY()) / 2.0);
-	EndPoint localPt((xVal[closest] + xVal[nextClosest]) / 2.0, (yVal[closest] + yVal[nextClosest]) / 2.0);
+	// point in the center of the doorway in the global frame determined by the map
+	EndPoint gDoorPt((ep1.getX() + ep2.getX()) / 2.0, (ep1.getY() + ep2.getY()) / 2.0);
+
+	// don't know if the first point of the jump or the second has the nearer radius, use the closer points to make the doorway waypoint
+	float closest = std::min(rad[closest],rad[getEndIdx(closest)])   == rad[closest]  ? closest  : getEndIdx(closest);
+	float nClosest= std::min(rad[nClosest],rad[getEndIdx(nClosest)]) == rad[nClosest] ? nClosest : getEndIdx(nClosest);
+	EndPoint lDoorPt((xVal[closest] + xVal[nClosest]) / 2.0, (yVal[closest] + yVal[nClosest]) / 2.0);
 	
-	localizeFromPt(localPt, globalPt);
+	localizeFromPt(lDoorPt, gDoorPt);
 }
 
 void Lidar::localizeFromPt(EndPoint l, EndPoint g){
@@ -136,7 +145,7 @@ void Lidar::findRoomFromJumps(){
 	// Check room4 first, if there are two close big jumps (the doorway) it's room 4
 	float room4NearLimit = 70; 
 	vector<int> closeJumps;
-	for(int j : jump){
+	for(int j : jump_){
 		if(rad[j] < room4NearLimit || rad[getEndIdx(j+1)] < room4NearLimit){
 			closeJumps.push_back(j);
 		}
@@ -147,7 +156,7 @@ void Lidar::findRoomFromJumps(){
 		cout<<"localizing for room4\n";
 		room4Localization(closeJumps);
 	}
-	else if(jump.size() > 1){ // rooms 2 and 3 only have one jump but room 1 has at least 2
+	else if(jump_.size() > 1){ // rooms 2 and 3 only have one jump but room 1 has at least 2
 		cout<<"localizing for room1\n";
 		room1Localization();
 	}
@@ -163,12 +172,11 @@ void Lidar::room1Localization(){
 }
 
 void Lidar::findJumps(){
-	jump.resize(0);
-	float bigJump = 40;
+	jump_.resize(0);
 	cout<<"finding jumps\n";
 	for(int i=0; i<rad.size(); i++){
 		float diff = abs(rad[i] - rad[(i+1)%rad.size()]);
-		if(diff > bigJump){ 
+		if(diff > doorJump){ 
 			float avgPre = 0;// creates avg from for -4 to idx+1 and idx+1 to +6 looping over end of array
 			float avgPost = 0; // this omits idx+1 because that could be the nasty pt
 			for(int a=-4; a<1; a++){ avgPre += rad[(i+a)%rad.size()]; }
@@ -176,7 +184,7 @@ void Lidar::findJumps(){
 			avgPre /= 5; 
 			avgPost/=5;
 
-			if(abs(avgPre - avgPost) > 30){
+			if(abs(avgPre - avgPost) > doorJump*0.75){
 				/* // debugging for checking what becomes a line
 				cout<<"Pre: ";
 				for(int a=-4; a<1; a++){ cout<<rad[(i+a)%rad.size()]<<"  "; }
@@ -184,25 +192,45 @@ void Lidar::findJumps(){
 				for(int a=2; a<7; a++){ cout<<rad[(i+a)%rad.size()]<<"  "; }
 				cout<<"AvgPre = "<<avgPre<<" AvgPost = "<<avgPost<<"\n";
 				*/
-				jump.push_back(i);
+				jump_.push_back(i);
+				furnJump.push_back(i);
 				// nearness can behave oddly since the LIDAR filters out points above 180cm
-				if(jump.size()>1 && abs(jump[jump.size()-2] - jump[jump.size()-1]) == 1){
+				if(jump_.size()>1 && abs(jump_[jump_.size()-2] - jump_[jump_.size()-1]) == 1){
 					cout<<"Two jumps next to eachother at angles: "<<degrees[i]<<" and "<<degrees[i-1]<<"\n";
-					//jump.erase(jump.begin() + jump.size()-1);
-					//jump.erase(jump.begin() + jump.size()-1);
+					//jump_.erase(jump_.begin() + jump_.size()-1);
+					//jump_.erase(jump_.begin() + jump_.size()-1);
+					//also erase from furnJump if this is reinstated
 				}
+			}
+		}
+		else if(diff > furnJump){ // furn jump has lower tolerance for detecting furniture
+			// use a smaller averaging scheme of only 3 pts before and after the jump
+			// With the LIDAR getting 500pts/scan it's angle between pts is 0.0127 rad
+			// which means the dist. between pts is R*0.0127, which equals 3cm at R = 238cm
+			float avgPre = 0;
+			float avgPost = 0;
+			for(int a=-2; a<1; a++){ avgPre += rad[(i+a)%rad.size()]; }
+			for(int a=2; a<5; a++){ avgPost += rad[(i+a)%rad.size()]; }
+			avgPre  /= 3; 
+			avgPost /= 3;
+			if(abs(avgPre - avgPost) > furnJump*0.75){
+				furnJump.push_back(i);
 			}
 		}
 		// if there are two jumps right next to eachother delete both (caused by bad pt)
 	}
 
-	cout<<"jumps at angles: ";
-	for(int i=0; i<jump.size(); i++) {cout<<degrees[jump[i]]<<" "<<rad[jump[i]]<<"   ";}
+	cout<<"Big jumps at angles: ";
+	for(int i=0; i<jump_.size(); i++) {cout<<degrees[jump_[i]]<<" "<<rad[jump_[i]]<<"   ";}
+	cout<<"\n";
+	
+	cout<<"furn jumps at angles: ";
+	for(int i=0; i<furnJump.size(); i++) {cout<<degrees[furnJump[i]]<<" "<<rad[furnJump[i]]<<"   ";}
 	cout<<"\n";
 	
 	/*
 	for(int j=0; j<jump.size(); j++)
-		cout<<"at i="<<jump[j]<<" rad is "<<rad[jump[j]]<<" xval is: "<<xVal[jump[j]] <<" yVal is: "<<yVal[jump[j]]<<"  ";
+		cout<<"at i="<<jump_[j]<<" rad is "<<rad[jump[j]]<<" xval is: "<<xVal[jump[j]] <<" yVal is: "<<yVal[jump[j]]<<"  ";
 	cout<<"total i="<<rad.size()<<"\n";
 	}*/	
 	/*
