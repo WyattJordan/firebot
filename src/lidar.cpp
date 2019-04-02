@@ -11,9 +11,7 @@ float Lidar::pt2PtDist(float x1, float y1, float x2, float y2){
 	return pow(pow(x2-x1,2) + pow(y2-y1,2) ,0.5);
 }
 
-void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
-{
-
+void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	/* bool updatePosition = false;
 	Vector3f currentPos = rob_->getOdomWorldLoc(); // this is an undefined ref for some reason...
 	//Vector3f currentPos;
@@ -38,13 +36,13 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 	// formats the data so that angle increases from 0 to 360
 	for(int i = 0; i < num; i++) { 
 		float radius = scan->ranges[i];
-		if ((isinf(radius) == 0)&&(radius < 180)&&(radius > 18)){ // check if acceptable range measurement
+		if ((isinf(radius) == 0)/*&&(radius < 180)*/&&(radius > 18)){ // check if acceptable range measurement
+			//if(radius > 180)radius == 180;
 			float degree = RAD2DEG(scan->angle_min + scan->angle_increment * i);
 			float ang = degree>0 ? degree : degree + 360;
 			if(ang<prevAng && crossed == -1){
 				crossed = i;
 			}
-
 			/*if(crossed !=-1){ // once the crossover is hit start inserting from beginning
 				degrees.insert(degrees.begin() + (i-crossed), ang);
 				rad.insert(        rad.begin() + (i-crossed), radius);
@@ -154,11 +152,11 @@ void Lidar::findRoomFromJumps(){
 
 	if(closeJumps.size() >= 2){
 		cout<<"localizing for room4\n";
-		room4Localization(closeJumps);
+		//room4Localization(closeJumps);
 	}
 	else if(jump_.size() > 1){ // rooms 2 and 3 only have one jump but room 1 has at least 2
 		cout<<"localizing for room1\n";
-		room1Localization();
+		//room1Localization();
 	}
 	else{
 		// TODO determine if it's room2 or room3 somehow...
@@ -171,18 +169,25 @@ void Lidar::findRoomFromJumps(){
 void Lidar::room1Localization(){
 }
 
+void Lidar::getAveragePrePost(float &pre, float &post, int center, int offset){
+	// determine averages excluding the jump pt (center + 1)
+	if(offset<1){ cout<<"bad call to getAveragePrePost\n"; return;}
+	float avgPre = 0;
+	float avgpPost = 0;
+	for(int a=-(offset-1); a<1; a++){ avgPre += rad[(center+a)%rad.size()]; }
+	for(int a=2; a<(offset+2); a++){ avgPost += rad[(center+a)%rad.size()]; }
+	pre = avgPre / (float) offset;
+	post = avgPost / (float) offset;
+}
+
 void Lidar::findJumps(){
 	jump_.resize(0);
 	cout<<"finding jumps\n";
 	for(int i=0; i<rad.size(); i++){
 		float diff = abs(rad[i] - rad[(i+1)%rad.size()]);
 		if(diff > doorJump){ 
-			float avgPre = 0;// creates avg from for -4 to idx+1 and idx+1 to +6 looping over end of array
-			float avgPost = 0; // this omits idx+1 because that could be the nasty pt
-			for(int a=-4; a<1; a++){ avgPre += rad[(i+a)%rad.size()]; }
-			for(int a=2; a<7; a++){ avgPost += rad[(i+a)%rad.size()]; }
-			avgPre /= 5; 
-			avgPost/=5;
+			float avgPre, avgPost; // new method using function
+			getAveragePrePost(avgPre,avgPost,i,5); // this omits idx+1 because that could be the nasty pt
 
 			if(abs(avgPre - avgPost) > doorJump*0.75){
 				/* // debugging for checking what becomes a line
@@ -194,8 +199,14 @@ void Lidar::findJumps(){
 				*/
 				jump_.push_back(i);
 				furnJump.push_back(i);
+				// if there are two jumps right next to eachother delete both (caused by bad pt)
 				// nearness can behave oddly since the LIDAR filters out points above 180cm
 				if(jump_.size()>1 && abs(jump_[jump_.size()-2] - jump_[jump_.size()-1]) == 1){
+					cout<<"Pre: ";
+					for(int a=-4; a<1; a++){ cout<<rad[(i+a)%rad.size()]<<"  "; }
+					cout<<" Center: "<<rad[i+1]<<"   Post: ";
+					for(int a=2; a<7; a++){ cout<<rad[(i+a)%rad.size()]<<"  "; }
+					cout<<"AvgPre = "<<avgPre<<" AvgPost = "<<avgPost<<"\n";
 					cout<<"Two jumps next to eachother at angles: "<<degrees[i]<<" and "<<degrees[i-1]<<"\n";
 					//jump_.erase(jump_.begin() + jump_.size()-1);
 					//jump_.erase(jump_.begin() + jump_.size()-1);
@@ -207,17 +218,12 @@ void Lidar::findJumps(){
 			// use a smaller averaging scheme of only 3 pts before and after the jump
 			// With the LIDAR getting 500pts/scan it's angle between pts is 0.0127 rad
 			// which means the dist. between pts is R*0.0127, which equals 3cm at R = 238cm
-			float avgPre = 0;
-			float avgPost = 0;
-			for(int a=-2; a<1; a++){ avgPre += rad[(i+a)%rad.size()]; }
-			for(int a=2; a<5; a++){ avgPost += rad[(i+a)%rad.size()]; }
-			avgPre  /= 3; 
-			avgPost /= 3;
-			if(abs(avgPre - avgPost) > furnJump*0.75){
+			float avgPre, avgPost;
+			getAveragePrePost(avgPre, avgPost, i, 3); // do 3pt averages before and after
+			if(abs(avgPre - avgPost) > furnJump*0.75){ // filter out random bad pts
 				furnJump.push_back(i);
 			}
 		}
-		// if there are two jumps right next to eachother delete both (caused by bad pt)
 	}
 
 	cout<<"Big jumps at angles: ";

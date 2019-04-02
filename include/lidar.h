@@ -56,6 +56,7 @@ class Lidar{
 		void room4Localization(vector<int> closeJumps);
 		void room1Localization();
 		void localizeFromPt(EndPoint l, EndPoint g);
+		void getAveragePrePost(float &pre, float &post, int center, int offset);
 		Vector3f prevOdom_;
 		Nav* nav_;
 //		Robot* rob_;
