@@ -125,8 +125,8 @@ void Lidar::room4Localization(vector<int> cJumps){
 	EndPoint gDoorPt((ep1.getX() + ep2.getX()) / 2.0, (ep1.getY() + ep2.getY()) / 2.0);
 
 	// don't know if the first point of the jump or the second has the nearer radius, use the closer points to make the doorway waypoint
-	float closest = std::min(rad[closest],rad[getEndIdx(closest)])   == rad[closest]  ? closest  : getEndIdx(closest);
-	float nClosest= std::min(rad[nClosest],rad[getEndIdx(nClosest)]) == rad[nClosest] ? nClosest : getEndIdx(nClosest);
+	closest = std::min(rad[closest],rad[getEndIdx(closest)])   == rad[closest]  ? closest  : getEndIdx(closest);
+	nClosest= std::min(rad[nClosest],rad[getEndIdx(nClosest)]) == rad[nClosest] ? nClosest : getEndIdx(nClosest);
 	EndPoint lDoorPt((xVal[closest] + xVal[nClosest]) / 2.0, (yVal[closest] + yVal[nClosest]) / 2.0);
 	
 	localizeFromPt(lDoorPt, gDoorPt);
@@ -172,12 +172,13 @@ void Lidar::room1Localization(){
 void Lidar::getAveragePrePost(float &pre, float &post, int center, int offset){
 	// determine averages excluding the jump pt (center + 1)
 	if(offset<1){ cout<<"bad call to getAveragePrePost\n"; return;}
-	float avgPre = 0;
-	float avgpPost = 0;
-	for(int a=-(offset-1); a<1; a++){ avgPre += rad[(center+a)%rad.size()]; }
-	for(int a=2; a<(offset+2); a++){ avgPost += rad[(center+a)%rad.size()]; }
-	pre = avgPre / (float) offset;
-	post = avgPost / (float) offset;
+	float aPre = 0;
+	float aPost = 0;
+
+	for(int a=-(offset-1); a<1; a++){ aPre += rad[(center+a)%rad.size()]; }
+	for(int a=2; a<(offset+2); a++){ aPost += rad[(center+a)%rad.size()]; }
+	pre = aPre / (float) offset;
+	post = aPost / (float) offset;
 }
 
 void Lidar::findJumps(){
@@ -185,7 +186,7 @@ void Lidar::findJumps(){
 	cout<<"finding jumps\n";
 	for(int i=0; i<rad.size(); i++){
 		float diff = abs(rad[i] - rad[(i+1)%rad.size()]);
-		if(diff > doorJump){ 
+		if(diff > DoorJumpDist){ 
 			float avgPre, avgPost; // new method using function
 			getAveragePrePost(avgPre,avgPost,i,5); // this omits idx+1 because that could be the nasty pt
 
@@ -214,7 +215,7 @@ void Lidar::findJumps(){
 				}
 			}
 		}
-		else if(diff > furnJump){ // furn jump has lower tolerance for detecting furniture
+		else if(diff > FurnJumpDist){ // furn jump has lower tolerance for detecting furniture
 			// use a smaller averaging scheme of only 3 pts before and after the jump
 			// With the LIDAR getting 500pts/scan it's angle between pts is 0.0127 rad
 			// which means the dist. between pts is R*0.0127, which equals 3cm at R = 238cm

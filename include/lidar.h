@@ -7,7 +7,6 @@
 #include "Robot.h"
 #include "Nav.h"
 #include "line.h"
-//#include "EndPoint.h"
 #include "Endpoint.h"
 #include "definitions.h"
 #include <Eigen/Core>
@@ -49,8 +48,9 @@ class Lidar{
 		vector<float> yVal;
 		vector<float> degrees;
 		vector<float> rad;
-		vector<int> jump; // jumps greater than doorJump definition in size
-		vector<int> fJump;// jumps greater than furnJump defn in size
+		//vector<int> jump_; // jumps greater than doorJump definition in size
+		vector<int> jump_;
+		vector<int> furnJump;// jumps greater than furnJump defn in size
 		void removePt(int i);
 		int getEndIdx(int s);
 		void room4Localization(vector<int> closeJumps);
