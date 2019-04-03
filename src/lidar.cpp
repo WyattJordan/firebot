@@ -350,6 +350,9 @@ vector<line> Lidar::findLine(vector <float> xReal, vector <float> yReal){
 
 	while (i < xReal.size()) {
 		for (i; i < xReal.size(); i++) {
+			if(rad_[i] > MAXDIST){
+				break;
+			}
 			if (i == scopeSize) {	//adding first point to a line
 				tempLine.addPointEnd(xReal[i], yReal[i]);
 			}
@@ -760,12 +763,21 @@ void Lidar::findRoom(){
 		}
 	}
 		/*	
+<<<<<<< HEAD
+			refpoint temp;
+			temp.setCart(lineVec[i].getEndPtX1(), lineVec[i].getEndPtY1());
+			refpoint temp2;
+			temp2.setCart(lineVec[i].getEndPtX2(), lineVec[i].getEndPtY2());
+			refpoint temp3;
+			refpoint temp4;
+=======
 			EndPoint temp;
 			temp.setCart(lineVec[i].getEndPtX1(), lineVec[i].getEndPtY1());
 			EndPoint temp2;
 			temp2.setCart(lineVec[i].getEndPtX2(), lineVec[i].getEndPtY2());
 			EndPoint temp3;
 			EndPoint temp4;
+>>>>>>> ace5ee0d6636d9e60b3cc9ea645439f59696cd6f
 			temp3.setCart(.72, .46);
 			temp4.setCart(myLength[i] + .72, .46);
 			findStartLocation(temp, temp2, temp3, temp4);
@@ -899,4 +911,5 @@ void Lidar::findStartLocation(EndPoint endR1, EndPoint endR2, EndPoint endG1, En
 }
 
 
-
+int getCloserJumpPt(int i);
+float getCloserJumpRadius(int i);
