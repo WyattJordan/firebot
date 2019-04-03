@@ -19,6 +19,7 @@
 
 // Definitions for lidar class
 #define MAXDIST 180 // sets all range measurements above xCm to x
+#define MINDIST 18 // deletes all range measurements below xCm
 #define DoorJumpDist 40.0 // 40cm or more to be labeled as a jump in jumps_ for detecting door edges
 #define FurnJumpDist 12.0 // Xcm or more to be labeled as a potential furn jump
 #define FurnWidth 13.0 // expected furniture width (X cm)

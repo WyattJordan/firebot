@@ -11,6 +11,10 @@ float Lidar::pt2PtDist(float x1, float y1, float x2, float y2){
 	return pow(pow(x2-x1,2) + pow(y2-y1,2) ,0.5);
 }
 
+void Lidar::setNav(Nav *nav){
+	nav_ = nav;
+}
+
 void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	/* bool updatePosition = false;
 	Vector3f currentPos = rob_->getOdomWorldLoc(); // this is an undefined ref for some reason...
@@ -26,7 +30,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	int num = scan->scan_time / scan->time_increment;
 	time_t start, finish;
 	degrees_.resize(0);
-	rad.resize(0);
+	rad_.resize(0);
 	xVal_.resize(0); 
 	yVal_.resize(0);
 	time(&start);
@@ -36,7 +40,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	// formats the data so that angle increases from 0 to 360
 	for(int i = 0; i < num; i++) { 
 		float radius = scan->ranges[i];
-		if ((isinf(radius) == 0)/*&&(radius < 180)*/&&(radius > 18)){ // check if acceptable range measurement
+		if ((isinf(radius) == 0)&&(radius > MINDIST)){ // check if acceptable range measurement
 			if(radius > MAXDIST) radius = MAXDIST;
 			float degree = RAD2DEG(scan->angle_min + scan->angle_increment * i);
 			float ang = degree>0 ? degree : degree + 360;
@@ -64,6 +68,9 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 
 	findJumps(true);
 	cout<<"num jumps = "<<jump_.size()<<"\n";
+	findFurniture(); // determines what is furniture from furnJump_
+	nav_->makeFurnMarks(furns_);
+	
 	findRoomFromJumps();
 	
 /*	ROS_INFO("Starting findLine...");
@@ -129,12 +136,12 @@ void Lidar::room4Localization(vector<int> cJumps){
 	nClosest = getCloserJumpPt(nClosest);
 	EndPoint lDoorPt((xVal_[closest] + xVal_[nClosest]) / 2.0, (yVal_[closest] + yVal_[nClosest]) / 2.0);
 	
-	localizeFromPt(lDoorPt, gDoorPt);
+//	localizeFromPt(lDoorPt, gDoorPt);
 }
 
-void Lidar::localizeFromPt(EndPoint l, EndPoint g){
+/*void Lidar::localizeFromPt(EndPoint l, EndPoint g){
 
-}
+}*/
 
 // to detect furniture look at dist between endpoint of first jump and start of second jump
 void Lidar::findRoomFromJumps(){
@@ -194,25 +201,25 @@ void Lidar::getAveragePrePost(float &pre, float &post, int center, int offset, b
 
 // determines if the next point is actually meant to loop around
 int Lidar::getEndIdx(int s){ 
-	if(s > rad.size()) {
+	if(s > rad_.size()) {
 		cout<<"Called getEndIdx with larger than rad.size() idx\n";
-		return NULL;
+		exit(1);
 	}
 	return s+1 < rad_.size() ? s+1 : 0;
 }
 // given the start of a jump index return the index of the closer pt in the jump
-int getCloserJumpPt(int i){
+int Lidar::getCloserJumpPt(int i){
 	return std::min(rad_[i],rad_[getEndIdx(i+1)])  == rad_[i]  ? i : getEndIdx(i+1);
 }
-float getCloserJumpRadius(int i){
-	return rad[getCloserJumpPt(i)];
+float Lidar::getCloserJumpRadius(int i){
+	return rad_[getCloserJumpPt(i)];
 }
 
 // Furniture will have ~13cm difference between endpoints (within FurnWidthTolerance)
 // And will have a point with a lower polar Radius between the two points (by at least FurnDepthTolerance)
 void Lidar::findFurniture(){
 	// loop thru furn jumps
-	furn_.resize(0);
+	furns.resize(0);
 
 	for(int i=0; i<furnJump_.size(); i++){
 
@@ -231,7 +238,7 @@ void Lidar::findFurniture(){
 		avgInnerRad /= step;
 		float avgOutsideRad = (rad_[pt1] + rad_[pt2]) / 2.0;
 
-		if(abs(width - FurnWidth) < FurnWidthTolerance) && (avgOutsideRad - avgInnerRad < FurnDistTolerance){
+		if(abs(width - FurnWidth) < FurnWidthTolerance && (avgOutsideRad - avgInnerRad < FurnDistTolerance)){
 			// Endpoint x and y determined by jump pts of furniture and middle pt + furniture raidus all averaged
 			float x = (xVal_[pt1] + xVal_[pt2] / 2.0); // esimate based on end pts
 			float y = (yVal_[pt1] + yVal_[pt2] / 2.0);
@@ -241,7 +248,7 @@ void Lidar::findFurniture(){
 			x = 2.0/3.0 * x + 1.0/3.0 * x2;
 			y = 2.0/3.0 * y + 1.0/3.0 * y2; // weighted avg of the two furniture center estimates
 			EndPoint f(x,y);
-			furn_.push_back(f);
+			furns_.push_back(f);
 		}
 		
 	}

@@ -53,8 +53,6 @@ void Nav::setOdomLoc(Vector3f od){
 void Nav::publishLoop(){
 	while(1){
 		if(pubWays_ || pubMap_ || pubRob_){
-		// 	cout<<"pubbing ways: "<<pubWays_<<" with size "<<wayMarks_.markers.size()<<
-		//		" and map: "<<pubMap_<<" with size "<<mapMarks_.markers.size()<<"\n";
 			//cout<<"published ways/map/robot\n";
 			if(pubMap_){
 				markerPub_->publish(wayMarks_);
@@ -63,18 +61,27 @@ void Nav::publishLoop(){
 			if(pubMap_){
 				markerPub_->publish(mapMarks_);
 				pubMap_ = false;
-	//			cout<<"published map "<<mapMarks_.markers.size()<<"\n";
 			}
 			if(pubRob_){
 				calcRobotMarks(); // rob obj passed in odomloc, set mark vals
 				markerPub_->publish(robMarks_);
 				pubRob_ = false;
-	//			cout<<"published robot\n";
 			}
-
 		}
 	}
 }
+
+void Nav::publishLoopContinual(){
+	while(1){
+		markerPub_->publish(wayMarks_);
+		markerPub_->publish(mapMarks_);
+		calcRobotMarks(); // rob obj passed in odomloc, set mark vals
+		markerPub_->publish(robMarks_);
+		markerPub_->publish(furnMarks_);
+		sleep(2);
+	}
+}
+
 
 // Sets the door configuration for the small room, if up == true the 
 // door is on the higher side (larger y coordinate) 
@@ -216,6 +223,37 @@ bool Nav::getNeighbor(int ID, int neighI, EndPoint &neigh, vector<EndPoint> &pts
 		return false;
 	}
 }
+
+void Nav::makeFurnMarks(vector<EndPoint> furns){
+	visualization_msgs::MarkerArray tmp;
+	tmp.markers.resize(furns.size());
+
+	for(int i=0; i<tmp.markers.size(); i++){
+		tmp.markers[i].header.frame_id = worldFrame_;
+		tmp.markers[i].ns = "furn_Arr"; 
+		tmp.markers[i].id = i; 
+		tmp.markers[i].type = visualization_msgs::Marker::CYLINDER;
+		tmp.markers[i].action = visualization_msgs::Marker::ADD;
+		tmp.markers[i].scale.x = FurnWidth/2.0; 
+		tmp.markers[i].scale.y = FurnWidth/2.0;
+		tmp.markers[i].scale.z = 15;
+
+		tmp.markers[i].pose.position.x = furns[i].getX();
+		tmp.markers[i].pose.position.y = furns[i].getY();
+		tmp.markers[i].pose.position.z = 0;
+		tmp.markers[i].pose.orientation.x = 0;
+		tmp.markers[i].pose.orientation.y = 0;
+		tmp.markers[i].pose.orientation.z = 0;
+		tmp.markers[i].pose.orientation.w = 1;
+
+		tmp.markers[i].color.a = 1.0;	
+		tmp.markers[i].color.r = 0.5;
+		tmp.markers[i].color.g = 1.0;
+		tmp.markers[i].color.b = 0.5;
+	}
+
+}
+
 
 // populate MarkerArray members (run by the makeMapMarks() and makeWayMarks()) 
 void Nav::populateMarks(string which, string NS,

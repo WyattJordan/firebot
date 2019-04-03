@@ -33,6 +33,7 @@ class Lidar{
 	public:
 		Lidar();
 //		Lidar(Robot *robRef, Nav *navRef);
+		void setNav(Nav *nav);
 		float pt2PtDist(float x1, float y1, float x2, float y2);
 		vector<line> findLine(vector <float> xReal, vector <float> yReal);
 		bool canMerge(line a, line b);
@@ -43,6 +44,7 @@ class Lidar{
 		void findJumps(bool findBig); // finds either big jumps and furniture jumps or only furn jumps
 		void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan);
 		void findStartLocation(EndPoint endR1, EndPoint endR2, EndPoint endG1, EndPoint endG2);
+
 	private:
 		// Point data is stored in 4 vectors with cartesian and polar coordinates
 		vector<float> xVal_;
@@ -56,7 +58,7 @@ class Lidar{
 		// acts just like jump_ except with smaller threshold of FurnJumpDist
 		vector<int> furnJump_;
 		// list of endpoints that should be the center of furniture
-		vector<EndPoint> furn_;
+		vector<EndPoint> furns_;
 		// removes a point from all the point data vectors, probably don't want to use this
 		void removePt(int i);
 		// given a jump idx return it's second jump idx (jump idx + 1)%rad.size()
@@ -71,6 +73,8 @@ class Lidar{
 		void getAveragePrePost(float &pre, float &post, int center, int offset,bool degug=false);
 		// Build furn_ based on furnJump_
 		void findFurniture();
+		int getCloserJumpPt(int i);
+		float getCloserJumpRadius(int i);
 		Vector3f prevOdom_;
 		Nav* nav_;
 //		Robot* rob_;
