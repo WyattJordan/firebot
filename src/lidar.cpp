@@ -25,10 +25,10 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	cout<<"\nentered callback...\n";
 	int num = scan->scan_time / scan->time_increment;
 	time_t start, finish;
-	degrees.resize(0);
+	degrees_.resize(0);
 	rad.resize(0);
-	xVal.resize(0); 
-	yVal.resize(0);
+	xVal_.resize(0); 
+	yVal_.resize(0);
 	time(&start);
 	int crossed = -1;
 	float prevAng = 0;
@@ -37,23 +37,23 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	for(int i = 0; i < num; i++) { 
 		float radius = scan->ranges[i];
 		if ((isinf(radius) == 0)/*&&(radius < 180)*/&&(radius > 18)){ // check if acceptable range measurement
-			if(radius > 180) radius = 180;
+			if(radius > MAXDIST) radius = MAXDIST;
 			float degree = RAD2DEG(scan->angle_min + scan->angle_increment * i);
 			float ang = degree>0 ? degree : degree + 360;
 			if(ang<prevAng && crossed == -1){
 				crossed = i;
 			}
 			/*if(crossed !=-1){ // once the crossover is hit start inserting from beginning
-				degrees.insert(degrees.begin() + (i-crossed), ang);
-				rad.insert(        rad.begin() + (i-crossed), radius);
-				xVal.insert(      xVal.begin() + (i-crossed), POLAR2XCART(radius, ang));
-				yVal.insert(      yVal.begin() + (i-crossed), POLAR2XCART(radius, ang));
+				degrees_.insert(degrees_.begin() + (i-crossed), ang);
+				rad_.insert(        rad_.begin() + (i-crossed), radius);
+				xVal_.insert(      xVal_.begin() + (i-crossed), POLAR2XCART(radius, ang));
+				yVal_.insert(      yVal_.begin() + (i-crossed), POLAR2XCART(radius, ang));
 			}*/
 			//else{
-				degrees.push_back(ang);
-				rad.push_back(radius);
-				xVal.push_back(POLAR2XCART(radius, ang));
-				yVal.push_back(POLAR2YCART(radius, ang));
+				degrees_.push_back(ang);
+				rad_.push_back(radius);
+				xVal_.push_back(POLAR2XCART(radius, ang));
+				yVal_.push_back(POLAR2YCART(radius, ang));
 			//}
 			prevAng = ang;
 		}
@@ -67,12 +67,12 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	findRoomFromJumps();
 	
 /*	ROS_INFO("Starting findLine...");
-	findLine(xVal, yVal);
+	findLine(xVal_, yVal_);
 	ROS_INFO("Finished findLine...");
 	time(&finish);
 	cout << "Time of program is " << difftime(finish, start) << " seconds" << endl;*/
-//	for(int i = 0; i < xVal.size(); i++){
-//		ROS_INFO(" Testing: X = %f, Y = %f", xVal[i], yVal[i]);
+//	for(int i = 0; i < xVal_.size(); i++){
+//		ROS_INFO(" Testing: X = %f, Y = %f", xVal_[i], yVal_[i]);
 //	}
 
 	// publish transformation from global to laser_frame
@@ -95,7 +95,7 @@ void Lidar::room4Localization(vector<int> cJumps){
 	float min = 99999999.9;
 	for(int i=0; i<2; i++){
 		for(int j : cJumps){
-			float thismin = std::min(rad[j],rad[getEndIdx(j+1)]);
+			float thismin = getCloserJumpRadius(j);
 			if(thismin < min)
 					min = thismin;
 					if(i==0) {closest = j;}
@@ -108,7 +108,7 @@ void Lidar::room4Localization(vector<int> cJumps){
 
 	// determine which side the door is on from longer range measurements
 	int r4long = 0;
-	for(float d : rad) {if(d>160) r4long++;}
+	for(float d : rad_) {if(d>160) r4long++;}
 	EndPoint ep1, ep2;
 	if(r4long > 5){	
 		ep1 = nav_->getMapPoint(11);
@@ -125,9 +125,9 @@ void Lidar::room4Localization(vector<int> cJumps){
 	EndPoint gDoorPt((ep1.getX() + ep2.getX()) / 2.0, (ep1.getY() + ep2.getY()) / 2.0);
 
 	// don't know if the first point of the jump or the second has the nearer radius, use the closer points to make the doorway waypoint
-	closest = std::min(rad[closest],rad[getEndIdx(closest)])   == rad[closest]  ? closest  : getEndIdx(closest);
-	nClosest= std::min(rad[nClosest],rad[getEndIdx(nClosest)]) == rad[nClosest] ? nClosest : getEndIdx(nClosest);
-	EndPoint lDoorPt((xVal[closest] + xVal[nClosest]) / 2.0, (yVal[closest] + yVal[nClosest]) / 2.0);
+	closest = getCloserJumpPt(closest);
+	nClosest = getCloserJumpPt(nClosest);
+	EndPoint lDoorPt((xVal_[closest] + xVal_[nClosest]) / 2.0, (yVal_[closest] + yVal_[nClosest]) / 2.0);
 	
 	localizeFromPt(lDoorPt, gDoorPt);
 }
@@ -144,7 +144,7 @@ void Lidar::findRoomFromJumps(){
 	float room4NearLimit = 70; 
 	vector<int> closeJumps;
 	for(int j : jump_){
-		if(rad[j] < room4NearLimit || rad[getEndIdx(j+1)] < room4NearLimit){
+		if(rad_[j] < room4NearLimit || rad_[getEndIdx(j+1)] < room4NearLimit){
 			closeJumps.push_back(j);
 		}
 	}
@@ -177,27 +177,82 @@ void Lidar::getAveragePrePost(float &pre, float &post, int center, int offset, b
 
 	if(debug) cout<<"Prev: ";
 	for(int a=-offset; a<0; a++){ 
-		aPre += rad[(center+a)%rad.size()];
-		if(debug) cout<<rad[(center+a)%rad.size()]<<"  ";
+		aPre += rad_[(center+a)%rad_.size()];
+		if(debug) cout<<rad_[(center+a)%rad_.size()]<<"  ";
        
 	}
-	if(debug) cout<<"Center: "<<rad[center%rad.size()]<<" ";
+	if(debug) cout<<"Center: "<<rad_[center%rad_.size()]<<" ";
 	if(debug) cout<<"Post: ";
 	for(int a=1; a<(offset+1); a++){ 
-		aPost += rad[(center+a)%rad.size()];
-		if(debug) cout<<rad[(center+a)%rad.size()]<<"  ";
+		aPost += rad_[(center+a)%rad_.size()];
+		if(debug) cout<<rad_[(center+a)%rad_.size()]<<"  ";
        	}
 	if(debug) cout<<"\n";
 	pre = aPre / (float) offset;
 	post = aPost / (float) offset;
 }
 
+// determines if the next point is actually meant to loop around
+int Lidar::getEndIdx(int s){ 
+	if(s > rad.size()) {
+		cout<<"Called getEndIdx with larger than rad.size() idx\n";
+		return NULL;
+	}
+	return s+1 < rad_.size() ? s+1 : 0;
+}
+// given the start of a jump index return the index of the closer pt in the jump
+int getCloserJumpPt(int i){
+	return std::min(rad_[i],rad_[getEndIdx(i+1)])  == rad_[i]  ? i : getEndIdx(i+1);
+}
+float getCloserJumpRadius(int i){
+	return rad[getCloserJumpPt(i)];
+}
+
+// Furniture will have ~13cm difference between endpoints (within FurnWidthTolerance)
+// And will have a point with a lower polar Radius between the two points (by at least FurnDepthTolerance)
+void Lidar::findFurniture(){
+	// loop thru furn jumps
+	furn_.resize(0);
+
+	for(int i=0; i<furnJump_.size(); i++){
+
+		// get two x,y points that are the closer to the 'bot of the two jump points  
+		int pt1 = getCloserJumpPt(furnJump_[i]);
+		int pt2 = getCloserJumpPt(furnJump_[(i+1)%furnJump_.size()]);
+
+		int step = abs(pt1-pt2); // this is the number of points between the jump pts
+		step = step > 100 ? rad_.size() - step : step; // if it loops around
+		if( step == 0 ) continue; 
+
+		// check if their distance is close to the expected furniture width and if a point between them has a lower radius
+		float width = pt2PtDist(xVal_[pt1], yVal_[pt1], xVal_[pt2], yVal_[pt2]); 
+		float avgInnerRad = 0;
+		for(i=1; i<step+1; i++) avgInnerRad += rad_[(pt1+i)%rad_.size()];
+		avgInnerRad /= step;
+		float avgOutsideRad = (rad_[pt1] + rad_[pt2]) / 2.0;
+
+		if(abs(width - FurnWidth) < FurnWidthTolerance) && (avgOutsideRad - avgInnerRad < FurnDistTolerance){
+			// Endpoint x and y determined by jump pts of furniture and middle pt + furniture raidus all averaged
+			float x = (xVal_[pt1] + xVal_[pt2] / 2.0); // esimate based on end pts
+			float y = (yVal_[pt1] + yVal_[pt2] / 2.0);
+			int middle = (pt1 + step) % rad_.size();
+			float x2 = POLAR2XCART(rad_[middle]+FurnWidth/2.0, degrees_[middle]); // estimate based on mid point
+			float y2 = POLAR2YCART(rad_[middle]+FurnWidth/2.0, degrees_[middle]);
+			x = 2.0/3.0 * x + 1.0/3.0 * x2;
+			y = 2.0/3.0 * y + 1.0/3.0 * y2; // weighted avg of the two furniture center estimates
+			EndPoint f(x,y);
+			furn_.push_back(f);
+		}
+		
+	}
+}
+
 void Lidar::findJumps(bool findBig){
 	jump_.resize(0);
-	furnJump.resize(0);
+	furnJump_.resize(0);
 	cout<<"finding jumps\n";
-	for(int i=0; i<rad.size(); i++){
-		float diff = abs(rad[i] - rad[(i+1)%rad.size()]);
+	for(int i=0; i<rad_.size(); i++){
+		float diff = abs(rad_[i] - rad_[(i+1)%rad_.size()]);
 		if(diff > DoorJumpDist && findBig){ 
 			float avgPre, avgPost; // new method using function
 			getAveragePrePost(avgPre,avgPost,i+1,5); // this omits idx+1 because that could be the nasty pt
@@ -205,17 +260,17 @@ void Lidar::findJumps(bool findBig){
 			if(abs(avgPre - avgPost) > DoorJumpDist*0.75){
 				/* // debugging for checking what becomes a line
 				cout<<"Pre: ";
-				for(int a=-4; a<1; a++){ cout<<rad[(i+a)%rad.size()]<<"  "; }
-				cout<<" Center: "<<rad[i+1]<<"   Post: ";
-				for(int a=2; a<7; a++){ cout<<rad[(i+a)%rad.size()]<<"  "; }
+				for(int a=-4; a<1; a++){ cout<<rad_[(i+a)%rad_.size()]<<"  "; }
+				cout<<" Center: "<<rad_[i+1]<<"   Post: ";
+				for(int a=2; a<7; a++){ cout<<rad_[(i+a)%rad_.size()]<<"  "; }
 				cout<<"AvgPre = "<<avgPre<<" AvgPost = "<<avgPost<<"\n";
 				*/
 				jump_.push_back(i);
-				furnJump.push_back(i);
+				furnJump_.push_back(i);
 				// if there are two jumps right next to eachother delete both (caused by bad pt)
 				// nearness can behave oddly since the LIDAR filters out points above 180cm
 				if(jump_.size()>1 && abs(jump_[jump_.size()-2] - jump_[jump_.size()-1]) == 1){
-					/*cout<<"Two jumps next to eachother at angles: "<<degrees[i]<<" and "<<degrees[i-1]<<"\n";
+					/*cout<<"Two jumps next to eachother at angles: "<<degrees_[i]<<" and "<<degrees_[i-1]<<"\n";
 					float d1, d2;
 					cout<<"Previous jump: \n";
 					getAveragePrePost(d1,d2, i, 5, 1); 
@@ -223,7 +278,7 @@ void Lidar::findJumps(bool findBig){
 					getAveragePrePost(d1,d2, i+1, 5,1); */
 					//jump_.erase(jump_.begin() + jump_.size()-1);
 					//jump_.erase(jump_.begin() + jump_.size()-1);
-					//also erase from furnJump if this is reinstated
+					//also erase from furnJump_ if this is reinstated
 				}
 			}
 		}
@@ -234,42 +289,41 @@ void Lidar::findJumps(bool findBig){
 			float avgPre, avgPost;
 			getAveragePrePost(avgPre, avgPost, i+1, 3); // do 3pt averages before and after
 			if(abs(avgPre - avgPost) > FurnJumpDist*0.75){ // filter out random bad pts
-				furnJump.push_back(i);
+				furnJump_.push_back(i);
 			}
 		}
 	}
 
 	cout<<"Big jumps at angles: ";
-	for(int i=0; i<jump_.size(); i++) {cout<<degrees[jump_[i]]<<" "<<std::min(rad[jump_[i]],rad[getEndIdx(jump_[i])])<<"   ";}
+	for(int i=0; i<jump_.size(); i++) {cout<<degrees_[jump_[i]]<<" "<<getCloserJumpRadius(i)<<"   ";}
 	cout<<"\n";
 	
 	cout<<"furn jumps at angles: ";
-	for(int i=0; i<furnJump.size(); i++) {cout<<degrees[furnJump[i]]<<" "<<std::min(rad[furnJump[i]],rad[getEndIdx(furnJump[i])])<<"   ";}
+	for(int i=0; i<furnJump_.size(); i++) {cout<<degrees_[furnJump_[i]]<<" "<<getCloserJumpRadius(i)<<"   ";}
 	cout<<"\n";
 	
 	/*
 	for(int j=0; j<jump.size(); j++)
-		cout<<"at i="<<jump_[j]<<" rad is "<<rad[jump[j]]<<" xval is: "<<xVal[jump[j]] <<" yVal is: "<<yVal[jump[j]]<<"  ";
-	cout<<"total i="<<rad.size()<<"\n";
+		cout<<"at i="<<jump_[j]<<" rad is "<<rad_[jump[j]]<<" xval is: "<<xVal_[jump[j]] <<" yVal_ is: "<<yVal_[jump[j]]<<"  ";
+	cout<<"total i="<<rad_.size()<<"\n";
 	}*/	
 	/*
 	for(int j : jump){
-		cout<<"prev Pt i="<<j-1<<" angle="<<degrees[j-1]<<" rad ="<<rad[j-1]<<"  ";
-		cout<<"Pt i="<<j<<" angle="<<degrees[j]<<" rad ="<<rad[j]<<"  ";
-		cout<<"next Pt i="<<j+1<<" angle="<<degrees[j+1]<<" rad ="<<rad[j+1]<<"  ";
-		cout<<"next Pt i="<<j+2<<" angle="<<degrees[j+2]<<" rad ="<<rad[j+2]<<"  ";
+		cout<<"prev Pt i="<<j-1<<" angle="<<degrees_[j-1]<<" rad ="<<rad_[j-1]<<"  ";
+		cout<<"Pt i="<<j<<" angle="<<degrees_[j]<<" rad ="<<rad_[j]<<"  ";
+		cout<<"next Pt i="<<j+1<<" angle="<<degrees_[j+1]<<" rad ="<<rad_[j+1]<<"  ";
+		cout<<"next Pt i="<<j+2<<" angle="<<degrees_[j+2]<<" rad ="<<rad_[j+2]<<"  ";
 		cout<<"\n";
 	}*/
 }
 
 void Lidar::removePt(int i){
-	rad.erase(rad.begin() + i );
-	degrees.erase(degrees.begin() + i );
-	xVal.erase(xVal.begin() + i );
-	yVal.erase(yVal.begin() + i );
+	rad_.erase(rad_.begin() + i );
+	degrees_.erase(degrees_.begin() + i );
+	xVal_.erase(xVal_.begin() + i );
+	yVal_.erase(yVal_.begin() + i );
 }
 
-int Lidar::getEndIdx(int s){ return s+1 < rad.size() ? s+1 : 0; }
 
 vector<line> Lidar::findLine(vector <float> xReal, vector <float> yReal){
 	vector <line> myLines;
@@ -636,25 +690,25 @@ void Lidar::findRoom(){
 	bool room4s = false;
 	bool shouldBreak = false;
 	vector <float> myLength;
-	//vector <line> lineVec = findLine(xVal,yVal);
+	//vector <line> lineVec = findLine(xVal_,yVal_);
 
 	float room4Vshort = 0;
-	for(int i=0; i < rad.size(); i++){
-		if(rad[i] < 45){ // max possible distance in Room4 is 65 cm
+	for(int i=0; i < rad_.size(); i++){
+		if(rad_[i] < 45){ // max possible distance in Room4 is 65 cm
 			room4Vshort++;
 		}
-		if(rad[i] < 65){ // max possible distance in Room4 is 65 cm
+		if(rad_[i] < 65){ // max possible distance in Room4 is 65 cm
 			room4Short++;
 		}
-		else if(rad[i] > 170){
+		else if(rad_[i] > 170){
 			room4Long++;
 		}
 	}
 	
 	rat4 = room4Short*ratMult;
 
-	float percentShort = (float) room4Short / (float) rad.size();
-	float percentVshort = (float) room4Vshort / (float) rad.size();
+	float percentShort = (float) room4Short / (float) rad_.size();
+	float percentVshort = (float) room4Vshort / (float) rad_.size();
 	cout<<"Room 4 \% below 45 = "<<percentVshort<<" below 65cm = "<<percentShort<<" and "<< room4Long <<" long lines > 170cm\n";
 	if(percentShort > 0.70){
 		cout<<"Should be in room 4!!!\n";
@@ -668,8 +722,8 @@ void Lidar::findRoom(){
 	}
 	
 	/*
-	for(int i=0; i<rad.size(); i++){
-		if(rad[i] < 70){
+	for(int i=0; i<rad_.size(); i++){
+		if(rad_[i] < 70){
 			room23Count++;
 		}
 	}	
@@ -711,8 +765,8 @@ void Lidar::findRoom(){
 		*/
 	/*
 	if((!room4l) && (!room4s) && (!room2) && (!room3)){
-		for(int i=0; i < rad.size(); i++){
-			if((rad[i] < 150) && (rad[i] > 100)){
+		for(int i=0; i < rad_.size(); i++){
+			if((rad_[i] < 151) && (rad_[i] > 100)){
 				rm1++;
 			}
 		}

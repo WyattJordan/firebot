@@ -18,7 +18,10 @@
 #define ab std::abs
 
 // Definitions for lidar class
+#define MAXDIST 180 // sets all range measurements above xCm to x
 #define DoorJumpDist 40.0 // 40cm or more to be labeled as a jump in jumps_ for detecting door edges
-#define FurnJumpDist 12.0 // 10cm or more to be labeled as a potential furn jump
-
+#define FurnJumpDist 12.0 // Xcm or more to be labeled as a potential furn jump
+#define FurnWidth 13.0 // expected furniture width (X cm)
+#define FurnWidthTolerance 3.0 // distance between furn endpoints should be FurnWidth +/- X
+#define FurnDistTolerance 2.0 // point between furn endpoints must have at least X smaller polar radius
 
