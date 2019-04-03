@@ -219,7 +219,7 @@ float Lidar::getCloserJumpRadius(int i){
 // And will have a point with a lower polar Radius between the two points (by at least FurnDepthTolerance)
 void Lidar::findFurniture(){
 	// loop thru furn jumps
-	furns.resize(0);
+	furns_.resize(0);
 
 	for(int i=0; i<furnJump_.size(); i++){
 
