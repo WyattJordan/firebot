@@ -73,8 +73,12 @@ class Lidar{
 		void getAveragePrePost(float &pre, float &post, int center, int offset,bool degug=false);
 		// Build furn_ based on furnJump_
 		void findFurniture();
+
+		bool jumpAway(int i);
 		int getCloserJumpPt(int i);
+		int getFurtherJumpPt(int i);
 		float getCloserJumpRadius(int i);
+		float getFurtherJumpRadius(int i);
 		Vector3f prevOdom_;
 		Nav* nav_;
 //		Robot* rob_;
