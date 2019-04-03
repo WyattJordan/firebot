@@ -780,21 +780,12 @@ void Lidar::findRoom(){
 		}
 	}
 		/*	
-<<<<<<< HEAD
-			refpoint temp;
-			temp.setCart(lineVec[i].getEndPtX1(), lineVec[i].getEndPtY1());
-			refpoint temp2;
-			temp2.setCart(lineVec[i].getEndPtX2(), lineVec[i].getEndPtY2());
-			refpoint temp3;
-			refpoint temp4;
-=======
 			EndPoint temp;
 			temp.setCart(lineVec[i].getEndPtX1(), lineVec[i].getEndPtY1());
 			EndPoint temp2;
 			temp2.setCart(lineVec[i].getEndPtX2(), lineVec[i].getEndPtY2());
 			EndPoint temp3;
 			EndPoint temp4;
->>>>>>> ace5ee0d6636d9e60b3cc9ea645439f59696cd6f
 			temp3.setCart(.72, .46);
 			temp4.setCart(myLength[i] + .72, .46);
 			findStartLocation(temp, temp2, temp3, temp4);
