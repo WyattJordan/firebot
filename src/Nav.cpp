@@ -251,9 +251,7 @@ void Nav::makeFurnMarks(vector<EndPoint> furns){
 		tmp.markers[i].color.g = 1.0;
 		tmp.markers[i].color.b = 0.5;
 	}
-
 }
-
 
 // populate MarkerArray members (run by the makeMapMarks() and makeWayMarks()) 
 void Nav::populateMarks(string which, string NS,
