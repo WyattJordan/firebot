@@ -1,4 +1,10 @@
 On this computer:
+Localization notes:
+	find line with avg center at polar opposite location from bigjump
+	get pose based on line slope
+	remove furniture based on furniture jumps before running findlines
+
+
 	Determine pre-emptive turn distance
 		make sure less than dist between 5 and 6 waypts
 	

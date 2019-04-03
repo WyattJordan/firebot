@@ -7,6 +7,7 @@
 
 #pragma once
 #include <vector>
+#include "definitions.h"
 using std::vector;
 struct polar{
 	float R, theta;
@@ -27,6 +28,7 @@ class EndPoint{
 		EndPoint();
 		EndPoint(const EndPoint &ep2);
 		EndPoint(float X, float Y, int ID, vector<int> neighs);
+		EndPoint(float X, float Y);
 		void calcPolar(float Rx, float Ry); 
 		int getNumNeighbors() const;
 		int getNeighborID(int neighI) const;
@@ -35,13 +37,19 @@ class EndPoint{
 		//void setNeighbors(int n1, int n2);
 
 		int getID() const;
-		float getx() const;
-		float gety() const;
-		float getR() const;
-		float getTheta() const;
+		float getX() const;
+		float getY() const;
+		float getCalculatedR() const;
+		float getCalculatedTheta() const;
 		bool getDone() const;
 		void setDone(bool d);
 		bool isVisible() const;
 		void setVisible(bool s);
+
+		// migrated from refpoint
+		void setCart(float xIn, float yIn);
+		float findAngle() const;
+		float findRad() const;
+		void clear();
 };
 

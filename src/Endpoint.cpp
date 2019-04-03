@@ -7,6 +7,13 @@
 EndPoint::EndPoint(){
 	
 }
+
+EndPoint::EndPoint(float X, float Y): x(X), y(Y){
+	id = -1;
+	vector<int> tmp;
+	neighborIDs = tmp;
+}
+
 EndPoint::EndPoint(const EndPoint &ep2){
 	x = ep2.x;
 	y = ep2.y;
@@ -20,10 +27,6 @@ EndPoint::EndPoint(const EndPoint &ep2){
 	}
 }
 
-vector<int> EndPoint::getNeighborList() const{
-	return neighborIDs;
-}
-
 EndPoint::EndPoint(float X, float Y, int ID, vector<int> neighs)
 : x(X), y(Y), id(ID)
 {
@@ -33,9 +36,12 @@ EndPoint::EndPoint(float X, float Y, int ID, vector<int> neighs)
 	visible = done = false;
 }
 
+void EndPoint::clear(){
+	x = 0; y = 0;
+}
+
 void EndPoint::setNeighbors(int n, ...){
 //void EndPoint::setNeighbors(int n1, int n2){
-
 	va_list neighs;
 	va_start(neighs, n);
 	neighborIDs.resize(0);
@@ -45,27 +51,38 @@ void EndPoint::setNeighbors(int n, ...){
 	}
 }
 
-int EndPoint::getNeighborID(int neighI) const{
-	if(neighI > neighborIDs.size() - 1) return -1;
-	return neighborIDs[neighI];	
+void EndPoint::setCart(float xIn, float yIn){
+        x = xIn;
+        y = yIn;
 }
 
 void EndPoint::calcPolar(float Rx, float Ry){
 	float diffx = x-Rx;
 	float diffy = y-Ry;
 	pp.R = pow(diffx*diffx + diffy*diffy, 0.5);
-	float t = atan2(diffy, diffx) * 180 / 3.14159;
+	float t = atan2(diffy, diffx) * 180.0 / PI;
 	pp.theta = t<0 ? t + 360 : t; // polar vals range 0:360
 }
 
-float EndPoint::getx()  const {  return x;}
-float EndPoint::gety()  const {  return y;}
-float EndPoint::getTheta() const{ return pp.theta;}
-float EndPoint::getR() const{ return pp.R; }
+
+int EndPoint::getNeighborID(int neighI) const{
+	if(neighI > neighborIDs.size() - 1) return -1;
+	return neighborIDs[neighI];	
+}
+
+vector<int> EndPoint::getNeighborList() const{ return neighborIDs; }
+
+float EndPoint::getX()  const {  return x;}
+float EndPoint::getY()  const {  return y;}
+float EndPoint::getCalculatedTheta() const{ return pp.theta;}
+float EndPoint::getCalculatedR() const{ return pp.R; }
 int   EndPoint::getID() const { return id;}
 bool  EndPoint::getDone() const {return done;}
 bool  EndPoint::isVisible() const {return visible;}
 int   EndPoint::getNumNeighbors() const{ return neighborIDs.size();}
+
+float EndPoint::findAngle() const{ return atan2(y,x)*180.0/PI;}
+float EndPoint::findRad() const{ return pow(x*x + y*y, 0.5);}
+
 void  EndPoint::setDone(bool d) {done = d;}
 void  EndPoint::setVisible(bool s) {visible = s;}
-

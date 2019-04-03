@@ -4,7 +4,7 @@
 #include "lidar.h"
 #include "math.h"
 #include "line.h"
-#include "endpoint.h"
+#include "Endpoint.h"
 #include <vector>
 #include <ctime>
 

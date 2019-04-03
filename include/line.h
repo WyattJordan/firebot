@@ -5,7 +5,7 @@
 #include <cmath>
 #include <vector>
 #include <utility>
-#include "endpoint.h"
+#include "Endpoint.h"
 #include <algorithm>
 
 using namespace std;
@@ -59,8 +59,8 @@ private:
         vector <float> y;
         float slope;
         float intercept;
-        endpoint end1;
-        endpoint end2;
+        EndPoint end1;
+        EndPoint end2;
         float lineDist;
         bool isLine;
         float length;

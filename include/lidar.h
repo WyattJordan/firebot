@@ -5,8 +5,9 @@
 #include "sensor_msgs/LaserScan.h"
 #include <tf/transform_broadcaster.h>
 #include "Robot.h"
+#include "Nav.h"
 #include "line.h"
-#include "endpoint.h"
+#include "Endpoint.h"
 #include "definitions.h"
 #include <Eigen/Core>
 #include <iostream>
@@ -18,8 +19,9 @@
 #include "math.h"
 
 #define RAD2DEG(x) ((x)*180./M_PI)
-#define POLAR2XCART(x, y) ((x)*cos((y)*M_PI/180.)) //get the x component when given a distance and angle in degrees
-#define POLAR2YCART(x, y) ((x)*sin((y)*M_PI/180.)) //get the y component when given a distance and angle in degrees
+#define POLAR2XCART(r, t) ((r)*cos((t)*M_PI/180.)) //get the x component when given a distance and angle in degrees
+#define POLAR2YCART(r, t) ((r)*sin((t)*M_PI/180.)) //get the y component when given a distance and angle in degrees
+
 
 using namespace std;
 
@@ -30,18 +32,34 @@ using namespace std;
 class Lidar{
 	public:
 		Lidar();
-		Lidar(Robot *robRef);
+//		Lidar(Robot *robRef, Nav *navRef);
 		float pt2PtDist(float x1, float y1, float x2, float y2);
 		vector<line> findLine(vector <float> xReal, vector <float> yReal);
 		bool canMerge(line a, line b);
 		float myAngle(float x, float y);
 		float myRad(float x, float y);
-		void findRoom(vector <line> lineVec);
+		void findRoom();
+		void findRoomFromJumps();
+		void findJumps(bool findBig); // finds either big jumps and furniture jumps or only furn jumps
 		void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan);
-		void findStartLocation(endpoint endR1, endpoint endR2, endpoint endG1, endpoint endG2);
+		void findStartLocation(EndPoint endR1, EndPoint endR2, EndPoint endG1, EndPoint endG2);
 	private:
+		vector<float> xVal;
+		vector<float> yVal;
+		vector<float> degrees;
+		vector<float> rad;
+		//vector<int> jump_; // jumps greater than doorJump definition in size
+		vector<int> jump_;
+		vector<int> furnJump;// jumps greater than furnJump defn in size
+		void removePt(int i);
+		int getEndIdx(int s);
+		void room4Localization(vector<int> closeJumps);
+		void room1Localization();
+		void localizeFromPt(EndPoint l, EndPoint g);
+		void getAveragePrePost(float &pre, float &post, int center, int offset,bool degug=false);
 		Vector3f prevOdom_;
-		Robot* rob_;
+		Nav* nav_;
+//		Robot* rob_;
 
 };
 
