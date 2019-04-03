@@ -26,7 +26,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	int num = scan->scan_time / scan->time_increment;
 	time_t start, finish;
 	degrees_.resize(0);
-	rad.resize(0);
+	rad_.resize(0);
 	xVal_.resize(0); 
 	yVal_.resize(0);
 	time(&start);
@@ -194,7 +194,7 @@ void Lidar::getAveragePrePost(float &pre, float &post, int center, int offset, b
 
 // determines if the next point is actually meant to loop around
 int Lidar::getEndIdx(int s){ 
-	if(s > rad.size()) {
+	if(s > rad_.size()) {
 		cout<<"Called getEndIdx with larger than rad.size() idx\n";
 		return NULL;
 	}
@@ -205,7 +205,7 @@ int getCloserJumpPt(int i){
 	return std::min(rad_[i],rad_[getEndIdx(i+1)])  == rad_[i]  ? i : getEndIdx(i+1);
 }
 float getCloserJumpRadius(int i){
-	return rad[getCloserJumpPt(i)];
+	return rad_[getCloserJumpPt(i)];
 }
 
 // Furniture will have ~13cm difference between endpoints (within FurnWidthTolerance)
@@ -343,6 +343,9 @@ vector<line> Lidar::findLine(vector <float> xReal, vector <float> yReal){
 
 	while (i < xReal.size()) {
 		for (i; i < xReal.size(); i++) {
+			if(rad_[i] > MAXDIST){
+				break;
+			}
 			if (i == scopeSize) {	//adding first point to a line
 				tempLine.addPointEnd(xReal[i], yReal[i]);
 			}
@@ -871,13 +874,8 @@ void Lidar::findRoom(){
 //	*/
 }
 
-<<<<<<< HEAD
-void Lidar::findStartLocation(refpoint endR1, refpoint endR2, refpoint endG1, refpoint endG2){
-	refpoint endG;
-=======
 void Lidar::findStartLocation(EndPoint endR1, EndPoint endR2, EndPoint endG1, EndPoint endG2){
 	EndPoint endG; //lidar location
->>>>>>> ace5ee0d6636d9e60b3cc9ea645439f59696cd6f
 	float length0 = pt2PtDist(endR1.getX(), endR1.getY(), endR2.getX(), endR2.getY());
 	float length1 = endR1.findRad();
 	float length2 = endR2.findRad();
@@ -906,4 +904,5 @@ void Lidar::findStartLocation(EndPoint endR1, EndPoint endR2, EndPoint endG1, En
 }
 
 
-
+int getCloserJumpPt(int i);
+float getCloserJumpRadius(int i);

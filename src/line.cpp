@@ -1,9 +1,5 @@
 #include "line.h"
-<<<<<<< HEAD
-#include "refpoint.h"
-=======
 #include "Endpoint.h"
->>>>>>> ace5ee0d6636d9e60b3cc9ea645439f59696cd6f
 #include <iostream>
 #include <vector>
 #include "math.h"
@@ -15,13 +11,8 @@ float pt2PtDist2(float x1, float y1, float x2, float y2){
 line::line(){
         slope = 0;
         intercept = 0;
-<<<<<<< HEAD
-        refpoint end1;
-        refpoint end2;
-=======
         EndPoint end1;
         EndPoint end2;
->>>>>>> ace5ee0d6636d9e60b3cc9ea645439f59696cd6f
         lineDist = 0;
         isLine = false;
         length = 0;
@@ -136,17 +127,10 @@ void line::clearPoint(int i){
 //it. printLine
 void line::printLine() {
         cout << "Point count: " << x.size() << endl;
-<<<<<<< HEAD
-        cout << "First refpoint cartesian:  (" << end1.getX() << ", " << end1.getY() << ")" << endl;
-        cout << "Second refpoint cartesian: (" << end2.getX() << ", " << end2.getY() << ")" << endl;
-        cout << endl << "First refpoint polar:   R: " << end1.findRad() << " Angle: " << end1.findAngle() << endl;
-        cout << "Second refpoint polar:  R: " << end2.findRad() << " Angle: " << end2.findAngle() << endl;
-=======
         cout << "First Endpoint cartesian:  (" << end1.getX() << ", " << end1.getY() << ")" << endl;
         cout << "Second Endpoint cartesian: (" << end2.getX() << ", " << end2.getY() << ")" << endl;
         cout << endl << "First Endpoint polar:   R: " << end1.findRad() << " Angle: " << end1.findAngle() << endl;
         cout << "Second Endpoint polar:  R: " << end2.findRad() << " Angle: " << end2.findAngle() << endl;
->>>>>>> ace5ee0d6636d9e60b3cc9ea645439f59696cd6f
         cout << "Points" << endl;
         for(int i = 0; i < x.size(); i++){
                 cout << "(" << x[i] << ", " << y[i] << ")" << endl;

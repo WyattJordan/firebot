@@ -43,6 +43,7 @@ class Lidar{
 		void findJumps(bool findBig); // finds either big jumps and furniture jumps or only furn jumps
 		void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan);
 		void findStartLocation(EndPoint endR1, EndPoint endR2, EndPoint endG1, EndPoint endG2);
+
 	private:
 		// Point data is stored in 4 vectors with cartesian and polar coordinates
 		vector<float> xVal_;
