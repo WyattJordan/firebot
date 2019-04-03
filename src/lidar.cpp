@@ -221,6 +221,7 @@ void Lidar::findFurniture(){
 	// loop thru furn jumps
 	furns.resize(0);
 
+	vector<int> furnJumpsConfirmed;
 	for(int i=0; i<furnJump_.size(); i++){
 
 		// get two x,y points that are the closer to the 'bot of the two jump points  
@@ -249,8 +250,24 @@ void Lidar::findFurniture(){
 			y = 2.0/3.0 * y + 1.0/3.0 * y2; // weighted avg of the two furniture center estimates
 			EndPoint f(x,y);
 			furns_.push_back(f);
+			furnJumpsConfirmed.push_back(pt1);
 		}
-		
+	}
+
+
+	// remove jumps that were not deemed to be furniture
+	for(int i=0; i<furnJump_.size(); i++){
+		bool confirm = false;
+		for(int k=0; k<furnJumpsConfirmed.size(); k++){ 
+			if(furnJump_[i] == furnJumpsConfirmed[k]){
+				confirm = true;
+				break;
+			}
+		}
+		if(!confirm){
+			furnJump_.erase(furnJump_.begin()+i);
+			i--;
+		}	
 	}
 }
 
