@@ -396,7 +396,7 @@ void Lidar::removePt(int i){
 }
 
 
-vector<line> Lidar::findLine(vector <float> xReal, vector <float> yReal){
+vector<line> Lidar::findLine(){
 	vector <line> myLines;
 	line tempLine;
 	tempLine.setGood(false);
@@ -412,19 +412,19 @@ vector<line> Lidar::findLine(vector <float> xReal, vector <float> yReal){
 	float pointThreshold = 2.5;		//distance between the point and line threshold
 	float pointDistThresh = 5.75;		//distance between point to point in a line (if it exceeds this threshold it will make a new line)
 
-	while (i < xReal.size()) {
-		for (i; i < xReal.size(); i++) {
+	while (i < xVal_.size()) {
+		for (i; i < xVal_.size(); i++) {
 			if(rad_[i] > MAXDIST){
 				break;
 			}
 			if (i == scopeSize) {	//adding first point to a line
-				tempLine.addPointEnd(xReal[i], yReal[i]);
+				tempLine.addPointEnd(xVal_[i], yVal_[i]);
 			}
 
 			else if (i == scopeSize +1){							//checking the second point
-				distToPoint = pt2PtDist(xReal[i], yReal[i], xReal[i-1], yReal[i-1]);	//checks the distance between the first and second point
+				distToPoint = pt2PtDist(xVal_[i], yVal_[i], xVal_[i-1], yVal_[i-1]);	//checks the distance between the first and second point
 				if(distToPoint < pointDistThresh){					//if they are close enough, add second point to line
-					tempLine.addPointEnd(xReal[i], yReal[i]);
+					tempLine.addPointEnd(xVal_[i], yVal_[i]);
 					tempLine.setFloats();
 				}
 				else{									//otherwise send to 'not line' array
@@ -455,10 +455,10 @@ vector<line> Lidar::findLine(vector <float> xReal, vector <float> yReal){
 			}
 
 			else if (i < scopeSize + 11) {							//checking the third point
-				distToPoint = pt2PtDist(xReal[i], yReal[i], xReal[i-1], yReal[i-1]);
-				distToLine = tempLine.findDist(xReal[i], yReal[i]);
+				distToPoint = pt2PtDist(xVal_[i], yVal_[i], xVal_[i-1], yVal_[i-1]);
+				distToLine = tempLine.findDist(xVal_[i], yVal_[i]);
 				if ((distToLine < pointThreshold)&&(distToPoint < pointDistThresh)) {	//checking the point to the line model
-					tempLine.addPointEnd(xReal[i], yReal[i]);
+					tempLine.addPointEnd(xVal_[i], yVal_[i]);
 					tempLine.setFloats();
 					if(i == scopeSize + 10){
 						myLines.push_back(tempLine);				//adds the line to a vector of lines
@@ -490,11 +490,11 @@ vector<line> Lidar::findLine(vector <float> xReal, vector <float> yReal){
 
 			else {										//goes through points 11 through maxPoint
 				myLines[myLines.size()-1].setGood(true);
-				distToPoint = pt2PtDist(xReal[i], yReal[i], xReal[i-1], yReal[i-1]);
-				distToLine = myLines[myLines.size()-1].findDist(xReal[i], yReal[i]);
+				distToPoint = pt2PtDist(xVal_[i], yVal_[i], xVal_[i-1], yVal_[i-1]);
+				distToLine = myLines[myLines.size()-1].findDist(xVal_[i], yVal_[i]);
 				if (distToLine < pointThreshold) {
 					if(distToPoint <= pointDistThresh){
-						myLines[myLines.size()-1].addPointEnd(xReal[i], yReal[i]);
+						myLines[myLines.size()-1].addPointEnd(xVal_[i], yVal_[i]);
 						myLines[myLines.size()-1].setFloats();
 					}
 					else{
@@ -508,10 +508,10 @@ vector<line> Lidar::findLine(vector <float> xReal, vector <float> yReal){
 				}
 			//	cout << "Part 4 done" << endl;
 			}
-		} // end of loop going thru all xReals
+		} // end of loop going thru all xVal_s
 
 		tempLine.clearLine();
-	}// end of while loop checking that i is < xReal.size
+	}// end of while loop checking that i is < xVal_.size
 
 	cout << "Lines have been made" << endl;
 
