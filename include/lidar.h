@@ -40,7 +40,7 @@ class Lidar{
 		float myAngle(float x, float y);
 		float myRad(float x, float y);
 		void findRoom();
-		void findRoomFromJumps();
+		void classifyRoomFromJumps();
 		void findJumps(bool findBig); // finds either big jumps and furniture jumps or only furn jumps
 		void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan);
 		void findStartLocation(EndPoint endR1, EndPoint endR2, EndPoint endG1, EndPoint endG2);
@@ -59,6 +59,8 @@ class Lidar{
 		vector<int> furnJump_;
 		// list of endpoints that should be the center of furniture
 		vector<EndPoint> furns_;
+		// idxs of the furniture so they can be ignore in findLine
+		vector<int> furnIdxs_;
 		// removes a point from all the point data vectors, probably don't want to use this
 		void removePt(int i);
 		// given a jump idx return it's second jump idx (jump idx + 1)%rad.size()
