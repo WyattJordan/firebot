@@ -35,38 +35,20 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	yVal_.resize(0);
 	vector<float> tdeg, trad, tX, tY; // add to temp until cross is hit
 	time(&start);
-	bool cross = false;
-	float prevAng = 0;
 
 	// formats the data so that angle increases from 0 to 360
 	for(int i = 0; i < num; i++) { 
 		float radius = scan->ranges[i];
 		if ((isinf(radius) == 0)&&(radius > MINDIST)){ // check if acceptable range measurement
-			if(radius > MAXDIST) radius = MAXDIST;
+			if(radius > MAXDIST) radius = MAXDIST; // makes the jump detection easier
 			float degree = RAD2DEG(scan->angle_min + scan->angle_increment * i);
 			float ang = degree>0 ? degree : degree + 360;
-			if(ang<prevAng){
-				cross = true; // looped from 359 to 0 deg
-			}
-		//	if(cross){ // once the crossover is hit start inserting to actual class members 
-				rad_.push_back(radius);
-				degrees_.push_back(ang);
-				xVal_.push_back(POLAR2XCART(radius, ang));
-				yVal_.push_back(POLAR2YCART(radius, ang));
-		/*	}
-			else{ // start appending to temporaries because the data doesn't start at angle 0
-				trad.push_back(radius);
-				tdeg.push_back(ang);
-				tX.push_back(POLAR2XCART(radius, ang));
-				tY.push_back(POLAR2YCART(radius, ang));
-			}*/
-			prevAng = ang;
+			rad_.push_back(radius);
+			degrees_.push_back(ang);
+			xVal_.push_back(POLAR2XCART(radius, ang));
+			yVal_.push_back(POLAR2YCART(radius, ang));
 		}
 	}
-	/*rad_.insert(rad_.end(), trad.begin(), trad.end());
-	degrees_.insert(degrees_.end(), tdeg.begin(), tdeg.end());
-	xVal_.insert(xVal_.end(), tX.begin(), tX.end());
-	yVal_.insert(yVal_.end(), tY.begin(), tY.end());//*/
 
 	findJumps(true);
 	cout<<"num jumps = "<<jump_.size()<<"\n";
@@ -211,13 +193,13 @@ int Lidar::getEndIdx(int s){
 }
 // given the start of a jump index return the index of the closer pt in the jump
 int Lidar::getCloserJumpPt(int i){
-	return std::min(rad_[i],rad_[getEndIdx(i+1)]) == rad_[i] ? i : getEndIdx(i+1);
+	return rad_[i] < rad_[getEndIdx(i+1)] ? i : getEndIdx(i+1);
+}
+int Lidar::getFurtherJumpPt(int i){
+	return rad_[i] > rad_[getEndIdx(i+1)] ? i : getEndIdx(i+1);
 }
 float Lidar::getCloserJumpRadius(int i){
 	return rad_[getCloserJumpPt(i)];
-}
-int Lidar::getFurtherJumpPt(int i){
-	return std::max(rad_[i],rad_[getEndIdx(i+1)]) == rad_[i] ? i : getEndIdx(i+1);
 }
 float Lidar::getFurtherJumpRadius(int i){
 	return rad_[getFurtherJumpPt(i)];
@@ -234,13 +216,11 @@ void Lidar::findFurniture(){
 
 	cout<<"starting to find furn with "<<furnJump_.size()<<" furnjumps\n";
 	cout<<"starting furn jumps at angles: ";
-	for(int q=0; q<furnJump_.size(); q++) {cout<<"j: "<<furnJump_[q]<<" at "<<degrees_[furnJump_[q]]<<"--"<<getCloserJumpRadius(furnJump_[q])<<"  ";}
+	for(int q=0; q<furnJump_.size(); q++) {cout<<"j:"<<furnJump_[q]<<" at "<<degrees_[furnJump_[q]]<<"--"<<getCloserJumpRadius(furnJump_[q])<<"  ";}
 	cout<<"\n";
 
 	vector<int> furnJumpsConfirmed;
 	vector<int> keepAsDoorJump; // for furniture edges doubling as door edges
-	//furnJumpsConfirmed.resize(0);
-	//keepAsDoorJump.resize(0);
 
 	for(int j=0; j<furnJump_.size(); j++){
 
@@ -258,10 +238,10 @@ void Lidar::findFurniture(){
 			continue; // skips the rest of the code in this iteration
 		}	
 
-		if(step > 100 ){ // if there is a massive number of points hitting the "furniture" it's looping around the 180 spot so swap order
-			cout<<"furniture at looping point!! step = "<<step<<" ";
+		if(step > 200 ){ // if there is a massive number of points hitting the "furniture" it's looping around the 180 spot so swap order
+			cout<<"jump "<<furnJump_[j]<<" puts furniture at looping point!! step = "<<step<<" ";
 			atLoopAround = true;
-			step = rad_.size() - step; // instead of counting the long way around the circle
+			step = rad_.size() - step - 2; // instead of counting the long way around the circle
 			cout<<" now step = "<<step<<"\n";
 			int tmp = pt1; // swap pts because we want pt1 to start off the furniture jumping onto it
 			pt1 = pt2;
@@ -275,7 +255,7 @@ void Lidar::findFurniture(){
 			continue;
 		}
 		if(step < 7){ // should let you detect a 13cm object 147cm away (tstep = 0.126) or a 5cm object 56cm away
-			cout<<"too few of pts on the furniture\n";
+			cout<<"too few of pts on the furniture for jump "<<furnJump_[j]<<"\n";
 			continue;
 		}
 
@@ -286,14 +266,14 @@ void Lidar::findFurniture(){
 		float avgOutsideRad = (rad_[pt1] + rad_[pt2]) / 2.0;
 		float curveHeight = abs(avgOutsideRad - avgInnerRad);
 
-		if( curveHeight > FurnDistTolerance && curveHeight < 30){ // inner should be at least certain amount closer
+		if( curveHeight > FurnDistTolerance && curveHeight < 10){ // inner should be at least certain amount closer
 			// Endpoint x and y determined by jump pts of furniture and middle pt + furniture raidus all averaged
 			float x = POLAR2XCART(rad_[middle]+FurnWidth/2.0, degrees_[middle]); // estimate based on mid point
 			float y = POLAR2YCART(rad_[middle]+FurnWidth/2.0, degrees_[middle]);
-			
 			EndPoint f(x,y);
 			furns_.push_back(f);
-			furnJumpsConfirmed.push_back(furnJump_[j]);
+
+			furnJumpsConfirmed.push_back(furnJump_[j]); // add the two jump idxs to the confirmed list
 			furnJumpsConfirmed.push_back(furnJump_[(j+1)%furnJump_.size()]);
 
 			// If a piece of furniture is near the edge of a wall where a door jump would be detected
@@ -302,11 +282,18 @@ void Lidar::findFurniture(){
 			// those as door jumps so remove them but if the edge of a piece of furn is also the 
 			// edge through the doorway that should be kept)
 			float prePt1Avg,postPt1Avg, prePt2Avg, postPt2Avg;
-			getAveragePrePost(prePt1Avg,postPt1Avg,pt1,2);  // guaranteed that pt1 is the start of the furniture (jumping forward)
-			getAveragePrePost(prePt2Avg,postPt2Avg,getEndIdx(pt2),2);
-			cout<<"dist is: "<<abs(prePt1Avg - postPt2Avg)<<"\n";
-			if(!atLoopAround && abs(prePt1Avg - postPt2Avg) > DoorJumpDist) keepAsDoorJump.push_back(pt2); //pt2 should be drop off from furn!
-			if(atLoopAround && abs(postPt1Avg - prePt2Avg) > DoorJumpDist) keepAsDoorJump.push_back(pt2); //pt2 should be drop off from furn!
+			getAveragePrePost(prePt1Avg,postPt1Avg,furnJump_[j],7);  // NOT guaranteed that pt1 is the start of the furniture (jumping forward)
+			getAveragePrePost(prePt2Avg,postPt2Avg,furnJump_[(j+1)%rad_.size()],7);
+			float diff = !atLoopAround ? abs(prePt1Avg - postPt2Avg) : abs(postPt1Avg - prePt2Avg);
+			if(!atLoopAround) cout<<"for jump "<<furnJump_[j]<<" dist is: "<<diff<<" from prePt1 = "<<prePt1Avg<<" and postPt2 = "<<postPt2Avg<<"\n";
+			if(atLoopAround) cout<<"LOOPING for jump "<<furnJump_[j]<<" dist is: "<<diff<<" from postPt1 = "<<postPt1Avg<<" and prePt2 = "<<prePt2Avg<<"\n";
+			// determine the max of the larger radius of the two jumps, this is the doorway jump
+			int longIdx = getFurtherJumpRadius(furnJump_[j]) > getFurtherJumpRadius(furnJump_[(j+1)%rad_.size()]) ? j : (j+1)%rad_.size();
+			if(diff > DoorJumpDist * 0.8) keepAsDoorJump.push_back(longIdx); 
+			//if(!atLoopAround && diff > DoorJumpDist) keepAsDoorJump.push_back(longIdx); 
+			//if( atLoopAround && diff > DoorJumpDist) keepAsDoorJump.push_back(longIdx); 
+			
+			j++; // next jump will be the end of this piece of furniture so skip that
 		}
 	}
 
