@@ -36,6 +36,7 @@ class Lidar{
 		void setNav(Nav *nav);
 		float pt2PtDist(float x1, float y1, float x2, float y2);
 		vector<line> findLine();
+		void findLines();
 		bool canMerge(line a, line b);
 		float myAngle(float x, float y);
 		float myRad(float x, float y);

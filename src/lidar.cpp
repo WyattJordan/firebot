@@ -345,7 +345,7 @@ void Lidar::findLines(){
 	
 	tmp.addPointEnd(xVal_[0],yVal_[0]);
 	tmp.addPointEnd(xVal_[1],yVal_[1]);
-	tmp.buildLine()
+	tmp.buildLine();
 
 	for(int p=2; p<rad_.size(); p++){
 		// grab next point if not at maxdist or a furniture pt and determine distance from line model
@@ -355,8 +355,8 @@ void Lidar::findLines(){
 		else if(furnIdxs_.size()!=0 && std::find(furnIdxs_.begin(), furnIdxs_.end(), p) != furnIdxs_.end()){
 			// skip because it's a piece of furniture
 		}
-		float err = tmp.findDist(xVal[p], yVal[p]); // perpendicular dist from pt to line
-		float ptDist = pt2PtDist(xVal_[p], yVal_[p], xVal_[p-1], yVal[p-1]); // dist between this point and the prev point
+		float err = tmp.findDist(xVal_[p], yVal_[p]); // perpendicular dist from pt to line
+		float ptDist = pt2PtDist(xVal_[p], yVal_[p], xVal_[p-1], yVal_[p-1]); // dist between this point and the prev point
 		// if dist from line model is within PerpTHRESH and distance from pre point < NextPtThresh add to line
 		if( err < PerpThresh && ptDist < PrevPointDistThresh){
 
@@ -373,13 +373,13 @@ void Lidar::findLines(){
 			}
 			else{ // line is too short to keep
 				for(int pt=0; pt<tmp.numPts(); pt++){ // save all pts in line to check against models later
-					checkX.push_back(tmp.getXPoint(pt);
-					checkY.push_back(tmp.getYPoint(pt);
+					checkX.push_back(tmp.getXPoint(pt));
+					checkY.push_back(tmp.getYPoint(pt));
 				}
 			}
 
 			tmp.clearLine(); // reset the line
-			if(p < rad.size()-1) {
+			if(p < rad_.size()-1) {
 				tmp.addPointEnd(xVal_[p],yVal_[p]); // add the current pt which wasn't added to to tmp
 				tmp.addPointEnd(xVal_[++p],yVal_[++p]); // add the next pt
 			}
@@ -391,7 +391,7 @@ void Lidar::findLines(){
 		}
 	}
 
-	nav_->makeLineMarks();
+	nav_->makeLineMarks(lines_);
 
 	// Adding Back Points:
 	// Loop through all checkLater getting pt P

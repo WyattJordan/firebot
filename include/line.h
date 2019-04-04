@@ -35,7 +35,7 @@ public:
         void clearPoint(int i);
         void printLine();
         //prints all the points of the line
-        float numPts();
+        int numPts();
         //returns the number of points in the line
         void reverseLine();
         void setEndpts(float x1, float y1, float x2, float y2);
