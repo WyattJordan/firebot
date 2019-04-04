@@ -46,8 +46,9 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	findFurniture(); // determines what is furniture from smallJump_
 	nav_->makeFurnMarks(furns_);
 	
-	classifyRoomFromJumps();
-	
+//	classifyRoomFromJumps();
+	findLines();
+	nav_->makeLineMarks(lines_);
 /*	ROS_INFO("Starting findLine...");
 	findLine(xVal_, yVal_);
 	ROS_INFO("Finished findLine...");
@@ -393,7 +394,38 @@ void Lidar::findLines(){
 
 	nav_->makeLineMarks();
 
+	
+
 	// Adding Back Points:
+	for(int bPts = 0; bPts < checkX.size(); bPts++){
+		bool added = false;
+		for(int nLine = 0; nLine < lines_.size(); nLine++){
+			float bErr = line_[nLine].findDist(checkX[bPts], checkY[bPts]); // perpendicular dist from pt to line
+			float bPtDist1 = pt2PtDist(checkX[bPts],checkY[bPts],line_[nLine].getEndPtX1(),line_[nLine].getEndPtY1()); // dist between this point and the prev point
+			float bPtDist2 = pt2PtDist(checkX[bPts],checkY[bPts],line_[nLine].getEndPtX2(),line_[nLine].getEndPtY2());
+			if(bPtDist1 > bPtDist2){
+				
+				if( bErr < PerpThresh && bPtDist2 < PrevPointDistThresh){
+	
+					line_[nLine].addPointEnd(checkX[bPts], checkY[bPts]);
+					added = 1;
+					line_[nLine].buildLine();// update line model with new point added 
+				}
+			}
+			else{
+				if( bErr < PerpThresh && bPtDist1 < PrevPointDistThresh){
+					line_[nLine].addPointEnd(checkX[bPts], checkY[bPts]);
+					added = 1;
+					line_[nLine].buildLine();// update line model with new point added 
+				}
+			}
+			if(added){break;}
+		}
+	}
+
+			// if dist from line model is within PerpTHRESH and distance from pre point < NextPtThresh add to line
+
+
 	// Loop through all checkLater getting pt P
 		// check P against each line model LM
 			// if P's distance from LM is < PerpTHRESH && P's distance from either LM endpoint < NextPtThresh
