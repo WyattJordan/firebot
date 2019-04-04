@@ -32,7 +32,7 @@ using namespace std;
 class Lidar{
 	public:
 		Lidar();
-//		Lidar(Robot *robRef, Nav *navRef);
+		Lidar(Robot *robRef, Nav *navRef);
 		void setNav(Nav *nav);
 		float pt2PtDist(float x1, float y1, float x2, float y2);
 		vector<line> findLine();
@@ -47,7 +47,11 @@ class Lidar{
 		void findStartLocation(EndPoint endR1, EndPoint endR2, EndPoint endG1, EndPoint endG2);
 
 	private:
-		// Point data is stored in 4 vectors with cartesian and polar coordinates
+		Vector3f prevOdom_;
+		Nav* nav_;
+		Robot* rob_;
+
+	// Point data is stored in 4 vectors with cartesian and polar coordinates
 		vector<float> xVal_;
 		vector<float> yVal_;
 		vector<float> degrees_;
@@ -83,10 +87,6 @@ class Lidar{
 		int getFurtherJumpPt(int i);
 		float getCloserJumpRadius(int i);
 		float getFurtherJumpRadius(int i);
-		Vector3f prevOdom_;
-		Nav* nav_;
-//		Robot* rob_;
-
 };
 
 #endif

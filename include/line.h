@@ -1,11 +1,11 @@
 #ifndef LINE_INCLUDE
 #define LINE_INCLUDE
 
+#include "Endpoint.h"
 #include <iostream>
 #include <cmath>
 #include <vector>
 #include <utility>
-#include "Endpoint.h"
 #include <algorithm>
 
 using namespace std;

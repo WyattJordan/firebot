@@ -1,11 +1,12 @@
 #include "lidar.h"
 Lidar::Lidar(){;} // do not use this
-/*
-Lidar::Lidar(Robot *robRef){
+
+Lidar::Lidar(Robot *robRef, Nav* navRef){
 
 	prevOdom_ << -100, -100, 0;
 	rob_ = robRef;
-}*////
+	nav_ = navRef;
+}
 void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	/* bool updatePosition = false;
 	Vector3f currentPos = rob_->getOdomWorldLoc(); // this is an undefined ref for some reason...

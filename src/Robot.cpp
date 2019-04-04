@@ -210,8 +210,8 @@ void Robot::executeNavStack(){
 // determines distance between robot pos (odomWorldLoc_) and next point in navstack
 float Robot::distToNextPoint(){
 	if(navStack.size()>0){
-		float xdiff = navStack.front().getx() - odomWorldLoc_(0);
-		float ydiff = navStack.front().gety() - odomWorldLoc_(1);
+		float xdiff = navStack.front().getX() - odomWorldLoc_(0);
+		float ydiff = navStack.front().getY() - odomWorldLoc_(1);
 		return pow( pow(xdiff,2) + pow(ydiff,2), 0.5);
 	}
 
@@ -230,7 +230,7 @@ float Robot::getPoseToPoint(EndPoint pt, EndPoint* pt2){
 		t = pt.getCalculatedTheta();
 	}
 	else{ // get angle to pt2 with pt as the origin
-		pt2->calcPolar(pt.getx(),pt.gety()); // find polar with robot as origin
+		pt2->calcPolar(pt.getX(),pt.getY()); // find polar with robot as origin
 		t = pt2->getCalculatedTheta();
 
 	}
