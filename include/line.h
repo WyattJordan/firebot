@@ -43,6 +43,13 @@ public:
         float getEndPtY1();
         float getEndPtX2();
         float getEndPtY2();
+
+		// Functions to be added for localizing in room
+		float getCenterX();
+		float getCenterY();
+		float getCenterTheta();
+		float getCenterRadius();
+
         void mergeLines(line a);
         float endPAngle(int num);
         float endPRad(int num);
@@ -61,6 +68,7 @@ private:
         float intercept;
         EndPoint end1;
         EndPoint end2;
+		EndPoint center;
         float lineDist;
         bool isLine;
         float length;

@@ -19,21 +19,6 @@ line::line(){
         candle = false;
         furniture = false;
 }
-void line::setSlope(float s){
-        slope = s;
-};
-
-void line::setIntercept(float i){
-        intercept = i;
-};
-
-float line::getXPoint(int point){
-        return x[point];
-};
-
-float line::getYPoint(int point){
-        return y[point];
-};
 
 void line::setFloats() {
         float xAvg = 0;
@@ -46,7 +31,9 @@ void line::setFloats() {
 
         xAvg /= (x.size());
         yAvg /= (y.size());
-	float num = 0, denum = 0;
+		center = EndPoint(xAvg, yAvg);
+
+		float num = 0, denum = 0;
         for (int i = 0; i < x.size(); i++) {
                 num += (x[i] - xAvg)*(y[i] - yAvg);
                 denum += pow(x[i] - xAvg, 2);
@@ -71,26 +58,6 @@ void line::setFloats() {
         else{
                isLine = false;
         }
-};
-
-float line::getIntercept() {
-
-        return intercept;
-};
-
-float line::getSlope() {
-
-        return slope;
-};
-//it. addPoint line
-void line::addPointEnd(float xVal, float yVal) {
-        x.push_back(xVal);
-        y.push_back(yVal);
-};
-
-void line::addPointStart(float xVal, float yVal) {
-        x.insert(x.begin(), xVal);
-        y.insert(y.begin(), yVal);
 };
 //it. findDist
 float line::findDist(float xPoint, float yPoint) {
@@ -136,6 +103,7 @@ void line::printLine() {
                 cout << "(" << x[i] << ", " << y[i] << ")" << endl;
         }
 };
+
 //it. endPAngle
 float line::endPAngle(int num){
         if(num == 1) {return end1.findAngle();}
@@ -148,35 +116,17 @@ float line::endPRad(int num){
         else {return 0;}
 }
 
-
-//it. lineSize
-float line::lineSize() {
-        return x.size();
-}
 //it. reverseLine
 void line::reverseLine(){
         reverse(x.begin(), x.end());
         reverse(y.begin(), y.end());
 }
+
 //it. setEndpts
 void line::setEndpts(float x1, float y1, float x2, float y2){
         end1.setCart(x1, y1);
         end2.setCart(x2, y2);
         lineDist = pt2PtDist2(x1, y1, x2, y2);
-}
-//it. getEndPt line
-float line::getEndPtX1(){
-        return end1.getX();
-}
-float line::getEndPtY1(){
-        return end1.getY();
-}
-float line::getEndPtX2(){
-        return end2.getX();
-}
-
-float line::getEndPtY2(){
-        return end2.getY();
 }
 void line::mergeLines(line a) {//line a gets merged into the main line
         for(int i = 0; i < a.lineSize(); i++){
@@ -188,31 +138,49 @@ void line::mergeLines(line a) {//line a gets merged into the main line
         }
         a.clearLine();
 	setFloats();
+}
 
-}
-//it. getLineDist
-float line::getLineDist(){
-        return lineDist;
-}
-//it. setGood
-void line::setGood(bool a){
-        isLine = a;
-}
-//it. isGoodLine
-bool line::isGoodLine(){
-        return isLine;
-}
-float line::getLength(){
-        return length;
-}
-bool line::isCandle(){
-        return candle;
-}
-bool line::isFurniture(){
-        return furniture;
-}
 float line::radDist(int i){
 	float rad;
         rad = pow(x[i]*x[i] + y[i]*y[i], 0.5);
         return rad;
 }
+
+void line::addPointEnd(float xVal, float yVal) {
+        x.push_back(xVal);
+        y.push_back(yVal);
+};
+
+void line::addPointStart(float xVal, float yVal) {
+        x.insert(x.begin(), xVal);
+        y.insert(y.begin(), yVal);
+};
+
+float line::getXPoint(int point){ return x[point]; };
+float line::getYPoint(int point){ return y[point]; };
+float line::lineSize() { return x.size(); }
+
+//it. getLineDist
+float line::getLineDist(){ return lineDist; }
+float line::getIntercept() { return intercept; };
+float line::getSlope() { return slope; };
+float line::getLength(){ return length; }
+//it. setGood
+void line::setSlope(float s){ slope = s; };
+void line::setIntercept(float i){ intercept = i; };
+void line::setGood(bool a){ isLine = a; }
+//it. isGoodLine
+bool line::isGoodLine(){ return isLine; }
+bool line::isCandle(){ return candle; }
+bool line::isFurniture(){ return furniture; }
+//it. getEndPt line
+float line::getEndPtX1(){ return end1.getX(); }
+float line::getEndPtY1(){ return end1.getY(); }
+float line::getEndPtX2(){ return end2.getX(); }
+float line::getEndPtY2(){ return end2.getY(); }
+float line::getCenterTheta(){ return center.findAngle();}
+float line::getCenterRadius(){ return center.findAngle();}
+float line::getCenterX(){ return center.getX(); }
+float line::getCenterY(){ return center.getY(); }
+
+

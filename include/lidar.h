@@ -55,12 +55,13 @@ class Lidar{
 		// i.e. rad_[jump[j]] and rad_[jump[j] + 1] are different by at least DoorJumpDist
 		// also note that due to loop around never use jump[j] + 1 but rather getEndIdx(jump[j])
 		vector<int> jump_;
-		// acts just like jump_ except with smaller threshold of FurnJumpDist
-		vector<int> furnJump_;
+		// acts just like jump_ except with smaller threshold of SmallJumpDist
+		vector<int> smallJump_;
 		// list of endpoints that should be the center of furniture
 		vector<EndPoint> furns_;
 		// idxs of the furniture so they can be ignore in findLine
 		vector<int> furnIdxs_;
+		vector<line> lines_;
 		// removes a point from all the point data vectors, probably don't want to use this
 		void removePt(int i);
 		// given a jump idx return it's second jump idx (jump idx + 1)%rad.size()

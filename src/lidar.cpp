@@ -43,7 +43,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 
 	findJumps(true);
 	cout<<"num jumps = "<<jump_.size()<<"\n";
-	findFurniture(); // determines what is furniture from furnJump_
+	findFurniture(); // determines what is furniture from smallJump_
 	nav_->makeFurnMarks(furns_);
 	
 	classifyRoomFromJumps();
@@ -71,23 +71,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 }
 
 void Lidar::room4Localization(vector<int> cJumps){
-	// get closest two big jumps (edges of doorway leaving room 4)
-	int closest = -1;
-	int nClosest = -2;
-	float min = 99999999.9;
-	for(int i=0; i<2; i++){
-		for(int j : cJumps){
-			float thismin = getCloserJumpRadius(j);
-			if(thismin < min)
-					min = thismin;
-					if(i==0) {closest = j;}
-					else{nClosest = j;}
-		}
-		// remove closest and reset min to find next min
-		cJumps.erase(std::remove(cJumps.begin(), cJumps.end(), closest), cJumps.end());
-		min = 99999999.9;
-	}
-
+	if(cJumps.size()!=2) cout<<"room4 localization with other than 2 door jumps\n";
 	// determine which side the door is on from longer range measurements
 	int r4long = 0;
 	for(float d : rad_) {if(d>160) r4long++;}
@@ -95,11 +79,13 @@ void Lidar::room4Localization(vector<int> cJumps){
 	if(r4long > 5){	
 		ep1 = nav_->getMapPoint(11);
 		ep2 = nav_->getMapPoint(19);
+		nav_->setSmallRoomUpper(false);
 		cout<<"room4 door faces (0,0)\n";
 	}
 	else{
 		ep1 = nav_->getMapPoint(13);
 		ep2 = nav_->getMapPoint(18);
+		nav_->setSmallRoomUpper(true);
 		cout<<"room4 door faces top of maze\n";
 	}
 
@@ -107,11 +93,46 @@ void Lidar::room4Localization(vector<int> cJumps){
 	EndPoint gDoorPt((ep1.getX() + ep2.getX()) / 2.0, (ep1.getY() + ep2.getY()) / 2.0);
 
 	// don't know if the first point of the jump or the second has the nearer radius, use the closer points to make the doorway waypoint
-	closest = getCloserJumpPt(closest);
-	nClosest = getCloserJumpPt(nClosest);
+	int closest = getCloserJumpPt(cJumps[0]);
+	int nClosest = getCloserJumpPt(cJumps[1]);
 	EndPoint lDoorPt((xVal_[closest] + xVal_[nClosest]) / 2.0, (yVal_[closest] + yVal_[nClosest]) / 2.0);
+
+
+	int wall1 = -1;
+	int wall2 = -1;
+	float angleToDoor = lDoorPt.findAngle();
+	// find two walls with furthest polar angle to doorway opening
+	for(int w=0; w<2; w++){
+		int max = 0;
+		for(int i=0; i<lines_.size(); i++){
+			float diff = abs(lines_[i].getCenterTheta() - angleToDoor); // all in lidar frame
+			if(diff > max){
+				if(w==0){ // if finding the first wall
+					max = diff;
+					wall1 = i;
+				}
+				else if(i !=wall1){ // if findinf the 2nd wall and this one isn't the first
+					max = diff;
+					wall2 = i;
+				}
+			}
+		}
+	}
+
+	// now eliminate wall with closest endpoint to doorway (should be smaller wall)
+	float xDoor = lDoorPt.getX();
+	float yDoor = lDoorPt.getY();
 	
-//	localizeFromPt(lDoorPt, gDoorPt);
+	float wall1Dist = std::min(pt2PtDist(xDoor,yDoor, lines_[wall1].getEndPtX1(),lines_[wall1].getEndPtY1())  , 
+				pt2PtDist(xDoor,yDoor, lines_[wall1].getEndPtX2(),lines_[wall1].getEndPtY2()));
+	float wall2Dist = std::min(pt2PtDist(xDoor,yDoor, lines_[wall2].getEndPtX1(),lines_[wall2].getEndPtY1())  , 
+				pt2PtDist(xDoor,yDoor, lines_[wall2].getEndPtX2(),lines_[wall2].getEndPtY2()));
+
+	int wall = wall1Dist > wall2Dist ? wall1 : wall2; // use the wall with further of closer endpoints to doorway
+
+	cout<<"using wall :"<<wall<<" which is has center "<<lines_[wall].getCenterRadius()<<" cm away at angle "<<lines_[wall].getCenterTheta()<<"\n";
+	
+	//	localizeFromPt(lDoorPt, gDoorPt);
 }
 
 /*void Lidar::localizeFromPt(EndPoint l, EndPoint g){
@@ -132,7 +153,7 @@ void Lidar::classifyRoomFromJumps(){
 	}
 	cout<<"closeJumpCount = "<<closeJumps.size()<<"\n";
 
-	if(closeJumps.size() >= 2){
+	if(closeJumps.size() == 2){
 		cout<<"localizing for room4\n";
 		//room4Localization(closeJumps);
 	}
@@ -150,6 +171,7 @@ void Lidar::classifyRoomFromJumps(){
 
 void Lidar::room1Localization(){
 }
+
 // Furniture will have ~13cm difference between endpoints (within FurnWidthTolerance)
 // And will have a point with a lower polar Radius between the two points (by at least FurnDepthTolerance)
 void Lidar::findFurniture(){
@@ -157,29 +179,30 @@ void Lidar::findFurniture(){
 	furns_.resize(0);
 	furnIdxs_.resize(0);
 
-	cout<<"starting to find furn with "<<furnJump_.size()<<" furnjumps\n";
+	cout<<"starting to find furn with "<<smallJump_.size()<<" furnjumps\n";
 	cout<<"starting furn jumps at angles: ";
-	for(int q=0; q<furnJump_.size(); q++) {cout<<"j:"<<furnJump_[q]<<" at "<<degrees_[furnJump_[q]]<<"--"<<getCloserJumpRadius(furnJump_[q])<<"  ";}
+	for(int q=0; q<smallJump_.size(); q++) {cout<<"j:"<<smallJump_[q]<<" at "<<degrees_[smallJump_[q]]<<"--"<<getCloserJumpRadius(smallJump_[q])<<"  ";}
 	cout<<"\n";//*/
 
 	vector<int> furnJumpsConfirmed;
-	for(int j=0; j<furnJump_.size(); j++){
+	for(int j=0; j<smallJump_.size(); j++){
 
 		// get the two x,y points that are the closer to the 'bot of the two jump points  
-		int pt1 = getCloserJumpPt(furnJump_[j]);
-		int pt2 = getCloserJumpPt(furnJump_[(j+1)%furnJump_.size()]);
+		int pt1 = getCloserJumpPt(smallJump_[j]);
+		int pt2 = getCloserJumpPt(smallJump_[(j+1)%smallJump_.size()]);
 		int step = abs(pt1-pt2);  // this is the number of points hitting the furniture besides the endpoints 
 		bool atLoopAround = false;
 		int middle = (pt1 + step/2) % rad_.size();
 		// check the width tolerance of the two points
 		float width = pt2PtDist(xVal_[pt1], yVal_[pt1], xVal_[pt2], yVal_[pt2]); 
-		if(!(abs(FurnWidth - width) < FurnWidthTolerance)){ // if the distance between the points is absurd skip this iteration
+		if(!(abs(FurnWidth - width) < FurnWidthTolerance)){ // if the distance between the points is larger than furniture size
 			//cout<<"deleted due to width constraint width = "<<width<<"\n";
+			
 			continue; // skips the rest of the code in this iteration
 		}	
 
 		if(step > 200 ){ // if there is a massive number of points hitting the "furniture" it's looping around the 180 spot so swap order
-			cout<<"jump "<<furnJump_[j]<<" puts furniture at looping point!! step = "<<step<<" ";
+			cout<<"jump "<<smallJump_[j]<<" puts furniture at looping point!! step = "<<step<<" ";
 			atLoopAround = true;
 			step = rad_.size() - step - 2; // instead of counting the long way around the circle
 			cout<<" now step = "<<step<<"\n";
@@ -195,7 +218,7 @@ void Lidar::findFurniture(){
 			continue;
 		}
 		if(step < 7){ // should let you detect a 13cm object 147cm away (tstep = 0.126) or a 5cm object 56cm away
-			cout<<"too few of pts on the furniture for jump "<<furnJump_[j]<<"\n";
+			cout<<"too few of pts on the furniture for jump "<<smallJump_[j]<<"\n";
 			continue;
 		}
 
@@ -217,12 +240,12 @@ void Lidar::findFurniture(){
 				for(int rem=pt1; rem%rad_.size()>=pt2; rem--) furnIdxs_.push_back(rem);
 			}
 
-			furnJumpsConfirmed.push_back(furnJump_[j]); // add the two jump idxs to the confirmed list
-			furnJumpsConfirmed.push_back(furnJump_[(j+1)%furnJump_.size()]);
+			furnJumpsConfirmed.push_back(smallJump_[j]); // add the two jump idxs to the confirmed list
+			furnJumpsConfirmed.push_back(smallJump_[(j+1)%smallJump_.size()]);
 			j++; // next jump will be the end of this piece of furniture so skip that
 		}
 		else{
-			cout<<"jump "<<furnJump_[j]<<" not counted as furn due to curveHeight\n";
+			cout<<"jump "<<smallJump_[j]<<" not counted as furn due to curveHeight\n";
 		}
 	}
 
@@ -232,19 +255,19 @@ void Lidar::findFurniture(){
 		}
 	}
 
-	furnJump_ = furnJumpsConfirmed; // only keep confirmed jumps
+	// save_here = furnJumpsConfirmed; // if you want to save the furn jumps use this line, don't overwrite smallJump_ tho
 	cout<<jump_.size()<<" Big jumps at angles: ";
 	for(int r=0; r<jump_.size(); r++) {cout<<degrees_[jump_[r]]<<"--"<<getCloserJumpRadius(jump_[r])<<"   ";}
 	cout<<"\n";
 	
 	cout<<"furn jumps after filtering: ";
-	for(int t=0; t<furnJump_.size(); t++) {cout<<degrees_[furnJump_[t]]<<"--"<<getCloserJumpRadius(furnJump_[t])<<"   ";}
+	for(int t=0; t<furnJumpsConfirmed.size(); t++) {cout<<degrees_[furnJumpsConfirmed[t]]<<"--"<<getCloserJumpRadius(furnJumpsConfirmed[t])<<"   ";}
 	cout<<"\n";//*/
 }
 
 void Lidar::findJumps(bool findBig){
 	jump_.resize(0);
-	furnJump_.resize(0);
+	smallJump_.resize(0);
 	cout<<"finding jumps\n";
 	for(int i=0; i<rad_.size(); i++){
 		float diff = abs(rad_[i] - rad_[(i+1)%rad_.size()]);
@@ -261,7 +284,7 @@ void Lidar::findJumps(bool findBig){
 				cout<<"AvgPre = "<<avgPre<<" AvgPost = "<<avgPost<<"\n";
 				*/
 				jump_.push_back(i);
-				furnJump_.push_back(i);
+				smallJump_.push_back(i);
 				// if there are two jumps right next to eachother delete both (caused by bad pt)
 				// nearness can behave oddly since the LIDAR filters out points above 180cm
 				if(jump_.size()>1 && abs(jump_[jump_.size()-2] - jump_[jump_.size()-1]) == 1){
@@ -273,18 +296,18 @@ void Lidar::findJumps(bool findBig){
 					getAveragePrePost(d1,d2, i+1, 5,1); */
 					//jump_.erase(jump_.begin() + jump_.size()-1);
 					//jump_.erase(jump_.begin() + jump_.size()-1);
-					//also erase from furnJump_ if this is reinstated
+					//also erase from smallJump_ if this is reinstated
 				}
 			}
 		}
-		else if(diff > FurnJumpDist){ // furn jump has lower tolerance for detecting furniture
+		else if(diff > SmallJumpDist){ // furn jump has lower tolerance for detecting furniture
 			// use a smaller averaging scheme of only 3 pts before and after the jump
 			// With the LIDAR getting 500pts/scan it's angle between pts is 0.0127 rad
 			// which means the dist. between pts is R*0.0127, which equals 3cm at R = 238cm
 			float avgPre, avgPost;
 			getAveragePrePost(avgPre, avgPost, i+1, 3); // do 3pt averages before and after
-			if(abs(avgPre - avgPost) > FurnJumpDist*0.75){ // filter out random bad pts
-				furnJump_.push_back(i);
+			if(abs(avgPre - avgPost) > SmallJumpDist*0.75){ // filter out random bad pts
+				smallJump_.push_back(i);
 			}
 		}
 	}
@@ -296,7 +319,7 @@ void Lidar::findJumps(bool findBig){
 	
 	/*
 	cout<<"furn jumps at angles: ";
-	for(int i=0; i<furnJump_.size(); i++) {cout<<degrees_[furnJump_[i]]<<" "<<getCloserJumpRadius(furnJump_[i])<<"   ";}
+	for(int i=0; i<smallJump_.size(); i++) {cout<<degrees_[smallJump_[i]]<<" "<<getCloserJumpRadius(smallJump_[i])<<"   ";}
 	cout<<"\n";*/
 	
 	/*
@@ -314,16 +337,8 @@ void Lidar::findJumps(bool findBig){
 	}*/
 }
 
-void Lidar::removePt(int i){
-	rad_.erase(rad_.begin() + i );
-	degrees_.erase(degrees_.begin() + i );
-	xVal_.erase(xVal_.begin() + i );
-	yVal_.erase(yVal_.begin() + i );
-}
-
-
 vector<line> Lidar::findLine(){
-	vector <line> myLines;
+	lines_.resize(0);
 	line tempLine;
 	tempLine.setGood(false);
 	int scopeSize = 0;		// keeps track of where the line breaks
@@ -354,22 +369,22 @@ vector<line> Lidar::findLine(){
 					tempLine.setFloats();
 				}
 				else{									//otherwise send to 'not line' array
-					if(myLines.size() == 0){ // if no lines have been made yet
+					if(lines_.size() == 0){ // if no lines have been made yet
 						tempLine.setFloats();
 						tempLine.setGood(false);
-						myLines.push_back(tempLine);
+						lines_.push_back(tempLine);
 						tempLine.clearLine();
 					}
 					else{ // other lines already exist
-						if(myLines[myLines.size() - 1].isGoodLine()){	//checks to see if there needs to be a new group of bad points
+						if(lines_[lines_.size() - 1].isGoodLine()){	//checks to see if there needs to be a new group of bad points
 							tempLine.setFloats();
 							tempLine.setGood(false);
-							myLines.push_back(tempLine);
+							lines_.push_back(tempLine);
 							tempLine.clearLine();
 						}
 						else{ 
-							myLines[myLines.size()-1].mergeLines(tempLine);
-							myLines[myLines.size()-1].setFloats();
+							lines_[lines_.size()-1].mergeLines(tempLine);
+							lines_[lines_.size()-1].setFloats();
 							tempLine.clearLine();
 						}
 					}
@@ -387,26 +402,26 @@ vector<line> Lidar::findLine(){
 					tempLine.addPointEnd(xVal_[i], yVal_[i]);
 					tempLine.setFloats();
 					if(i == scopeSize + 10){
-						myLines.push_back(tempLine);				//adds the line to a vector of lines
+						lines_.push_back(tempLine);				//adds the line to a vector of lines
 					}
 				}
 				else {									//the point does not fit the line model
-					if (myLines.size() == 0) {
+					if (lines_.size() == 0) {
 						tempLine.setFloats();
 						tempLine.setGood(false);
-						myLines.push_back(tempLine);
+						lines_.push_back(tempLine);
 						tempLine.clearLine();
 					}
 					else{
-						if (myLines[myLines.size()-2].isGoodLine()){
+						if (lines_[lines_.size()-2].isGoodLine()){
 							tempLine.setFloats();
 							tempLine.setGood(false);
-							myLines.push_back(tempLine);
+							lines_.push_back(tempLine);
 							tempLine.clearLine();
                                         	}
                                         	else{
-                                        		myLines[myLines.size() - 1].mergeLines(tempLine);
-                                        		myLines[myLines.size() - 1].setFloats();
+                                        		lines_[lines_.size() - 1].mergeLines(tempLine);
+                                        		lines_[lines_.size() - 1].setFloats();
 						}
 					}
 					scopeSize = i;							//saves where it breaks for the next loop
@@ -415,13 +430,13 @@ vector<line> Lidar::findLine(){
 			}
 
 			else {										//goes through points 11 through maxPoint
-				myLines[myLines.size()-1].setGood(true);
+				lines_[lines_.size()-1].setGood(true);
 				distToPoint = pt2PtDist(xVal_[i], yVal_[i], xVal_[i-1], yVal_[i-1]);
-				distToLine = myLines[myLines.size()-1].findDist(xVal_[i], yVal_[i]);
+				distToLine = lines_[lines_.size()-1].findDist(xVal_[i], yVal_[i]);
 				if (distToLine < pointThreshold) {
 					if(distToPoint <= pointDistThresh){
-						myLines[myLines.size()-1].addPointEnd(xVal_[i], yVal_[i]);
-						myLines[myLines.size()-1].setFloats();
+						lines_[lines_.size()-1].addPointEnd(xVal_[i], yVal_[i]);
+						lines_[lines_.size()-1].setFloats();
 					}
 					else{
 						scopeSize = i;
@@ -441,38 +456,38 @@ vector<line> Lidar::findLine(){
 
 	cout << "Lines have been made" << endl;
 
-	for(int j = 0; j<myLines.size(); j++){
-		if(j == myLines.size()-1){
-			float xEnd2 = myLines[j].getEndPtX2();                                                                                                      
-                        float yEnd2 = myLines[j].getEndPtY2();                                                                                                      
-                        float xPrev = myLines[j].getXPoint(myLines[j].lineSize()-2);                                                                                
-                        float yPrev = myLines[j].getYPoint(myLines[j].lineSize()-2);                                                                                
-                        float xEnd1 = myLines[0].getEndPtX1();                                                                                                    
-                        float yEnd1 = myLines[0].getEndPtY1();
+	for(int j = 0; j<lines_.size(); j++){
+		if(j == lines_.size()-1){
+			float xEnd2 = lines_[j].getEndPtX2();                                                                                                      
+                        float yEnd2 = lines_[j].getEndPtY2();                                                                                                      
+                        float xPrev = lines_[j].getXPoint(lines_[j].lineSize()-2);                                                                                
+                        float yPrev = lines_[j].getYPoint(lines_[j].lineSize()-2);                                                                                
+                        float xEnd1 = lines_[0].getEndPtX1();                                                                                                    
+                        float yEnd1 = lines_[0].getEndPtY1();
 			float endPt2PrevPt=pt2PtDist(xEnd2, yEnd2, xPrev, yPrev);
                         float endPt2NextPt = pt2PtDist(xEnd2, yEnd2, xEnd1, yEnd1);
                         if(endPt2NextPt < endPt2PrevPt){
-                                myLines[0].addPointStart(xEnd2, yEnd2);
-				myLines[j].clearPoint(myLines[j].lineSize() - 1);
-				myLines[0].setFloats();
-				myLines[j].setFloats();
+                                lines_[0].addPointStart(xEnd2, yEnd2);
+				lines_[j].clearPoint(lines_[j].lineSize() - 1);
+				lines_[0].setFloats();
+				lines_[j].setFloats();
 			}
 
 		}
 		else{
-			float xEnd2 = myLines[j].getEndPtX2();
-			float yEnd2 = myLines[j].getEndPtY2();
-			float xPrev = myLines[j].getXPoint(myLines[j].lineSize()-2);
-			float yPrev = myLines[j].getYPoint(myLines[j].lineSize()-2);
-			float xEnd1 = myLines[j+1].getEndPtX1();
-			float yEnd1 = myLines[j+1].getEndPtY1();
+			float xEnd2 = lines_[j].getEndPtX2();
+			float yEnd2 = lines_[j].getEndPtY2();
+			float xPrev = lines_[j].getXPoint(lines_[j].lineSize()-2);
+			float yPrev = lines_[j].getYPoint(lines_[j].lineSize()-2);
+			float xEnd1 = lines_[j+1].getEndPtX1();
+			float yEnd1 = lines_[j+1].getEndPtY1();
 			float endPt2PrevPt=pt2PtDist(xEnd2, yEnd2, xPrev, yPrev);
 			float endPt2NextPt = pt2PtDist(xEnd2, yEnd2, xEnd1, yEnd1);
 			if(endPt2NextPt < endPt2PrevPt){
-				myLines[j+1].addPointStart(xEnd2, yEnd2);
-				myLines[j].clearPoint(myLines[j].lineSize() - 1);
-				myLines[j+1].setFloats();
-				myLines[j].setFloats();
+				lines_[j+1].addPointStart(xEnd2, yEnd2);
+				lines_[j].clearPoint(lines_[j].lineSize() - 1);
+				lines_[j+1].setFloats();
+				lines_[j].setFloats();
 			}
 		}
 	}
@@ -483,100 +498,100 @@ vector<line> Lidar::findLine(){
         int numReal = 0;
 	//cout << endl << endl;
 
-	for(int j = 0; j < myLines.size(); j++){
-		if(myLines[j].isGoodLine()==false){
+	for(int j = 0; j < lines_.size(); j++){
+		if(lines_[j].isGoodLine()==false){
 			//check before and after the fake line
 			if(j == 0){
-				for(int g =0; g < myLines[j].lineSize(); g++){
-                         	       distToLine = myLines[myLines.size()-1].findDist(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
-                         	       distToPoint = pt2PtDist(myLines[j].getXPoint(g), myLines[j].getYPoint(g), myLines[myLines.size()-1].getEndPtX2(),myLines[myLines.size()-1].getEndPtY2());
+				for(int g =0; g < lines_[j].lineSize(); g++){
+                         	       distToLine = lines_[lines_.size()-1].findDist(lines_[j].getXPoint(g), lines_[j].getYPoint(g));
+                         	       distToPoint = pt2PtDist(lines_[j].getXPoint(g), lines_[j].getYPoint(g), lines_[lines_.size()-1].getEndPtX2(),lines_[lines_.size()-1].getEndPtY2());
                          	       if((distToLine < pointThreshold)&&(distToPoint < pointDistThresh)){
                          	               //add the point to the line and delete it from the fake line
-                         	               myLines[myLines.size()-1].addPointEnd(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
-					       myLines[myLines.size()-1].setFloats();
-                         	               myLines[j].clearPoint(g);
-					       myLines[j].setFloats();
+                         	               lines_[lines_.size()-1].addPointEnd(lines_[j].getXPoint(g), lines_[j].getYPoint(g));
+					       lines_[lines_.size()-1].setFloats();
+                         	               lines_[j].clearPoint(g);
+					       lines_[j].setFloats();
                          	               g--;
                          	       }
                        		}
 			}
 			else{
 			//	cout << "Test 2" << endl;
-				for(int g =0; g < myLines[j].lineSize(); g++){
-					distToLine = myLines[j-1].findDist(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
-					distToPoint = pt2PtDist(myLines[j].getXPoint(g), myLines[j].getYPoint(g), myLines[j-1].getEndPtX2(),myLines[j-1].getEndPtY2());
+				for(int g =0; g < lines_[j].lineSize(); g++){
+					distToLine = lines_[j-1].findDist(lines_[j].getXPoint(g), lines_[j].getYPoint(g));
+					distToPoint = pt2PtDist(lines_[j].getXPoint(g), lines_[j].getYPoint(g), lines_[j-1].getEndPtX2(),lines_[j-1].getEndPtY2());
 					if((distToLine < pointThreshold)&&(distToPoint < pointDistThresh)){
 						//add the point to the line and delete it from the fake line
-						myLines[j-1].addPointEnd(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
-						myLines[j-1].setFloats();
-						myLines[j].clearPoint(g);
-						myLines[j].setFloats();
+						lines_[j-1].addPointEnd(lines_[j].getXPoint(g), lines_[j].getYPoint(g));
+						lines_[j-1].setFloats();
+						lines_[j].clearPoint(g);
+						lines_[j].setFloats();
 						g--;
 					}
 				}
 			}
-			if(myLines[j].lineSize() == 0){
-				myLines[j].clearLine();
-				myLines.erase(myLines.begin() + j);
+			if(lines_[j].lineSize() == 0){
+				lines_[j].clearLine();
+				lines_.erase(lines_.begin() + j);
 				j--;
 			}
 		}
 	}
-	for(int j = 0; j < myLines.size(); j++){
-		if(myLines[j].isGoodLine() == false){
-			myLines[j].reverseLine();
-			if(j == myLines.size()-1){
+	for(int j = 0; j < lines_.size(); j++){
+		if(lines_[j].isGoodLine() == false){
+			lines_[j].reverseLine();
+			if(j == lines_.size()-1){
 			//	cout << "Test 3" << endl;
-				for(int g = 0; g < myLines[j].lineSize(); g++){
-                                	distToLine = myLines[0].findDist(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
-                                	distToPoint = pt2PtDist(myLines[j].getXPoint(g), myLines[j].getYPoint(g), myLines[0].getEndPtX1(), myLines[0].getEndPtY1());
+				for(int g = 0; g < lines_[j].lineSize(); g++){
+                                	distToLine = lines_[0].findDist(lines_[j].getXPoint(g), lines_[j].getYPoint(g));
+                                	distToPoint = pt2PtDist(lines_[j].getXPoint(g), lines_[j].getYPoint(g), lines_[0].getEndPtX1(), lines_[0].getEndPtY1());
                                 	if((distToLine < pointThreshold)&&(distToPoint < pointDistThresh)){
-                                        	myLines[0].addPointStart(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
-						myLines[0].setFloats();
-                                        	myLines[j].clearPoint(g);
-						myLines[j].setFloats();
+                                        	lines_[0].addPointStart(lines_[j].getXPoint(g), lines_[j].getYPoint(g));
+						lines_[0].setFloats();
+                                        	lines_[j].clearPoint(g);
+						lines_[j].setFloats();
 						g--;
                                 	}
                         	}
 			}
 			else{
 			//	cout << "Test 4" << endl;
-				for(int g = 0; g < myLines[j].lineSize(); g++){
-					distToLine = myLines[j+1].findDist(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
-					distToPoint = pt2PtDist(myLines[j].getXPoint(g), myLines[j].getYPoint(g), myLines[j+1].getEndPtX1(), myLines[j+1].getEndPtY1());
+				for(int g = 0; g < lines_[j].lineSize(); g++){
+					distToLine = lines_[j+1].findDist(lines_[j].getXPoint(g), lines_[j].getYPoint(g));
+					distToPoint = pt2PtDist(lines_[j].getXPoint(g), lines_[j].getYPoint(g), lines_[j+1].getEndPtX1(), lines_[j+1].getEndPtY1());
 					if((distToLine < pointThreshold)&&(distToPoint < pointDistThresh)){
-						myLines[j+1].addPointStart(myLines[j].getXPoint(g), myLines[j].getYPoint(g));
-						myLines[j+1].setFloats();
-						myLines[j].clearPoint(g);
-						myLines[j].setFloats();
+						lines_[j+1].addPointStart(lines_[j].getXPoint(g), lines_[j].getYPoint(g));
+						lines_[j+1].setFloats();
+						lines_[j].clearPoint(g);
+						lines_[j].setFloats();
 						g--;
 					}
 				}
 			}
-			myLines[j].reverseLine();
-			if(myLines[j].lineSize() == 0){
-				myLines[j].clearLine();
-				myLines.erase(myLines.begin() + j);
+			lines_[j].reverseLine();
+			if(lines_[j].lineSize() == 0){
+				lines_[j].clearLine();
+				lines_.erase(lines_.begin() + j);
 				j--;
 			}
 		}
 	}
 	int numMerge = 0;
-	for (int g = 0; g < myLines.size(); g++){
-                if(myLines[g].isGoodLine()){
+	for (int g = 0; g < lines_.size(); g++){
+                if(lines_[g].isGoodLine()){
                         for (int h = 0; h < g; h++){
-                                if (( canMerge(myLines[g], myLines[h]) == true)&&(myLines[h].isGoodLine())){
+                                if (( canMerge(lines_[g], lines_[h]) == true)&&(lines_[h].isGoodLine())){
 				//	cout << "Lines merged" << endl;
-					if((g == myLines.size()-1)&&(h == 0)){
-						myLines[g].mergeLines(myLines[h]);
-						myLines.erase(myLines.begin());
+					if((g == lines_.size()-1)&&(h == 0)){
+						lines_[g].mergeLines(lines_[h]);
+						lines_.erase(lines_.begin());
 						g--;
 						h--;
 					}
 					else{
-                                        	myLines[h].mergeLines(myLines[g]);
-				//		cout << "new slope: " << myLines[h].getSlope() << endl;
-                                        	myLines.erase(myLines.begin() + g);
+                                        	lines_[h].mergeLines(lines_[g]);
+				//		cout << "new slope: " << lines_[h].getSlope() << endl;
+                                        	lines_.erase(lines_.begin() + g);
                                         	g--;
 						h--;
 						numMerge++;
@@ -593,35 +608,35 @@ vector<line> Lidar::findLine(){
 ///*
 	numFake = 0;
 	numReal = 0;
-	for (int j = 0; j < myLines.size(); j++) {
-		if(myLines[j].isCandle()){
+	for (int j = 0; j < lines_.size(); j++) {
+		if(lines_[j].isCandle()){
 			cout << endl << "This is a candle" << endl;
 		}
-		else if(myLines[j].isFurniture()){
+		else if(lines_[j].isFurniture()){
 			cout << endl << "This is furniture" << endl;
 		}
-		if(myLines[j].isGoodLine()){
+		if(lines_[j].isGoodLine()){
 			numReal++;
                 	float ang1, ang2, rad1, rad2;
-                	ang1 = myLines[j].endPAngle(1);
-                	ang2 = myLines[j].endPAngle(2);
-                	rad1 = myLines[j].endPRad(1);
-                	rad2 = myLines[j].endPRad(2);
-                	cout << endl << "Line: " << numReal << " size: " << myLines[j].lineSize();
-                	cout <<" Slope: " << myLines[j].getSlope() << " Intercept: " << myLines[j].getIntercept();
-                	cout << " Endpoints: (" << myLines[j].getEndPtX1() << ", " << myLines[j].getEndPtY1();
+                	ang1 = lines_[j].endPAngle(1);
+                	ang2 = lines_[j].endPAngle(2);
+                	rad1 = lines_[j].endPRad(1);
+                	rad2 = lines_[j].endPRad(2);
+                	cout << endl << "Line: " << numReal << " size: " << lines_[j].lineSize();
+                	cout <<" Slope: " << lines_[j].getSlope() << " Intercept: " << lines_[j].getIntercept();
+                	cout << " Endpoints: (" << lines_[j].getEndPtX1() << ", " << lines_[j].getEndPtY1();
                 	cout << ") Angle: " << ang1;
                 	cout << " Distance: " << rad1 << endl;
-                	cout << "          (" << myLines[j].getEndPtX2() << ", " << myLines[j].getEndPtY2();
+                	cout << "          (" << lines_[j].getEndPtX2() << ", " << lines_[j].getEndPtY2();
                 	cout << ") Angle:" <<  ang2;
                 	cout << " Distance: " << rad2 << endl;
-			cout << "Line length: " << myLines[j].getLength() << endl; 
-		//	myLines[j].printLine();
+			cout << "Line length: " << lines_[j].getLength() << endl; 
+		//	lines_[j].printLine();
 		}
 		else{
 			numFake++;
-			cout << endl << "Fake line num " << numFake << " has size: " << myLines[j].lineSize() << 
-				" getLength returns "<< myLines[j].getLength() << endl;
+			cout << endl << "Fake line num " << numFake << " has size: " << lines_[j].lineSize() << 
+				" getLength returns "<< lines_[j].getLength() << endl;
 		}
         }
 
@@ -630,7 +645,7 @@ vector<line> Lidar::findLine(){
 //	*/
 //	cout<<"Lines made\n";
 	float distToEnd = 0;
-	return myLines;
+	return lines_;
 };
 
 //it. canMerge
