@@ -2,25 +2,6 @@
  *
  */
 #include "Nav.h"
-#include "Robot.h" // for defined measurements
-#include "Endpoint.h"
-#include "ros/ros.h"
-#include "Eigen/Core"
-#include <ros/console.h> 
-#include <visualization_msgs/Marker.h>
-#include <visualization_msgs/MarkerArray.h>
-
-#include <string>
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <time.h>
-#include <chrono>
-using std::vector;
-using std::cout;
-using namespace Eigen;
-
-#define LARGENUM 99999999
 // don't use default constuctor, it must load the map and way files
 Nav::Nav(){}
 
@@ -77,6 +58,7 @@ void Nav::publishLoopContinual(){
 		calcRobotMarks(); // rob obj passed in odomloc, set mark vals
 		markerPub_->publish(robMarks_);
 		markerPub_->publish(furnMarks_);
+		markerPub_->publish(lineMarks_);
 		sleep(1);
 	}
 }
@@ -223,6 +205,58 @@ bool Nav::getNeighbor(int ID, int neighI, EndPoint &neigh, vector<EndPoint> &pts
 	}
 }
 
+void Nav::makeLineMarks(vector<line> lines){
+	visualization_msgs::MarkerArray tmp;
+	tmp.markers.resize(1);
+
+	tmp.markers[0].header.frame_id = ROBOTFRAME;
+	tmp.markers[0].ns = "lines"; 
+	tmp.markers[0].id = 1; 
+	tmp.markers[0].type = visualization_msgs::Marker::LINE_LIST;
+	tmp.markers[0].action = visualization_msgs::Marker::ADD;
+	tmp.markers[0].scale.x = 2;  // width of the lines 
+
+	//tmp.markers[0].pose.position.x = furns[0].getX();
+	//tmp.markers[0].pose.position.y = furns[0].getY();
+	//tmp.markers[0].pose.position.z = 0;
+	tmp.markers[0].points.resize(2*lines.size()); // add two points for every line
+	for(int i=0; i<lines.size(); i++){
+		float x1 = lines[i].getEndPtX1();
+		float x2 = lines[i].getEndPtX2();
+		float y1 = lines[i].getEndPtY1();
+		float y2 = lines[i].getEndPtY2();
+		bool vertical = false;
+		if(abs(x1-x2) < abs(y1-y2)) vertical = true; // pick which dimensions of endpoints to use
+
+		if(!vertical){
+			y1 = x1 * lines[i].getSlope() + lines[i].getIntercept();
+			y2 = x2 * lines[i].getSlope() + lines[i].getIntercept();
+		}
+		else{
+			x1 = (y1 - lines[i].getIntercept())/lines[i].getSlope();
+			x2 = (y2 - lines[i].getIntercept())/lines[i].getSlope();
+		}
+
+		tmp.markers[0].points.at(i).x = x1;
+		tmp.markers[0].points.at(i).y = y1;
+		tmp.markers[0].points.at(i).z = 3;
+		tmp.markers[0].points.at(2*i+1).x = x2;
+		tmp.markers[0].points.at(2*i+1).y = y2;
+		tmp.markers[0].points.at(2*i+1).z = 3;
+	}
+
+	tmp.markers[0].pose.orientation.x = 0;
+	tmp.markers[0].pose.orientation.y = 0;
+	tmp.markers[0].pose.orientation.z = 0;
+	tmp.markers[0].pose.orientation.w = 1;
+
+	tmp.markers[0].color.a = 1.0;	
+	tmp.markers[0].color.r = 0.5;
+	tmp.markers[0].color.g = 1.0;
+	tmp.markers[0].color.b = 0.5;
+
+}
+
 void Nav::makeFurnMarks(vector<EndPoint> furns){
 	//cout<<"making furn marks from endpoint vec with size "<<furns.size()<<"\n";
 	visualization_msgs::MarkerArray tmp;
@@ -243,7 +277,7 @@ void Nav::makeFurnMarks(vector<EndPoint> furns){
 		tmp.markers[i].pose.position.z = 0;
 		tmp.markers[i].pose.orientation.x = 0;
 		tmp.markers[i].pose.orientation.y = 0;
-		tmp.markers[i].pose.orientation.z = 15.0/2.0; // half of scale.z
+		tmp.markers[i].pose.orientation.z = 15.0/2.0; // half of scale.z for cylinder height
 		tmp.markers[i].pose.orientation.w = 1;
 
 		tmp.markers[i].color.a = 1.0;	
@@ -251,9 +285,11 @@ void Nav::makeFurnMarks(vector<EndPoint> furns){
 		tmp.markers[i].color.g = 1.0;
 		tmp.markers[i].color.b = 0.5;
 	}
-	for(int i=0; i<furnMarks_.markers.size(); i++){
 
+	for(int i=0; i<furnMarks_.markers.size(); i++){
+		furnMarks_.markers[i].action = visualization_msgs::Marker::DELETE;
 	}
+	if(furnMarks_.markers.size()!=0) markerPub_->publish(furnMarks_);// delete all old ones	
 	furnMarks_ = tmp;
 	cout<<"size of furn array is: "<<furnMarks_.markers.size()<<"\n";
 }

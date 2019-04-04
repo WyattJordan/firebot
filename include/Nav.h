@@ -3,13 +3,30 @@
  * concerning the robot's actions.
  */
 #pragma once
-#include "Endpoint.h"
 #include "ros/ros.h"
-#include "Eigen/Core"
+#include <ros/console.h> 
+#include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
+#include "Robot.h"
+#include "Endpoint.h"
+#include "line.h"
+#include "Endpoint.h"
+#include "Eigen/Core"
+
 #include <string>
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <time.h>
+#include <chrono>
+using std::vector;
+using std::cout;
 using std::string;
 using namespace Eigen;
+
+#define LARGENUM 99999999
+
+class Robot; // forward declaration since both include eachother
 
 struct color{
 	float r,g,b;
@@ -53,7 +70,7 @@ class Nav{
 		EndPoint badPt_;		// used when an EndPoint isn't found
 		color cmapLine_, cmapMark_, cwayLine_, cwayMark_; // colors set in constr
 
-		visualization_msgs::MarkerArray mapMarks_, wayMarks_, robMarks_, furnMarks_;// for rviz
+		visualization_msgs::MarkerArray mapMarks_, wayMarks_, robMarks_, furnMarks_, lineMarks_;// for rviz
 		ros::Publisher *markerPub_; 	// publisher for all MarkerArrays
 		Vector3f odomWorldLocCpy_;		// copy of loc in world frame from Robot, READ ONLY
 

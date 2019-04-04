@@ -48,6 +48,7 @@ using namespace Eigen;
 #define IR1Pin 29
 #define IR2Pin 25
 
+class Nav; // forward declaration since both include eachother
 
 static void pabort(const char *s)
 {
