@@ -13,7 +13,7 @@ using namespace std;
 class line {
 public:
         line();
-        void setFloats();
+        void buildLine();
         //least squared fit
         float getSlope();
         //returns slope
@@ -35,7 +35,7 @@ public:
         void clearPoint(int i);
         void printLine();
         //prints all the points of the line
-        float lineSize();
+        float numPts();
         //returns the number of points in the line
         void reverseLine();
         void setEndpts(float x1, float y1, float x2, float y2);

@@ -20,7 +20,7 @@ line::line(){
         furniture = false;
 }
 
-void line::setFloats() {
+void line::buildLine() {
         float xAvg = 0;
        	float yAvg = 0;
         for (int i = 0; i < x.size(); i++) {
@@ -129,15 +129,15 @@ void line::setEndpts(float x1, float y1, float x2, float y2){
         lineDist = pt2PtDist2(x1, y1, x2, y2);
 }
 void line::mergeLines(line a) {//line a gets merged into the main line
-        for(int i = 0; i < a.lineSize(); i++){
+        for(int i = 0; i < a.numPts(); i++){
                 x.push_back(a.getXPoint(i));
                 y.push_back(a.getYPoint(i));
-                //x.insert(x.begin(), a.getXPoint(a.lineSize() - i));
-                //y.insert(y.begin(), a.getYPoint(a.lineSize() - i));
+                //x.insert(x.begin(), a.getXPoint(a.numPts() - i));
+                //y.insert(y.begin(), a.getYPoint(a.numPts() - i));
                 //still have to delete the line a in findLine
         }
         a.clearLine();
-	setFloats();
+	buildLine();
 }
 
 float line::radDist(int i){
@@ -158,7 +158,7 @@ void line::addPointStart(float xVal, float yVal) {
 
 float line::getXPoint(int point){ return x[point]; };
 float line::getYPoint(int point){ return y[point]; };
-float line::lineSize() { return x.size(); }
+int line::numPts() { return x.size(); }
 
 //it. getLineDist
 float line::getLineDist(){ return lineDist; }

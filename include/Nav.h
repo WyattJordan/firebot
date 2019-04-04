@@ -33,6 +33,7 @@ class Nav{
 		void makeMapMarks(string NS);
 		void makeWayMarks(string NS);
 		void makeFurnMarks(vector<EndPoint> furns);
+		void makeLineMarks(vector<line> lines);
 		void publishMapAndWays();
 
 		bool removePoint(int id, vector<EndPoint> &pts);

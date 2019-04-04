@@ -251,6 +251,9 @@ void Nav::makeFurnMarks(vector<EndPoint> furns){
 		tmp.markers[i].color.g = 1.0;
 		tmp.markers[i].color.b = 0.5;
 	}
+	for(int i=0; i<furnMarks_.markers.size(); i++){
+
+	}
 	furnMarks_ = tmp;
 	cout<<"size of furn array is: "<<furnMarks_.markers.size()<<"\n";
 }
