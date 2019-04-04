@@ -5,7 +5,7 @@ Lidar::Lidar(Robot *robRef){
 
 	prevOdom_ << -100, -100, 0;
 	rob_ = robRef;
-}*/
+}*////
 void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	/* bool updatePosition = false;
 	Vector3f currentPos = rob_->getOdomWorldLoc(); // this is an undefined ref for some reason...
@@ -24,7 +24,6 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	rad_.resize(0);
 	xVal_.resize(0); 
 	yVal_.resize(0);
-	vector<float> tdeg, trad, tX, tY; // add to temp until cross is hit
 	time(&start);
 
 	// formats the data so that angle increases from 0 to 360
@@ -400,23 +399,23 @@ void Lidar::findLines(){
 	for(int bPts = 0; bPts < checkX.size(); bPts++){
 		bool added = false;
 		for(int nLine = 0; nLine < lines_.size(); nLine++){
-			float bErr = line_[nLine].findDist(checkX[bPts], checkY[bPts]); // perpendicular dist from pt to line
-			float bPtDist1 = pt2PtDist(checkX[bPts],checkY[bPts],line_[nLine].getEndPtX1(),line_[nLine].getEndPtY1()); // dist between this point and the prev point
-			float bPtDist2 = pt2PtDist(checkX[bPts],checkY[bPts],line_[nLine].getEndPtX2(),line_[nLine].getEndPtY2());
+			float bErr = lines_[nLine].findDist(checkX[bPts], checkY[bPts]); // perpendicular dist from pt to line
+			float bPtDist1 = pt2PtDist(checkX[bPts],checkY[bPts],lines_[nLine].getEndPtX1(),lines_[nLine].getEndPtY1()); // dist between this point and the prev point
+			float bPtDist2 = pt2PtDist(checkX[bPts],checkY[bPts],lines_[nLine].getEndPtX2(),lines_[nLine].getEndPtY2());
 			if(bPtDist1 > bPtDist2){
 				
 				if( bErr < PerpThresh && bPtDist2 < PrevPointDistThresh){
 	
-					line_[nLine].addPointEnd(checkX[bPts], checkY[bPts]);
+					lines_[nLine].addPointEnd(checkX[bPts], checkY[bPts]);
 					added = 1;
-					line_[nLine].buildLine();// update line model with new point added 
+					lines_[nLine].buildLine();// update line model with new point added 
 				}
 			}
 			else{
 				if( bErr < PerpThresh && bPtDist1 < PrevPointDistThresh){
-					line_[nLine].addPointEnd(checkX[bPts], checkY[bPts]);
+					lines_[nLine].addPointStart(checkX[bPts], checkY[bPts]);
 					added = 1;
-					line_[nLine].buildLine();// update line model with new point added 
+					lines_[nLine].buildLine();// update line model with new point added 
 				}
 			}
 			if(added){break;}

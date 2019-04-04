@@ -183,21 +183,21 @@ include_directories(
 #SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${GCC_COVERAGE_LINK_FLAGS}")
 #add_definitions(${GCC_COVERAGE_COMPILE_FLAGS})
 
-#[[
+
 add_executable(launcher src/launcher.cpp src/Robot.cpp src/Endpoint.cpp src/Nav.cpp src/pid.cpp)
 #target_compile_options(launcher PRIVATE -lwiringPi -lcrypt -lm -lrt)
 add_dependencies(launcher ${PROJECT_NAME}_gencfg)
 target_link_libraries(launcher ${catkin_LIBRARIES})
 target_link_libraries(launcher wiringPi)
-]]
 
-#[[
+
+
 add_executable(everything src/everything.cpp src/Robot.cpp src/pid.cpp src/Nav.cpp src/Endpoint.cpp src/lidar.cpp src/Endpoint.cpp src/line.cpp)
 #target_compile_options(launcher PRIVATE -lwiringPi -lcrypt -lm -lrt)
 add_dependencies(everything ${PROJECT_NAME}_gencfg)
 target_link_libraries(everything ${catkin_LIBRARIES})
 target_link_libraries(everything wiringPi)
-]]
+
 
 
 #Stuff for LIDAR

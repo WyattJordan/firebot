@@ -49,6 +49,7 @@ using namespace Eigen;
 #define IR2Pin 25
 
 class Nav; // forward declaration since both include eachother
+class Lidar;
 
 static void pabort(const char *s)
 {
