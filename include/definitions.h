@@ -17,11 +17,14 @@
 
 #define ab std::abs
 
+#define GLOBALFRAME "global"
+#define ROBOTFRAME "laser_frame" // don't edit this so the robot frame is the same as the lidar node
+
 // Definitions for lidar class
 #define MAXDIST 180 // sets all range measurements above xCm to x
 #define MINDIST 18 // deletes all range measurements below xCm
 #define DoorJumpDist 40.0 // 40cm or more to be labeled as a jump in jumps_ for detecting door edges
-#define FurnJumpDist 12.0 // Xcm or more to be labeled as a potential furn jump
+#define FurnJumpDist 3.0 // Xcm or more to be labeled as a potential furn jump
 #define FurnWidth 13.0 // expected furniture width (X cm)
 #define FurnWidthTolerance 3.0 // distance between furn endpoints should be FurnWidth +/- X
 #define FurnDistTolerance 2.0 // point between furn endpoints must have at least X smaller polar radius
