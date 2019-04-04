@@ -38,7 +38,6 @@ Nav::Nav(int lvl, ros::Publisher* pub){
 	cmapMark_ = {1.0, 0.1, 0.1};
 	cwayLine_ = {0.1, 0.9, 0.9};
 	cwayMark_ = {0.8, 0.1, 0.9};
-	worldFrame_ = "global";
 
 	cout<<"going to load files\n";
 	loadFiles(lvl);	
@@ -78,7 +77,7 @@ void Nav::publishLoopContinual(){
 		calcRobotMarks(); // rob obj passed in odomloc, set mark vals
 		markerPub_->publish(robMarks_);
 		markerPub_->publish(furnMarks_);
-		sleep(2);
+		sleep(1);
 	}
 }
 
@@ -225,17 +224,18 @@ bool Nav::getNeighbor(int ID, int neighI, EndPoint &neigh, vector<EndPoint> &pts
 }
 
 void Nav::makeFurnMarks(vector<EndPoint> furns){
+	//cout<<"making furn marks from endpoint vec with size "<<furns.size()<<"\n";
 	visualization_msgs::MarkerArray tmp;
 	tmp.markers.resize(furns.size());
 
 	for(int i=0; i<tmp.markers.size(); i++){
-		tmp.markers[i].header.frame_id = worldFrame_;
+		tmp.markers[i].header.frame_id = ROBOTFRAME;
 		tmp.markers[i].ns = "furn_Arr"; 
 		tmp.markers[i].id = i; 
 		tmp.markers[i].type = visualization_msgs::Marker::CYLINDER;
 		tmp.markers[i].action = visualization_msgs::Marker::ADD;
-		tmp.markers[i].scale.x = FurnWidth/2.0; 
-		tmp.markers[i].scale.y = FurnWidth/2.0;
+		tmp.markers[i].scale.x = FurnWidth; 
+		tmp.markers[i].scale.y = FurnWidth;
 		tmp.markers[i].scale.z = 15;
 
 		tmp.markers[i].pose.position.x = furns[i].getX();
@@ -243,7 +243,7 @@ void Nav::makeFurnMarks(vector<EndPoint> furns){
 		tmp.markers[i].pose.position.z = 0;
 		tmp.markers[i].pose.orientation.x = 0;
 		tmp.markers[i].pose.orientation.y = 0;
-		tmp.markers[i].pose.orientation.z = 0;
+		tmp.markers[i].pose.orientation.z = 15.0/2.0; // half of scale.z
 		tmp.markers[i].pose.orientation.w = 1;
 
 		tmp.markers[i].color.a = 1.0;	
@@ -251,9 +251,9 @@ void Nav::makeFurnMarks(vector<EndPoint> furns){
 		tmp.markers[i].color.g = 1.0;
 		tmp.markers[i].color.b = 0.5;
 	}
-
+	furnMarks_ = tmp;
+	cout<<"size of furn array is: "<<furnMarks_.markers.size()<<"\n";
 }
-
 
 // populate MarkerArray members (run by the makeMapMarks() and makeWayMarks()) 
 void Nav::populateMarks(string which, string NS,
@@ -265,7 +265,7 @@ void Nav::populateMarks(string which, string NS,
 	
 	// add vertical arrows at pt locations
 	for(int i=0; i<pts->size(); i++){
-		marks.markers[i].header.frame_id = worldFrame_;
+		marks.markers[i].header.frame_id = GLOBALFRAME;
 		marks.markers[i].ns = NS; 
 		marks.markers[i].id = i; //pts[i].getID();
 		marks.markers[i].type = visualization_msgs::Marker::ARROW;
@@ -289,7 +289,7 @@ void Nav::populateMarks(string which, string NS,
 
 		// show text ID above marker with id += 1000
 		int idx = i+pts->size();
-		marks.markers[idx].header.frame_id = worldFrame_;
+		marks.markers[idx].header.frame_id = GLOBALFRAME;
 		marks.markers[idx].id = i+1000;
 		marks.markers[idx].ns = NS;
 		marks.markers[idx].text = std::to_string((*pts)[i].getID());
@@ -316,7 +316,7 @@ void Nav::populateMarks(string which, string NS,
 	// Now add the lines 
 	visualization_msgs::Marker mark;
 	mark.type = visualization_msgs::Marker::LINE_STRIP;
-	mark.header.frame_id = worldFrame_;
+	mark.header.frame_id = GLOBALFRAME;
 	mark.ns = NS;
 	mark.color.a = 1;
 	mark.color.r = lncol.r; 
@@ -625,7 +625,7 @@ void Nav::loadFiles(int lvl){
 void Nav::calcRobotMarks(){
 	// REMEMBER: values are in cm!!
 	visualization_msgs::Marker robMarkSphere_, robMarkArr_;	
-	robMarkArr_.header.frame_id = worldFrame_;
+	robMarkArr_.header.frame_id = GLOBALFRAME;
 	robMarkArr_.ns = "robot_Arr"; 
 	robMarkArr_.id = 1; 
 	robMarkArr_.type = visualization_msgs::Marker::ARROW;
@@ -641,7 +641,7 @@ void Nav::calcRobotMarks(){
 	robMarkArr_.color.b = 0.0;
 
 
-	robMarkSphere_.header.frame_id = worldFrame_;
+	robMarkSphere_.header.frame_id = GLOBALFRAME;
 	robMarkSphere_.ns = "robot_sph"; 
 	robMarkSphere_.id = 1; 
 	robMarkSphere_.type = visualization_msgs::Marker::SPHERE;
@@ -684,7 +684,7 @@ void Nav::calcRobotMarks(){
 
 void Nav::initRobotMarks(){
 	visualization_msgs::Marker robMarkSphere_, robMarkArr_;	
-	robMarkArr_.header.frame_id = worldFrame_;
+	robMarkArr_.header.frame_id = GLOBALFRAME;
 	robMarkArr_.ns = "robot_Arr"; 
 	robMarkArr_.id = 1; 
 	robMarkArr_.type = visualization_msgs::Marker::ARROW;
@@ -700,7 +700,7 @@ void Nav::initRobotMarks(){
 	robMarkArr_.color.b = 0.0;
 
 
-	robMarkSphere_.header.frame_id = worldFrame_;
+	robMarkSphere_.header.frame_id = GLOBALFRAME;
 	robMarkSphere_.ns = "robot_sph"; 
 	robMarkSphere_.id = 1; 
 	robMarkSphere_.type = visualization_msgs::Marker::SPHERE;
