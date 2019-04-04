@@ -356,9 +356,12 @@ vector<line> Lidar::findLine(){
 	while (i < xVal_.size()) {
 		for (i; i < xVal_.size(); i++) {
 			if(rad_[i] > MAXDIST){
-				break;
+				
 			}
-			if (i == scopeSize) {	//adding first point to a line
+			else if((i >= furnIdxs_[0]) && (i <= furnIdxs_[furnIdxs_.size() - 1])){
+				
+			}
+			else if (i == scopeSize) {	//adding first point to a line
 				tempLine.addPointEnd(xVal_[i], yVal_[i]);
 			}
 
