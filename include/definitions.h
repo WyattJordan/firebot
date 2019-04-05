@@ -24,11 +24,11 @@
 #define MAXDIST 180 // sets all range measurements above xCm to x
 #define MINDIST 18 // deletes all range measurements below xCm
 #define DoorJumpDist 40.0 // 40cm or more to be labeled as a jump in jumps_ for detecting door edges
-#define SmallJumpDist 5.0 // Xcm or more to be labeled as a potential furn jump
+#define SmallJumpDist 8.0 // Xcm or more to be labeled as a potential furn jump
 #define FurnWidth 13.0 // expected furniture width (X cm)
 #define FurnWidthTolerance 4.0 // distance between furn endpoints should be FurnWidth +/- X
 #define FurnDistTolerance 2.0 // point between furn endpoints must have at least X smaller polar radius
 
-#define PerpThresh 2.5 // err from line model cannot exceed this
+#define PerpThresh 5.5 // err from line model cannot exceed this
 #define PrevPointDistThresh 40 // stop lines from adding points that are far away (closing off doorways)
 #define MinPtsForLine 5

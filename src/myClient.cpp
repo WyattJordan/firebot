@@ -20,6 +20,7 @@ int main(int argc, char **argv)
 	nav.makeWayMarks("ways_ns");
 	std::thread publishNavLoop;
 
+	// publish whatever markers are made every second (markers changed by lidar class sending furniture and lines to it)
 	publishNavLoop = std::thread(boost::bind(&Nav::publishLoopContinual, &nav));	
 
 	Lidar lid;

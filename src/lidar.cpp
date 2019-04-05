@@ -7,6 +7,12 @@ Lidar::Lidar(Robot *robRef, Nav* navRef){
 	rob_ = robRef;
 	nav_ = navRef;
 }
+
+Lidar::Lidar(Nav* navRef){
+	prevOdom_ << -100, -100, 0;
+	nav_ = navRef;
+}
+
 void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	/* bool updatePosition = false;
 	Vector3f currentPos = rob_->getOdomWorldLoc(); // this is an undefined ref for some reason...
@@ -181,7 +187,7 @@ void Lidar::findFurniture(){
 	furnIdxs_.resize(0);
 
 	cout<<"starting to find furn with "<<smallJump_.size()<<" furnjumps\n";
-	cout<<"starting furn jumps at angles: ";
+	/*cout<<"starting furn jumps at angles: ";
 	for(int q=0; q<smallJump_.size(); q++) {cout<<"j:"<<smallJump_[q]<<" at "<<degrees_[smallJump_[q]]<<"--"<<getCloserJumpRadius(smallJump_[q])<<"  ";}
 	cout<<"\n";//*/
 
@@ -218,7 +224,7 @@ void Lidar::findFurniture(){
 				<<"w/ R = 15cm and theta step = 0.0126 (500pts/scan)\n";
 			continue;
 		}
-		if(step < 7){ // should let you detect a 13cm object 147cm away (tstep = 0.126) or a 5cm object 56cm away
+		if(step < 5){ // should let you detect a 13cm object 147cm away (tstep = 0.126) or a 5cm object 56cm away
 			cout<<"too few of pts on the furniture for jump "<<smallJump_[j]<<"\n";
 			continue;
 		}
@@ -269,7 +275,6 @@ void Lidar::findFurniture(){
 void Lidar::findJumps(bool findBig){
 	jump_.resize(0);
 	smallJump_.resize(0);
-	cout<<"finding jumps\n";
 	for(int i=0; i<rad_.size(); i++){
 		float diff = abs(rad_[i] - rad_[(i+1)%rad_.size()]);
 		if(diff > DoorJumpDist && findBig){ 
@@ -347,30 +352,26 @@ void Lidar::findLines(){
 	tmp.addPointEnd(xVal_[0],yVal_[0]);
 	tmp.addPointEnd(xVal_[1],yVal_[1]);
 	tmp.buildLine();
-
 	for(int p=2; p<rad_.size(); p++){
 		// grab next point if not at maxdist or a furniture pt and determine distance from line model
 		if(rad_[p] ==  MAXDIST){
-			// skip because it's out of range 
+			continue; // skip because it's out of range 
 		}
 		else if(furnIdxs_.size()!=0 && std::find(furnIdxs_.begin(), furnIdxs_.end(), p) != furnIdxs_.end()){
-			// skip because it's a piece of furniture
+			continue; // skip because it's a piece of furniture
 		}
 		float err = tmp.findDist(xVal_[p], yVal_[p]); // perpendicular dist from pt to line
 		float ptDist = pt2PtDist(xVal_[p], yVal_[p], xVal_[p-1], yVal_[p-1]); // dist between this point and the prev point
 		// if dist from line model is within PerpTHRESH and distance from pre point < NextPtThresh add to line
 		if( err < PerpThresh && ptDist < PrevPointDistThresh){
-
 			tmp.addPointEnd(xVal_[p], yVal_[p]);
 			tmp.buildLine();// update line model with new point added 
-
-			}
+		}
 		else{ // line broken, determine if keeping and start making new line model w/ 2 pts
 
 			// if line contains > minSegmentPts add to vector of lines and reset tmp line
 			if(tmp.numPts() > MinPtsForLine){
 				lines_.push_back(tmp);
-
 			}
 			else{ // line is too short to keep
 				for(int pt=0; pt<tmp.numPts(); pt++){ // save all pts in line to check against models later
@@ -383,6 +384,7 @@ void Lidar::findLines(){
 			if(p < rad_.size()-1) {
 				tmp.addPointEnd(xVal_[p],yVal_[p]); // add the current pt which wasn't added to to tmp
 				tmp.addPointEnd(xVal_[++p],yVal_[++p]); // add the next pt
+				tmp.buildLine();
 			}
 			else{
 				checkX.push_back(xVal_[p]);
@@ -391,12 +393,20 @@ void Lidar::findLines(){
 			}
 		}
 	}
+	if(tmp.numPts() > MinPtsForLine) lines_.push_back(tmp); // add the last line that wasn't being used
 
+	cout<<"num raw lines found = "<<lines_.size()<<"\n";
 	nav_->makeLineMarks(lines_);
 
-	
+	for(int j = 0; j < lines_.size(); j++){
+	cout<<"X,Y to endpoint 1: " << lines_[j].getEndPtX1() << ", " << lines_[j].getEndPtY1()<<endl;
+	cout<<"X,Y to endpoint 2: " << lines_[j].getEndPtX2() << ", " << lines_[j].getEndPtY2()<<endl;
+	cout<<"Points in line: " << lines_[j].numPts() << endl;
+	}
+	cout<<"checkx = "<<checkX.size()<<" checkY = "<<checkY.size()<<"\n";
 
 	// Adding Back Points:
+	/*
 	for(int bPts = 0; bPts < checkX.size(); bPts++){
 		bool added = false;
 		for(int nLine = 0; nLine < lines_.size(); nLine++){
@@ -422,10 +432,10 @@ void Lidar::findLines(){
 			if(added){break;}
 		}
 	}
+	*/
 
-			// if dist from line model is within PerpTHRESH and distance from pre point < NextPtThresh add to line
 
-
+	// Pseudocode for above double loop
 	// Loop through all checkLater getting pt P
 		// check P against each line model LM
 			// if P's distance from LM is < PerpTHRESH && P's distance from either LM endpoint < NextPtThresh

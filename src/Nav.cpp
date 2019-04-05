@@ -57,8 +57,6 @@ void Nav::publishLoopContinual(){
 		markerPub_->publish(mapMarks_);
 		calcRobotMarks(); // rob obj passed in odomloc, set mark vals
 		markerPub_->publish(robMarks_);
-		markerPub_->publish(furnMarks_);
-		markerPub_->publish(lineMarks_);
 		sleep(1);
 	}
 }
@@ -174,10 +172,9 @@ void Nav::eliminatePts(EndPoint &ep1,EndPoint &ep2, float Rx, float Ry, vector<E
 					( vert &&  above && p.getX() > ep1.getX()) ||
 					( vert && !above && p.getX() < ep1.getX()) ||
 					(!vert &&  above && p.getY() > ep1.getY()) ||
-					(!vert && !above && p.getY() < ep1.getY())    )
-				  ){  
-					p.setVisible(false);
-					p.setDone(true);
+					(!vert && !above && p.getY() < ep1.getY())    )){  
+						p.setVisible(false);
+						p.setDone(true);
 				}
 				else{ // if not blocked
 					p.setVisible(true);
@@ -216,17 +213,15 @@ void Nav::makeLineMarks(vector<line> lines){
 	tmp.markers[0].action = visualization_msgs::Marker::ADD;
 	tmp.markers[0].scale.x = 2;  // width of the lines 
 
-	//tmp.markers[0].pose.position.x = furns[0].getX();
-	//tmp.markers[0].pose.position.y = furns[0].getY();
-	//tmp.markers[0].pose.position.z = 0;
+	tmp.markers.resize(2*lines.size());
 	tmp.markers[0].points.resize(2*lines.size()); // add two points for every line
 	for(int i=0; i<lines.size(); i++){
 		float x1 = lines[i].getEndPtX1();
-		float x2 = lines[i].getEndPtX2();
 		float y1 = lines[i].getEndPtY1();
+		float x2 = lines[i].getEndPtX2();
 		float y2 = lines[i].getEndPtY2();
 		bool vertical = false;
-		if(abs(x1-x2) < abs(y1-y2)) vertical = true; // pick which dimensions of endpoints to use
+		if(ab(x1-x2) < ab(y1-y2)) vertical = true; // pick which dimensions of endpoints to use
 
 		if(!vertical){
 			y1 = x1 * lines[i].getSlope() + lines[i].getIntercept();
@@ -237,23 +232,35 @@ void Nav::makeLineMarks(vector<line> lines){
 			x2 = (y2 - lines[i].getIntercept())/lines[i].getSlope();
 		}
 
-		tmp.markers[0].points.at(i).x = x1;
-		tmp.markers[0].points.at(i).y = y1;
-		tmp.markers[0].points.at(i).z = 3;
+		tmp.markers[0].points.at(2*i).x = x1;
+		tmp.markers[0].points.at(2*i).y = y1;
+		tmp.markers[0].points.at(2*i).z = 3;
 		tmp.markers[0].points.at(2*i+1).x = x2;
 		tmp.markers[0].points.at(2*i+1).y = y2;
 		tmp.markers[0].points.at(2*i+1).z = 3;
 	}
 
+	tmp.markers[0].pose.position.x = 0;
+	tmp.markers[0].pose.position.y = 0;
+	tmp.markers[0].pose.position.z = 0;
 	tmp.markers[0].pose.orientation.x = 0;
 	tmp.markers[0].pose.orientation.y = 0;
 	tmp.markers[0].pose.orientation.z = 0;
 	tmp.markers[0].pose.orientation.w = 1;
 
 	tmp.markers[0].color.a = 1.0;	
-	tmp.markers[0].color.r = 0.5;
+	tmp.markers[0].color.r = 235.0/255.0;
 	tmp.markers[0].color.g = 1.0;
-	tmp.markers[0].color.b = 0.5;
+	tmp.markers[0].color.b = 22.0/225.0;
+
+	for(int i=0; i<lineMarks_.markers.size(); i++){
+		lineMarks_.markers[i].action = visualization_msgs::Marker::DELETE;
+	}
+	if(lineMarks_.markers.size()!=0) markerPub_->publish(lineMarks_);// delete all old ones	
+	
+	cout<<"pubbing line marks of size "<<lines.size()<<"\n";
+	lineMarks_ = tmp;
+	markerPub_->publish(lineMarks_);
 
 }
 
@@ -290,7 +297,10 @@ void Nav::makeFurnMarks(vector<EndPoint> furns){
 		furnMarks_.markers[i].action = visualization_msgs::Marker::DELETE;
 	}
 	if(furnMarks_.markers.size()!=0) markerPub_->publish(furnMarks_);// delete all old ones	
+	
 	furnMarks_ = tmp;
+	markerPub_->publish(furnMarks_);
+	
 	cout<<"size of furn array is: "<<furnMarks_.markers.size()<<"\n";
 }
 
