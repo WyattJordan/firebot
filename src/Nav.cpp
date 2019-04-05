@@ -202,13 +202,14 @@ bool Nav::getNeighbor(int ID, int neighI, EndPoint &neigh, vector<EndPoint> &pts
 	}
 }
 
-void Nav::makeLineMarks(vector<line> lines){
+void Nav::makeLineMarks(vector<line> lines, bool addIDs){
 	visualization_msgs::MarkerArray tmp;
-	tmp.markers.resize(1);
+	visualization_msgs::Marker txt;
+	tmp.markers.resize(1+lines.size()); // 1 is the line list, rest are ID texts
 
 	tmp.markers[0].header.frame_id = ROBOTFRAME;
 	tmp.markers[0].ns = "lines"; 
-	tmp.markers[0].id = 1; 
+	tmp.markers[0].id = 0; 
 	tmp.markers[0].type = visualization_msgs::Marker::LINE_LIST;
 	tmp.markers[0].action = visualization_msgs::Marker::ADD;
 	tmp.markers[0].scale.x = 2;  // width of the lines 
@@ -238,8 +239,32 @@ void Nav::makeLineMarks(vector<line> lines){
 		tmp.markers[0].points.at(2*i+1).x = x2;
 		tmp.markers[0].points.at(2*i+1).y = y2;
 		tmp.markers[0].points.at(2*i+1).z = 3;
-	}
 
+		if(addIDs){
+			tmp.markers[1+i].header.frame_id = ROBOTFRAME;
+			tmp.markers[1+i].id = i+1;
+			tmp.markers[1+i].ns = "lines";
+			tmp.markers[1+i].text = std::to_string(i);
+			tmp.markers[1+i].type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+			tmp.markers[1+i].action = visualization_msgs::Marker::ADD;
+			tmp.markers[1+i].scale.x = 3;
+			tmp.markers[1+i].scale.y = 3;
+			tmp.markers[1+i].scale.z = 6.0; // text height	
+			tmp.markers[1+i].pose.position.x = (x1+x2)/2.0;
+			tmp.markers[1+i].pose.position.y = (y1+y2)/2.0;
+			tmp.markers[1+i].pose.position.z = 15;
+			tmp.markers[1+i].pose.orientation.x = 0;
+			tmp.markers[1+i].pose.orientation.y = 0;
+			tmp.markers[1+i].pose.orientation.z = 0;
+			tmp.markers[1+i].pose.orientation.w = 1;
+			tmp.markers[1+i].color.a = 1.0;  // white
+			tmp.markers[1+i].color.r = 1; 
+			tmp.markers[1+i].color.g = 1; 
+			tmp.markers[1+i].color.b = 1; 
+		}
+
+	}
+		
 	tmp.markers[0].pose.position.x = 0;
 	tmp.markers[0].pose.position.y = 0;
 	tmp.markers[0].pose.position.z = 0;
@@ -253,12 +278,13 @@ void Nav::makeLineMarks(vector<line> lines){
 	tmp.markers[0].color.g = 1.0;
 	tmp.markers[0].color.b = 22.0/225.0;
 
-	for(int i=0; i<lineMarks_.markers.size(); i++){
+	/*for(int i=0; i<lineMarks_.markers.size(); i++){
 		lineMarks_.markers[i].action = visualization_msgs::Marker::DELETE;
 	}
 	if(lineMarks_.markers.size()!=0) markerPub_->publish(lineMarks_);// delete all old ones	
+	*/
 	
-	cout<<"pubbing line marks of size "<<lines.size()<<"\n";
+	//cout<<"pubbing line marks of size "<<lines.size()<<"\n";
 	lineMarks_ = tmp;
 	markerPub_->publish(lineMarks_);
 

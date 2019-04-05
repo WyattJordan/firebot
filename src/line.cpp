@@ -130,11 +130,11 @@ void line::setEndpts(float x1, float y1, float x2, float y2){
 }
 void line::mergeLines(line a) {//line a gets merged into the main line
 	for(int i = 0; i < a.numPts(); i++){
-			x.push_back(a.getXPoint(i));
-			y.push_back(a.getYPoint(i));
-			//x.insert(x.begin(), a.getXPoint(a.numPts() - i));
-			//y.insert(y.begin(), a.getYPoint(a.numPts() - i));
-			//still have to delete the line a in findLine
+		x.push_back(a.getXPoint(i));
+		y.push_back(a.getYPoint(i));
+		//x.insert(x.begin(), a.getXPoint(a.numPts() - i));
+		//y.insert(y.begin(), a.getYPoint(a.numPts() - i));
+		//still have to delete the line a in findLine
 	}
 	a.clearLine();
 	buildLine();
@@ -142,9 +142,6 @@ void line::mergeLines(line a) {//line a gets merged into the main line
 
 //it. canMerge
 bool line::canMerge(line a){
-	float distThresh = 10;
-	float percentSlopeErrorThresh = 0.1;
-
 	// find closest distance between any of the two enpoints of the lines
 	float myDist = ptDist(a.getEndPtX1(), a.getEndPtY1(), getEndPtX1(), getEndPtY1());
 
@@ -156,10 +153,12 @@ bool line::canMerge(line a){
 
 	tempDist = ptDist(a.getEndPtX2(), a.getEndPtY2(), getEndPtX1(), getEndPtY1());
 	if (tempDist < myDist) {myDist = tempDist;}
+	
+	float slopProd = a.getSlope() * getSlope(); // should not be close to -1 (perpendicular lines)
+	//cout<<"slope a: "<<a.getSlope()<<" and this: "<<getSlope()<<" and prod: "<<slopProd<<"\n";
 
-	if(myDist < distThresh){
-		float slopeErr = abs(a.getSlope()-getSlope()) / a.getSlope();
-		if(slopeErr < percentSlopeErrorThresh) return true; 
+	if(myDist < MergeLineDistThresh){
+		if(abs(slopProd + 1) > 0.4) return true;
 	}
 	return false;
 }

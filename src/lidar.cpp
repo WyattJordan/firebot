@@ -14,7 +14,6 @@ Lidar::Lidar(Nav* navRef){
 }
 
 void Lidar::processData(const sensor_msgs::LaserScan::ConstPtr& scan){
-	cout<<"\nentered callback...\n";
 	int num = scan->scan_time / scan->time_increment;
 	time_t start, finish;
 	degrees_.resize(0);
@@ -40,6 +39,7 @@ void Lidar::processData(const sensor_msgs::LaserScan::ConstPtr& scan){
 
 }
 void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
+	cout<<"\n";
 	/*bool updatePosition = false;
 	Vector3f currentPos = rob_->getOdomWorldLoc(); // this is an undefined ref for some reason...
 	if(! (prevOdom_(0) == -100 && prevOdom_(1) == -100)){ // if not the first run (default odom loc) 
@@ -48,13 +48,13 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	}//*/
 
 	processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
-	findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
+	findJumps(false);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
 	findFurniture();   // determines what is furniture from smallJump_
 	nav_->makeFurnMarks(furns_); // publishfurniture in rviz
 	
-	classifyRoomFromJumps(); // used to determine room for starting location
+	//classifyRoomFromJumps(); // used to determine room for starting location
 	findLines(); // Split-and-Merge line algo, see Auto. Mobile Robots 2nd ed by Siegwart, Nourbakhsh, Scaramuzza, pg 249
-	nav_->makeLineMarks(lines_); // publish lines in rviz
+	nav_->makeLineMarks(lines_, true); // publish lines in rviz
 
 	// publish transformation from global to laser_frame
 	/*
@@ -170,8 +170,8 @@ void Lidar::room1Localization(){
 void Lidar::findFurniture(){
 	furns_.resize(0);
 	furnIdxs_.resize(0);
-	cout<<"starting to find furn with "<<smallJump_.size()<<" furnjumps\n";
-	/*cout<<"starting furn jumps at angles: ";
+	/*cout<<"starting to find furn with "<<smallJump_.size()<<" furnjumps\n";
+	cout<<"starting furn jumps at angles: ";
 	for(int q=0; q<smallJump_.size(); q++) {cout<<"j:"<<smallJump_[q]<<" at "<<degrees_[smallJump_[q]]<<"--"<<getCloserJumpRadius(smallJump_[q])<<"  ";}
 	cout<<"\n";//*/
 
@@ -187,7 +187,7 @@ void Lidar::findFurniture(){
 		// check the width tolerance of the two points
 		float width = pt2PtDist(xVal_[pt1], yVal_[pt1], xVal_[pt2], yVal_[pt2]); 
 		if(!(abs(FurnWidth - width) < FurnWidthTolerance)){ // if the distance between the points is larger than furniture size
-			//cout<<"deleted due to width constraint width = "<<width<<"\n";
+	//		cout<<"deleted due to width constraint width = "<<width<<"\n";
 			continue; // skips the rest of the code in this iteration
 		}	
 
@@ -234,15 +234,15 @@ void Lidar::findFurniture(){
 	}
 
 	for(int fj : furnJumpsConfirmed){
-		if(std::find(jump_.begin(),jump_.end(),fj) != jump_.end()){ // if the fj is in jump_
+		if(jump_.size()!=0 && std::find(jump_.begin(),jump_.end(),fj) != jump_.end()){ // if the fj is in jump_
 			jump_.erase(std::remove(jump_.begin(), jump_.end(), fj), jump_.end()); // erase it
 		}
 	}
 
 	// save_here = furnJumpsConfirmed; // if you want to save the furn jumps use this line, don't overwrite smallJump_ tho
-	cout<<jump_.size()<<" Big jumps at angles: ";
+	/*cout<<jump_.size()<<" Big jumps at angles: ";
 	for(int r=0; r<jump_.size(); r++) {cout<<degrees_[jump_[r]]<<"--"<<getCloserJumpRadius(jump_[r])<<"   ";}
-	cout<<"\n";
+	cout<<"\n";*/
 	
 	cout<<"furn jumps after filtering: ";
 	for(int t=0; t<furnJumpsConfirmed.size(); t++) {cout<<degrees_[furnJumpsConfirmed[t]]<<"--"<<getCloserJumpRadius(furnJumpsConfirmed[t])<<"   ";}
@@ -371,17 +371,28 @@ void Lidar::findLines(){
 	}
 	if(tmp.numPts() > MinPtsForLine) lines_.push_back(tmp); // add the last line being made
 
-	cout<<"num raw lines found = "<<lines_.size()<<"\n";
-	nav_->makeLineMarks(lines_);
-
-	for(int j = 0; j < lines_.size(); j++){
+	/*for(int j = 0; j < lines_.size(); j++){
 	cout<<"X,Y to endpoint 1: " << lines_[j].getEndPtX1() << ", " << lines_[j].getEndPtY1()<<endl;
 	cout<<"X,Y to endpoint 2: " << lines_[j].getEndPtX2() << ", " << lines_[j].getEndPtY2()<<endl;
 	cout<<"Points in line: " << lines_[j].numPts() << endl;
+	}*/
+	//cout<<" checkx = "<<checkX.size()<<" checkY = "<<checkY.size();
+
+	// Merging line models
+	for(int lm=0; lm<lines_.size(); lm++){
+		int nextIdx = (lm+1)%lines_.size();
+		if(lines_[lm].canMerge(lines_[nextIdx])){
+		//	cout<<"can merge lines "<<lm<<" and "<<nextIdx<<"\n";
+				lines_[lm].mergeLines( lines_[nextIdx] );
+				lines_.erase(lines_.begin() + nextIdx);
+				lm--;
+		}
 	}
-	cout<<"checkx = "<<checkX.size()<<" checkY = "<<checkY.size()<<"\n";
+	cout<<"num after merging lines: "<<lines_.size()<<"\n";
+	//*/
 
 	// Adding Back Points:
+	int addedback = 0;
 	for(int bPts = 0; bPts < checkX.size(); bPts++){
 		bool added = false;
 		for(int nLine = 0; nLine < lines_.size(); nLine++){
@@ -394,6 +405,7 @@ void Lidar::findLines(){
 					lines_[nLine].addPointEnd(checkX[bPts], checkY[bPts]);
 					added = true;
 					lines_[nLine].buildLine();// update line model with new point added 
+					addedback++;
 				}
 			}
 			else{
@@ -401,21 +413,14 @@ void Lidar::findLines(){
 					lines_[nLine].addPointStart(checkX[bPts], checkY[bPts]);
 					added = true;
 					lines_[nLine].buildLine();// update line model with new point added 
+					addedback++;
 				}
 			}
 			if(added){break;} // don't check against all other line models if it gets added to one
 		} // loop thru line models
 	} // loop thru checkpts
-
-	// Merging line models
-	for(int lm=0; lm<lines_.size(); lm++){
-		int nextIdx = (lm+1)%lines_.size();
-		if(lines_[lm].canMerge(lines_[nextIdx])){
-				lines_[lm].mergeLines( lines_[nextIdx] );
-				lines_.erase(lines_.begin() + nextIdx);
-				lm--;
-		}
-	}
+	cout<<"num pts addedback = "<<addedback<<"\n";
+	
 }
 
 void Lidar::findStartLocation(EndPoint endR1, EndPoint endR2, EndPoint endG1, EndPoint endG2){
