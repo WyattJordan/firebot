@@ -13,17 +13,7 @@ Lidar::Lidar(Nav* navRef){
 	nav_ = navRef;
 }
 
-void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
-	/* bool updatePosition = false;
-	Vector3f currentPos = rob_->getOdomWorldLoc(); // this is an undefined ref for some reason...
-	//Vector3f currentPos;
-	if(! (prevOdom_(0) == -100 && prevOdom_(1) == -100)) // if not the first run (default odom loc) 
-	{
-		// if the angle has changed less than 5deg between the two positions
-		if(abs(prevOdom_(2) - currentPos(2))*180/PI < 5) updatePosition = true;
-	
-	}*/ //stuff for position updates
-
+void Lidar::processData(const sensor_msgs::LaserScan::ConstPtr& scan){
 	cout<<"\nentered callback...\n";
 	int num = scan->scan_time / scan->time_increment;
 	time_t start, finish;
@@ -47,26 +37,37 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		}
 	}
 
-	findJumps(true);
-	cout<<"num jumps = "<<jump_.size()<<"\n";
-	findFurniture(); // determines what is furniture from smallJump_
-	nav_->makeFurnMarks(furns_);
+
+}
+void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
+	/*bool updatePosition = false;
+	Vector3f currentPos = rob_->getOdomWorldLoc(); // this is an undefined ref for some reason...
+	if(! (prevOdom_(0) == -100 && prevOdom_(1) == -100)){ // if not the first run (default odom loc) 
+		// if the angle has changed less than 5deg between the two positions
+		if(abs(prevOdom_(2) - currentPos(2))*180/PI < 5) updatePosition = true;
+	}//*/
+
+	processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
+	findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
+	findFurniture();   // determines what is furniture from smallJump_
+	nav_->makeFurnMarks(furns_); // publishfurniture in rviz
 	
-//	classifyRoomFromJumps();
-	findLines();
-	nav_->makeLineMarks(lines_);
+	classifyRoomFromJumps(); // used to determine room for starting location
+	findLines(); // Split-and-Merge line algo, see Auto. Mobile Robots 2nd ed by Siegwart, Nourbakhsh, Scaramuzza, pg 249
+	nav_->makeLineMarks(lines_); // publish lines in rviz
 
 	// publish transformation from global to laser_frame
-/*	static tf::TransformBroadcaster br;	
+	/*
+	static tf::TransformBroadcaster br;	
 	tf::Transform trans;
 	trans.setOrigin(tf::Vector3(currentPos(0), currentPos(1), 0));
 	tf::Quaternion q;
 	q.setRPY(0,0,currentPos(2));
 	trans.setRotation(q);
 	// determine the frame laser_frame in the global frame
-	br.sendTransform(tf::StampedTransform(trans, ros::Time::now(),LASERFRAME, GLOBALFRAME));
+	br.sendTransform(tf::StampedTransform(trans, ros::Time::now(),ROBOTFRAME, GLOBALFRAME));
 	cout<<"sent tf frame via broacaster\n";
-	prevOdom_ = currentPos;*/
+	prevOdom_ = currentPos;//*/
 }
 
 void Lidar::room4Localization(vector<int> cJumps){
@@ -408,11 +409,13 @@ void Lidar::findLines(){
 
 	// Merging line models
 	for(int lm=0; lm<lines_.size(); lm++){
-		if(lines_[lm].canMerge(lines[(lm+1)%lines_.size()]){
-				lines_[lm].mergeLines((lm+1)%lines_.size());
-				lines_.erase(lines_.begin() + (lm+1)%lines_.size());
+		int nextIdx = (lm+1)%lines_.size();
+		if(lines_[lm].canMerge(lines_[nextIdx])){
+				lines_[lm].mergeLines( lines_[nextIdx] );
+				lines_.erase(lines_.begin() + nextIdx);
 				lm--;
 		}
+	}
 }
 
 void Lidar::findStartLocation(EndPoint endR1, EndPoint endR2, EndPoint endG1, EndPoint endG2){
@@ -482,8 +485,9 @@ void Lidar::removePt(int i){
 	yVal_.erase(yVal_.begin() + i );
 }
 
-float Lidar::pt2PtDist(float x1, float y1, float x2, float y2){ return pow(pow(x2-x1,2) + pow(y2-y1,2) ,0.5); }
+//float Lidar::pt2PtDist(float x1, float y1, float x2, float y2){ return pow(pow(x2-x1,2) + pow(y2-y1,2) ,0.5); }
 // given the start of a jump index return the index of the closer pt in the jump
+float Lidar::pt2PtDist(float x1, float y1, float x2, float y2){ return pow(pow(x1-x2,2) + pow(y1-y2,2),0.5);}
 int Lidar::getCloserJumpPt(int i){  return rad_[i] < rad_[getEndIdx(i+1)] ? i : getEndIdx(i+1); }
 int Lidar::getFurtherJumpPt(int i){ return rad_[i] > rad_[getEndIdx(i+1)] ? i : getEndIdx(i+1); }
 float Lidar::getCloserJumpRadius(int i){  return rad_[getCloserJumpPt(i)]; }

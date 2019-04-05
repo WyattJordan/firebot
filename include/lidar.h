@@ -24,6 +24,8 @@
 
 
 using namespace std;
+class Robot;
+class Nav;
 
 //void leastSquareFit(vector <float> &x, vector <float> &y, float &slope, float &b);
 //x includes all of the xpoints in the line
@@ -36,6 +38,7 @@ class Lidar{
 		Lidar(Robot *robRef, Nav *navRef);
 		void setNav(Nav *nav);
 		void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan);
+		void processData(const sensor_msgs::LaserScan::ConstPtr& scan);
 		void findJumps(bool findBig); // finds either big jumps and furniture jumps or only furn jumps
 		void classifyRoomFromJumps();
 		void findLines();

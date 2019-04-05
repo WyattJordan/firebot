@@ -4,7 +4,7 @@
 #include <vector>
 #include "math.h"
 
-float pt2PtDist2(float x1, float y1, float x2, float y2){
+float ptDist(float x1, float y1, float x2, float y2){
 	return pow(pow(x2-x1,2) + pow(y2-y1,2) ,0.5);
 }
 
@@ -41,7 +41,7 @@ void line::buildLine() {
         slope = num / denum;
         intercept = yAvg - slope * xAvg;
         setEndpts(x[0], y[0], x[x.size()-1], y[y.size()-1]);
-        length = pt2PtDist2(end1.getX(), end1.getY(), end2.getX(), end2.getY());
+        length = ptDist(end1.getX(), end1.getY(), end2.getX(), end2.getY());
         if ((length > 1)&&(length < 4)){
                 candle = true;
                 furniture = false;
@@ -126,7 +126,7 @@ void line::reverseLine(){
 void line::setEndpts(float x1, float y1, float x2, float y2){
         end1.setCart(x1, y1);
         end2.setCart(x2, y2);
-        lineDist = pt2PtDist2(x1, y1, x2, y2);
+        lineDist = ptDist(x1, y1, x2, y2);
 }
 void line::mergeLines(line a) {//line a gets merged into the main line
 	for(int i = 0; i < a.numPts(); i++){
@@ -146,15 +146,15 @@ bool line::canMerge(line a){
 	float percentSlopeErrorThresh = 0.1;
 
 	// find closest distance between any of the two enpoints of the lines
-	float myDist = pt2PtDist(a.getEndPtX1(), a.getEndPtY1(), getEndPtX1(), getEndPtY1());
+	float myDist = ptDist(a.getEndPtX1(), a.getEndPtY1(), getEndPtX1(), getEndPtY1());
 
-	float tempDist = pt2PtDist(a.getEndPtX2(), a.getEndPtY2(), getEndPtX2(), getEndPtY2());
+	float tempDist = ptDist(a.getEndPtX2(), a.getEndPtY2(), getEndPtX2(), getEndPtY2());
 	if (tempDist < myDist) {myDist = tempDist;}
 
-	tempDist = pt2PtDist(a.getEndPtX1(), a.getEndPtY1(), getEndPtX2(), getEndPtY2());
+	tempDist = ptDist(a.getEndPtX1(), a.getEndPtY1(), getEndPtX2(), getEndPtY2());
 	if (tempDist < myDist) {myDist = tempDist;}
 
-	tempDist = pt2PtDist(a.getEndPtX2(), a.getEndPtY2(), getEndPtX1(), getEndPtY1());
+	tempDist = ptDist(a.getEndPtX2(), a.getEndPtY2(), getEndPtX1(), getEndPtY1());
 	if (tempDist < myDist) {myDist = tempDist;}
 
 	if(myDist < distThresh){

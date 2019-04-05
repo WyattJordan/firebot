@@ -205,8 +205,16 @@ target_link_libraries(everything wiringPi)
 add_executable(rplidarNode src/node.cpp ${RPLIDAR_SDK_SRC})
 target_link_libraries(rplidarNode ${catkin_LIBRARIES})
 
-#add_executable(rpProcessor src/myClient.cpp src/lidar.cpp src/Robot.cpp src/line.cpp src/Endpoint.cpp)
-add_executable(rpProcessor src/myClient.cpp src/lidar.cpp src/line.cpp src/Endpoint.cpp src/Nav.cpp)
+if($ENV{lidarWithRobot} STREQUAL "true")
+	message("\n\nMaking rpProcessor node with Robot.cpp and all dependencies\n\n")
+	add_executable(rpProcessor src/myClient.cpp src/lidar.cpp src/Nav.cpp src/Robot.cpp src/line.cpp src/Endpoint.cpp src/pid.cpp)
+	target_compile_options(rpProcessor PRIVATE -lwiringPi -lcrypt -lm -lrt)
+	target_link_libraries(rpProcessor wiringPi)
+else()
+	message("\n\nMaking rpProcessor node only with nav for rviz\n\n")
+	add_executable(rpProcessor src/myClient.cpp src/lidar.cpp src/Nav.cpp src/line.cpp src/Endpoint.cpp)
+endif()
+
 target_link_libraries(rpProcessor ${catkin_LIBRARIES})
 
 install(TARGETS rplidarNode rpProcessor

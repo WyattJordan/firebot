@@ -51,6 +51,7 @@ public:
 		float getCenterRadius();
 
         void mergeLines(line a);
+        bool canMerge(line a);
         float endPAngle(int num);
         float endPRad(int num);
         float getLineDist();
