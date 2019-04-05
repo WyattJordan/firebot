@@ -44,6 +44,7 @@ class Lidar{
 		bool canMerge(line a, line b);
 		void findRoom();
 		void findStartLocation(EndPoint endR1, EndPoint endR2, EndPoint endG1, EndPoint endG2);
+		bool canMerge(line a);
 
 	private:
 		Vector3f prevOdom_;

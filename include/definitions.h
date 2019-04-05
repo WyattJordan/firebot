@@ -31,4 +31,4 @@
 
 #define PerpThresh 5.5 // err from line model cannot exceed this
 #define PrevPointDistThresh 40 // stop lines from adding points that are far away (closing off doorways)
-#define MinPtsForLine 5
+#define MinPtsForLine 10
