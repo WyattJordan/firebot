@@ -35,9 +35,8 @@ void Lidar::processData(const sensor_msgs::LaserScan::ConstPtr& scan){
 			yVal_.push_back(POLAR2YCART(radius, ang));
 		}
 	}
-
-
 }
+
 void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	cout<<"\n";
 	/*bool updatePosition = false;
@@ -48,13 +47,14 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	}//*/
 
 	processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
-	findJumps(false);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
-	findFurniture();   // determines what is furniture from smallJump_
+	findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
+	findFurniture();   // determines what is furniture from smallJump_ 
+	cleanBigJumps();   // removes furniture jumps and any doubles
 	nav_->makeFurnMarks(furns_); // publishfurniture in rviz
 	
-	//classifyRoomFromJumps(); // used to determine room for starting location
-	findLines(); // Split-and-Merge line algo, see Auto. Mobile Robots 2nd ed by Siegwart, Nourbakhsh, Scaramuzza, pg 249
-	nav_->makeLineMarks(lines_, true); // publish lines in rviz
+	classifyRoomFromJumps(); // used to determine room for starting location
+	//findLines(); // Split-and-Merge line algo, see Auto. Mobile Robots 2nd ed by Siegwart, Nourbakhsh, Scaramuzza, pg 249
+	//nav_->makeLineMarks(lines_, true); // publish lines in rviz
 
 	// publish transformation from global to laser_frame
 	/*
@@ -140,11 +140,11 @@ void Lidar::classifyRoomFromJumps(){
 	float room4NearLimit = 70; 
 	vector<int> closeJumps;
 	for(int j : jump_){
-		if(rad_[j] < room4NearLimit || rad_[getEndIdx(j+1)] < room4NearLimit){
+		if(getCloserJumpRadius(j) < room4NearLimit){
 			closeJumps.push_back(j);
 		}
 	}
-	cout<<"closeJumpCount = "<<closeJumps.size()<<"\n";
+	cout<<"big jumps = "<<jump_.size()<<" closeJumpCount = "<<closeJumps.size()<<"\n";
 
 	if(closeJumps.size() == 2){
 		cout<<"localizing for room4\n";
@@ -155,10 +155,22 @@ void Lidar::classifyRoomFromJumps(){
 		//room1Localization();
 	}
 	else{
-		// TODO determine if it's room2 or room3 somehow...
-		cout<<"localizing for room 2 or 3\n";
+		
+		float max = 0; // determine if it's room2 or room3 based on size of max jump
+		for(int j : jump_){
+			if(getFurtherJumpRadius(j) > max )
+				max = getFurtherJumpRadius(j);
+		}
+		
+		if(max > 50){
+			cout<<"localizing for room 2\n";
+			//room1or2Localization(false);
+		}
+		else{
+			cout<<"localizing for room 3\n";
+			//room1or2Localization(true);
+		}
 	}
-
 }
 
 
@@ -175,7 +187,7 @@ void Lidar::findFurniture(){
 	for(int q=0; q<smallJump_.size(); q++) {cout<<"j:"<<smallJump_[q]<<" at "<<degrees_[smallJump_[q]]<<"--"<<getCloserJumpRadius(smallJump_[q])<<"  ";}
 	cout<<"\n";//*/
 
-	vector<int> furnJumpsConfirmed;
+	furnJumpsConfirmed_.resize(0);
 	for(int j=0; j<smallJump_.size(); j++){
 
 		// get the two x,y points that are the closer to the 'bot of the two jump points  
@@ -224,8 +236,8 @@ void Lidar::findFurniture(){
 			if(!atLoopAround){ for(int rem=pt1; rem<=pt2; rem++) furnIdxs_.push_back(rem); }
 			else{ for(int rem=pt1; rem%rad_.size()>=pt2; rem--) furnIdxs_.push_back(rem); }
 
-			furnJumpsConfirmed.push_back(smallJump_[j]); // add the two jump idxs to the confirmed list
-			furnJumpsConfirmed.push_back(smallJump_[(j+1)%smallJump_.size()]);
+			furnJumpsConfirmed_.push_back(smallJump_[j]); // add the two jump idxs to the confirmed list
+			furnJumpsConfirmed_.push_back(smallJump_[(j+1)%smallJump_.size()]);
 			j++; // next jump will be the end of this piece of furniture so skip that
 		}
 		else{
@@ -233,20 +245,37 @@ void Lidar::findFurniture(){
 		}
 	}
 
-	for(int fj : furnJumpsConfirmed){
-		if(jump_.size()!=0 && std::find(jump_.begin(),jump_.end(),fj) != jump_.end()){ // if the fj is in jump_
-			jump_.erase(std::remove(jump_.begin(), jump_.end(), fj), jump_.end()); // erase it
-		}
-	}
 
-	// save_here = furnJumpsConfirmed; // if you want to save the furn jumps use this line, don't overwrite smallJump_ tho
+	// save_here = furnJumpsConfirmed_; // if you want to save the furn jumps use this line, don't overwrite smallJump_ tho
 	/*cout<<jump_.size()<<" Big jumps at angles: ";
 	for(int r=0; r<jump_.size(); r++) {cout<<degrees_[jump_[r]]<<"--"<<getCloserJumpRadius(jump_[r])<<"   ";}
 	cout<<"\n";*/
 	
 	cout<<"furn jumps after filtering: ";
-	for(int t=0; t<furnJumpsConfirmed.size(); t++) {cout<<degrees_[furnJumpsConfirmed[t]]<<"--"<<getCloserJumpRadius(furnJumpsConfirmed[t])<<"   ";}
+	for(int t=0; t<furnJumpsConfirmed_.size(); t++) {cout<<degrees_[furnJumpsConfirmed_[t]]<<"--"<<getCloserJumpRadius(furnJumpsConfirmed_[t])<<"   ";}
 	cout<<"\n";//*/
+}
+
+void Lidar::cleanBigJumps(){
+	// remove furniture from big jumps
+	for(int fj : furnJumpsConfirmed_){
+		if(jump_.size()!=0 && std::find(jump_.begin(),jump_.end(),fj) != jump_.end()){ // if the fj is in jump_
+			jump_.erase(std::remove(jump_.begin(), jump_.end(), fj), jump_.end()); // erase it
+		}
+	}
+
+	// remove doubles
+	for(int j=0; j<jump_.size(); j++){
+		int nextIdx = (j+1)%jump_.size();
+		// if within 4deg and 4cm delete the latter one
+		if(abs(getCloserJumpRadius(jump_[j]) - getCloserJumpRadius(jump_[nextIdx])) < 4  &&
+				abs(degrees_[jump_[j]] - degrees_[jump_[j]]) < 4){
+			jump_.erase(jump_.begin() + nextIdx);
+			j--;
+		}
+
+	}
+
 }
 
 void Lidar::findJumps(bool findBig){
@@ -295,10 +324,10 @@ void Lidar::findJumps(bool findBig){
 		}
 	}
 
-	/*
+	
 	cout<<"Big jumps at angles: ";
-	for(int i=0; i<jump_.size(); i++) {cout<<degrees_[jump_[i]]<<" "<<getCloserJumpRadius(jump_[i])<<"   ";}
-	cout<<"\n";*/
+	for(int i=0; i<jump_.size(); i++) {cout<<degrees_[jump_[i]]<<"--"<<getCloserJumpRadius(jump_[i])<<"   ";}
+	cout<<"\n";//*/
 	
 	/*
 	cout<<"furn jumps at angles: ";

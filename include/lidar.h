@@ -65,6 +65,7 @@ class Lidar{
 		vector<int> jump_;
 		// acts just like jump_ except with smaller threshold of SmallJumpDist
 		vector<int> smallJump_;
+		vector<int> furnJumpsConfirmed_;
 		// list of endpoints that should be the center of furniture
 		vector<EndPoint> furns_;
 		// idxs of the furniture so they can be ignore in findLine
@@ -85,6 +86,7 @@ class Lidar{
 		// Build furn_ based on furnJump_
 		void findFurniture();
 
+		void cleanBigJumps();
 		bool jumpAway(int i);
 		int getCloserJumpPt(int i);
 		int getFurtherJumpPt(int i);
