@@ -158,7 +158,10 @@ bool line::canMerge(line a){
 	//cout<<"slope a: "<<a.getSlope()<<" and this: "<<getSlope()<<" and prod: "<<slopProd<<"\n";
 
 	if(myDist < MergeLineDistThresh){
-		if(abs(slopProd + 1) > 0.4) return true;
+		if(abs(slopProd + 1) > 1){ 
+			cout<<"merging slopProd = "<<slopProd<<" angle1 = "<<atan(a.getSlope())*180.0/PI<<" angle2 = "<<atan(getSlope())*180.0/PI<<"\n";
+			return true;
+		}
 	}
 	return false;
 }

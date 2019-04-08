@@ -40,7 +40,7 @@ class Lidar{
 		void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan);
 		void processData(const sensor_msgs::LaserScan::ConstPtr& scan);
 		void findJumps(bool findBig); // finds either big jumps and furniture jumps or only furn jumps
-		void classifyRoomFromJumps();
+		int classifyRoomFromJumps();
 		void findLines();
 
 		vector<line> findLine();
@@ -53,6 +53,9 @@ class Lidar{
 		Vector3f prevOdom_;
 		Nav* nav_;
 		Robot* rob_;
+		int startCount_, localRoom_;
+	        vector<int> startRooms_;
+		bool localized_;
 
 		// Point data is stored in 4 vectors with cartesian and polar coordinates
 		vector<float> xVal_;
@@ -63,6 +66,7 @@ class Lidar{
 		// i.e. rad_[jump[j]] and rad_[jump[j] + 1] are different by at least DoorJumpDist
 		// also note that due to loop around never use jump[j] + 1 but rather getEndIdx(jump[j])
 		vector<int> jump_;
+		vector<int> cJumps_;
 		// acts just like jump_ except with smaller threshold of SmallJumpDist
 		vector<int> smallJump_;
 		vector<int> furnJumpsConfirmed_;
@@ -75,10 +79,15 @@ class Lidar{
 		void removePt(int i);
 		// given a jump idx return it's second jump idx (jump idx + 1)%rad.size()
 		int getEndIdx(int s);
+
+		int modeRoom();
+		bool localize();
 		// Knowing in room 4 determine location
-		void room4Localization(vector<int> closeJumps);
-		// Knowing in room 1 determine location
 		void room1Localization();
+		void room2Localization();
+		void room3Localization();
+		void room4Localization();
+
 		// Given a point in the lidar frame (l) and global frame(g) and the pose (t) localize the bot
 		void localizeFromPt(EndPoint l, EndPoint g, float t);
 		// Determine average of points before and after center using offset number of points
@@ -93,6 +102,7 @@ class Lidar{
 		float getCloserJumpRadius(int i);
 		float getFurtherJumpRadius(int i);
 		float pt2PtDist(float x1, float y1, float x2, float y2);
+		void defaults();
 };
 
 #endif

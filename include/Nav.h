@@ -50,7 +50,7 @@ class Nav{
 		void makeMapMarks(string NS);
 		void makeWayMarks(string NS);
 		void makeFurnMarks(vector<EndPoint> furns);
-		void makeLineMarks(vector<line> lines, bool addIDs=false);
+		void makeLineMarks(vector<line> lines, bool merged, bool addIDs=false);
 		void publishMapAndWays();
 
 		bool removePoint(int id, vector<EndPoint> &pts);

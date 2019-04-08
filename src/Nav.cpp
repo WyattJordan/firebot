@@ -202,13 +202,13 @@ bool Nav::getNeighbor(int ID, int neighI, EndPoint &neigh, vector<EndPoint> &pts
 	}
 }
 
-void Nav::makeLineMarks(vector<line> lines, bool addIDs){
+void Nav::makeLineMarks(vector<line> lines, bool merged, bool addIDs){
 	visualization_msgs::MarkerArray tmp;
 	visualization_msgs::Marker txt;
 	tmp.markers.resize(1+lines.size()); // 1 is the line list, rest are ID texts
 
 	tmp.markers[0].header.frame_id = ROBOTFRAME;
-	tmp.markers[0].ns = "lines"; 
+	tmp.markers[0].ns = merged ? "merged lines":"broken_lines"; 
 	tmp.markers[0].id = 0; 
 	tmp.markers[0].type = visualization_msgs::Marker::LINE_LIST;
 	tmp.markers[0].action = visualization_msgs::Marker::ADD;
@@ -233,6 +233,12 @@ void Nav::makeLineMarks(vector<line> lines, bool addIDs){
 			x2 = (y2 - lines[i].getIntercept())/lines[i].getSlope();
 		}
 
+		if(merged) {
+			x1+=2;
+			y1+=2;
+			x2+=2;
+			y2+=2;
+		}
 		tmp.markers[0].points.at(2*i).x = x1;
 		tmp.markers[0].points.at(2*i).y = y1;
 		tmp.markers[0].points.at(2*i).z = 3;
@@ -273,10 +279,19 @@ void Nav::makeLineMarks(vector<line> lines, bool addIDs){
 	tmp.markers[0].pose.orientation.z = 0;
 	tmp.markers[0].pose.orientation.w = 1;
 
-	tmp.markers[0].color.a = 1.0;	
-	tmp.markers[0].color.r = 235.0/255.0;
-	tmp.markers[0].color.g = 1.0;
-	tmp.markers[0].color.b = 22.0/225.0;
+	if(merged){
+		tmp.markers[0].color.a = 1.0;	
+		tmp.markers[0].color.r = 235.0/255.0;
+		tmp.markers[0].color.g = 1.0;
+		tmp.markers[0].color.b = 22.0/225.0;
+	}
+	else{
+		tmp.markers[0].color.a = 1.0;	
+		tmp.markers[0].color.r = 0;
+		tmp.markers[0].color.g = 0;
+		tmp.markers[0].color.b = 1.0;
+	
+	}
 
 	/*for(int i=0; i<lineMarks_.markers.size(); i++){
 		lineMarks_.markers[i].action = visualization_msgs::Marker::DELETE;
@@ -327,7 +342,7 @@ void Nav::makeFurnMarks(vector<EndPoint> furns){
 	furnMarks_ = tmp;
 	markerPub_->publish(furnMarks_);
 	
-	cout<<"size of furn array is: "<<furnMarks_.markers.size()<<"\n";
+	//cout<<"size of furn array is: "<<furnMarks_.markers.size()<<"\n";
 }
 
 // populate MarkerArray members (run by the makeMapMarks() and makeWayMarks()) 
@@ -386,7 +401,7 @@ void Nav::populateMarks(string which, string NS,
 		marks.markers[idx].color.b = 1; 
 		//sleep(1); rvizMap.publish(marks); //uncomment to see point growth from closest to robot
 	}
-	cout<<"done adding points for "<< which<<"\n";
+	//cout<<"done adding points for "<< which<<"\n";
 
 	// Now add the lines 
 	visualization_msgs::Marker mark;
