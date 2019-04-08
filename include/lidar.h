@@ -41,7 +41,7 @@ class Lidar{
 		void processData(const sensor_msgs::LaserScan::ConstPtr& scan);
 		void findJumps(bool findBig); // finds either big jumps and furniture jumps or only furn jumps
 		int classifyRoomFromJumps();
-		void findLines();
+		void findLines(bool pubSegmets=false);
 
 		vector<line> findLine();
 		bool canMerge(line a, line b);

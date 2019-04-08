@@ -208,7 +208,7 @@ void Nav::makeLineMarks(vector<line> lines, bool merged, bool addIDs){
 	tmp.markers.resize(1+lines.size()); // 1 is the line list, rest are ID texts
 
 	tmp.markers[0].header.frame_id = ROBOTFRAME;
-	tmp.markers[0].ns = merged ? "merged lines":"broken_lines"; 
+	tmp.markers[0].ns = merged ? "merged_lines":"broken_lines"; 
 	tmp.markers[0].id = 0; 
 	tmp.markers[0].type = visualization_msgs::Marker::LINE_LIST;
 	tmp.markers[0].action = visualization_msgs::Marker::ADD;
@@ -249,7 +249,7 @@ void Nav::makeLineMarks(vector<line> lines, bool merged, bool addIDs){
 		if(addIDs){
 			tmp.markers[1+i].header.frame_id = ROBOTFRAME;
 			tmp.markers[1+i].id = i+1;
-			tmp.markers[1+i].ns = "lines";
+			tmp.markers[1+i].ns = merged ? "merged_lines":"broken_lines";
 			tmp.markers[1+i].text = std::to_string(i);
 			tmp.markers[1+i].type = visualization_msgs::Marker::TEXT_VIEW_FACING;
 			tmp.markers[1+i].action = visualization_msgs::Marker::ADD;
@@ -265,8 +265,8 @@ void Nav::makeLineMarks(vector<line> lines, bool merged, bool addIDs){
 			tmp.markers[1+i].pose.orientation.w = 1;
 			tmp.markers[1+i].color.a = 1.0;  // white
 			tmp.markers[1+i].color.r = 1; 
-			tmp.markers[1+i].color.g = 1; 
-			tmp.markers[1+i].color.b = 1; 
+			tmp.markers[1+i].color.g = merged? 0:1; 
+			tmp.markers[1+i].color.b = merged? 0:1; 
 		}
 
 	}
@@ -279,18 +279,17 @@ void Nav::makeLineMarks(vector<line> lines, bool merged, bool addIDs){
 	tmp.markers[0].pose.orientation.z = 0;
 	tmp.markers[0].pose.orientation.w = 1;
 
-	if(merged){
+	if(merged){ // merged lines are yellow w/ red ID nums
 		tmp.markers[0].color.a = 1.0;	
 		tmp.markers[0].color.r = 235.0/255.0;
 		tmp.markers[0].color.g = 1.0;
 		tmp.markers[0].color.b = 22.0/225.0;
 	}
-	else{
+	else{ // unmerged are blue with white ID nums
 		tmp.markers[0].color.a = 1.0;	
 		tmp.markers[0].color.r = 0;
 		tmp.markers[0].color.g = 0;
 		tmp.markers[0].color.b = 1.0;
-	
 	}
 
 	/*for(int i=0; i<lineMarks_.markers.size(); i++){
@@ -302,7 +301,6 @@ void Nav::makeLineMarks(vector<line> lines, bool merged, bool addIDs){
 	//cout<<"pubbing line marks of size "<<lines.size()<<"\n";
 	lineMarks_ = tmp;
 	markerPub_->publish(lineMarks_);
-
 }
 
 void Nav::makeFurnMarks(vector<EndPoint> furns){

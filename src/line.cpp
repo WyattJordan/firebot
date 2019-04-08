@@ -157,9 +157,15 @@ bool line::canMerge(line a){
 	float slopProd = a.getSlope() * getSlope(); // should not be close to -1 (perpendicular lines)
 	//cout<<"slope a: "<<a.getSlope()<<" and this: "<<getSlope()<<" and prod: "<<slopProd<<"\n";
 
-	if(myDist < MergeLineDistThresh){
+	float angle1 = atan(a.getSlope())*180.0/PI;
+	float angle2 = atan(getSlope())*180.0/PI;
+	float angleDiff = abs(angle1 - angle2);
+	bool sameAngle = (angleDiff < 5 || angleDiff > 175);
+
+	if(sameAngle && myDist < MergeLineDistThresh){
 		if(abs(slopProd + 1) > 1){ 
-			cout<<"merging slopProd = "<<slopProd<<" angle1 = "<<atan(a.getSlope())*180.0/PI<<" angle2 = "<<atan(getSlope())*180.0/PI<<"\n";
+			//cout<<"merging m1 = "<<a.getSlope()<<" m2 = "<<getSlope()<<" slopProd = "<<slopProd<<" angle1 = "<<
+			//angle1<<" angle2 = "<<angle2<<" angleDiff = "<<angleDiff<<"\n";
 			return true;
 		}
 	}

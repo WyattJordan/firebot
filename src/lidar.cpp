@@ -52,7 +52,21 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		if(abs(prevOdom_(2) - currentPos(2))*180/PI < 5) updatePosition = true;
 	}//*/
 
-	if(startCount_++ < 10){ // only run every half second
+	if(1){
+		cout<<"\n";
+		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
+		findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
+		findFurniture();   // determines what is furniture from smallJump_ 
+		nav_->makeFurnMarks(furns_); // publishfurniture in rviz
+		findLines(true); // pub segments on
+		nav_->makeLineMarks(lines_, true, true);
+
+		cleanBigJumps();   // removes furniture jumps and any jumps counted twice 
+		//startRooms_.push_back(classifyRoomFromJumps()); // used to determine room for starting location, will run findLines
+
+
+	}
+	if(0 && startCount_++ < 10){ // classify the room multiple times before determining which room the 'bot is in 
 		time_t start, finish;
 		time(&start);
 		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
@@ -63,9 +77,6 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		cleanBigJumps();   // removes furniture jumps and any jumps counted twice 
 		startRooms_.push_back(classifyRoomFromJumps()); // used to determine room for starting location, will run findLines
 
-		//findLines();
-		//nav_->makeLineMarks(lines_, true, true); // publish lines in rviz
-
 		if(startCount_ == 10){
 			localRoom_ = modeRoom(); // just in case some bad classifications occured
 			cout<<"found mode to be "<<localRoom_<<"\n";
@@ -73,12 +84,10 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	}
 	if(!localized_ && localRoom_ != -1){ 
 		cout<<"localizing to room "<<localRoom_<<"\n";
-		findFurniture();   // determines what is furniture from smallJump_ 
-		nav_->makeFurnMarks(furns_); // publish furniture in rviz
-		cleanBigJumps();   // removes furniture jumps and any jumps counted twice 
-		findLines();
-		nav_->makeLineMarks(lines_, true, true); // publish lines in rviz
 		localized_ = localize();
+	}
+	else if(localized_){
+		cout<<"done initial localize sequence\n";
 	}
 	
 	//findLines(); // Split-and-Merge line algo, see Auto. Mobile Robots 2nd ed by Siegwart, Nourbakhsh, Scaramuzza, pg 249
@@ -99,7 +108,12 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 }
 
 bool Lidar::localize(){ // checks some conditions for a good scan to initially localize on
-	
+	findJumps(true);  // need big jumps to find the location of the local pt and for close jump verification
+	findFurniture();   // determines what is furniture from smallJump_ 
+	nav_->makeFurnMarks(furns_); // publish furniture in rviz
+	findLines(true); // what really matters
+	nav_->makeLineMarks(lines_, true, true); // publish lines in rviz
+		
 	if(localRoom_ == 1){
 		room1Localization();
 		return true;
@@ -113,11 +127,12 @@ bool Lidar::localize(){ // checks some conditions for a good scan to initially l
 		return true;
 	}
 	else if(localRoom_ == 4 && cJumps_.size()==2 && 
-			lines_.size() == 5){ // maybe use >= 5 if broken by furn
+			lines_.size() == 5){ // maybe use >= 5 if broken by furn?
 		room4Localization();
 		return true;
 	}
 	cout<<"room "<<localRoom_<<" localization conditions not met...\n";
+	cout<<"cJumps_ size: "<<cJumps_.size()<<" lines_ size: "<<lines_.size()<<"\n";
 	return false;
 }
 
@@ -150,11 +165,10 @@ void Lidar::room2Localization(){ }
 void Lidar::room3Localization(){ }
 
 void Lidar::room4Localization(){
-	// determine which side the door is on from longer range measurements
-	int r4long = 0;
+	int r4long = 0;  // determine which side the door is on from longer range measurements
 	for(float d : rad_) {if(d>160) r4long++;}
 	EndPoint ep1, ep2;
-	if(r4long > 5){	
+	if(r4long > 5){	// adjust map model based on door config and set global localization pt as entrance to door
 		ep1 = nav_->getMapPoint(11);
 		ep2 = nav_->getMapPoint(19);
 		nav_->setSmallRoomUpper(false);
@@ -172,8 +186,6 @@ void Lidar::room4Localization(){
 	int closest = getCloserJumpPt(cJumps_[0]);
 	int nClosest = getCloserJumpPt(cJumps_[1]);
 	EndPoint lDoorPt((xVal_[closest] + xVal_[nClosest]) / 2.0, (yVal_[closest] + yVal_[nClosest]) / 2.0);
-
-	findLines();
 
 	int wall1 = -1;
 	int wall2 = -1;
@@ -283,10 +295,7 @@ void Lidar::findFurniture(){
 		if(step > 200 ){ // if there is a massive number of points hitting the "furniture" it's looping around the 180 spot so swap order
 			atLoopAround = true;
 			step = rad_.size() - step - 2; // instead of counting the long way around the circle
-			int tmp = pt1; // swap pts because we want pt1 to start off the furniture jumping onto it
-			pt1 = pt2;
-			pt2 = tmp;
-			middle = (pt1 - step/2);
+			middle = (pt2 - step/2);
 			middle = middle<0 ? middle+rad_.size() : middle;
 		}
 		if(step > 80){ // if this statement runs something is wrong, probably with the loop around
@@ -303,7 +312,8 @@ void Lidar::findFurniture(){
 		float avgOutsideRad = (rad_[pt1] + rad_[pt2]) / 2.0;
 		float curveHeight = abs(avgOutsideRad - rad_[middle]);
 
-		if( curveHeight > FurnDistTolerance && curveHeight < 10){ // inner should be at least certain amount closer
+		bool endsAreBack = rad_[middle] < rad_[pt1] && rad_[middle] < rad_[pt2];
+		if( endsAreBack && curveHeight > FurnDistTolerance && curveHeight < 10){ // inner should be at least certain amount closer
 			// Endpoint x and y determined by midpoint of furniture (should be lowest radius)
 			float x = POLAR2XCART(rad_[middle]+FurnWidth/2.0, degrees_[middle]); 
 			float y = POLAR2YCART(rad_[middle]+FurnWidth/2.0, degrees_[middle]);
@@ -311,11 +321,11 @@ void Lidar::findFurniture(){
 			furns_.push_back(f);
 			// add the points between pt1 and p2 inclusive to the furnIdxs_
 			if(!atLoopAround){ for(int rem=pt1; rem<=pt2; rem++) furnIdxs_.push_back(rem); }
-			else{ for(int rem=pt1; rem%rad_.size()>=pt2; rem--) furnIdxs_.push_back(rem); }
+			else{ for(int rem=pt1; rem%rad_.size()!=pt2; rem++) furnIdxs_.push_back(rem%rad_.size()); }
 
 			furnJumpsConfirmed_.push_back(smallJump_[j]); // add the two jump idxs to the confirmed list
 			furnJumpsConfirmed_.push_back(smallJump_[(j+1)%smallJump_.size()]);
-			j++; // next jump will be the end of this piece of furniture so skip that
+	//		j++; // next jump will be the end of this piece of furniture so skip that // not necesarily...
 		}
 		else{
 			cout<<"jump "<<smallJump_[j]<<" not counted as furn due to curveHeight\n";
@@ -406,7 +416,7 @@ void Lidar::findJumps(bool findBig){
 	}*/
 }
 
-void Lidar::findLines(){
+void Lidar::findLines(bool pubSegmets){
 	lines_.resize(0);
 	line tmp;
 	vector<float> checkX, checkY;
@@ -419,6 +429,7 @@ void Lidar::findLines(){
 			continue; // skip because it's out of range 
 		}
 		else if(furnIdxs_.size()!=0 && std::find(furnIdxs_.begin(), furnIdxs_.end(), p) != furnIdxs_.end()){
+			//cout<<"pt "<<p<<" of "<<rad_.size()<<" was in furnIdxs_ \n";
 			continue; // skip because it's a piece of furniture
 		}
 		float err = tmp.findDist(xVal_[p], yVal_[p]); // perpendicular dist from pt to line
@@ -458,7 +469,7 @@ void Lidar::findLines(){
 	if(tmp.numPts() > MinPtsForLine) lines_.push_back(tmp); // add the last line being made
 
 	// Merging line models
-	nav_->makeLineMarks(lines_, false, true); // publish unmerged lines in rviz
+	if(pubSegmets) nav_->makeLineMarks(lines_, false, true); // publish unmerged lines in rviz
 	for(int lm=0; lm<lines_.size(); lm++){
 		int nextIdx = (lm+1)%lines_.size();
 		if(lines_[lm].canMerge(lines_[nextIdx])){
@@ -499,7 +510,7 @@ void Lidar::findLines(){
 			if(added){break;} // don't check against all other line models if it gets added to one
 		} // loop thru line models
 	} // loop thru checkpts
-	cout<<"num pts addedback = "<<addedback<<"\n";
+	//cout<<"num pts addedback = "<<addedback<<"\n";
 	
 }
 
