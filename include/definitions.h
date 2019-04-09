@@ -33,3 +33,7 @@
 #define PrevPointDistThresh 10 // stop lines from adding points that are far away (closing off doorways)
 #define MinPtsForLine 10
 #define MergeLineDistThresh 35
+
+// used for classifying as room 4 or 1
+#define DoorWidth 46 
+#define DoorWidthTol 8

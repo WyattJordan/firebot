@@ -86,7 +86,8 @@ class Lidar{
 		void room1Localization();
 		void room2Localization();
 		void room3Localization();
-		void room4Localization();
+		vector<int> outsideWalls_;
+		void room4Localization(bool down);
 
 		// Given a point in the lidar frame (l) and global frame(g) and the pose (t) localize the bot
 		void localizeFromPt(EndPoint l, EndPoint g, float t);

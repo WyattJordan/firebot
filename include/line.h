@@ -52,6 +52,7 @@ public:
 		float getCenterY();
 		float getCenterTheta();
 		float getCenterRadius();
+		float getClosestRadius();
 
         void mergeLines(line a);
         bool canMerge(line a);
@@ -72,7 +73,7 @@ private:
         float intercept;
         EndPoint end1;
         EndPoint end2;
-		EndPoint center;
+	EndPoint center;
         float lineDist;
         bool isLine;
         float length;

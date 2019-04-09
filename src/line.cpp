@@ -221,8 +221,16 @@ float line::getEndPtY1(){ return end1.getY(); }
 float line::getEndPtX2(){ return end2.getX(); }
 float line::getEndPtY2(){ return end2.getY(); }
 float line::getCenterTheta(){ return center.findAngle();}
-float line::getCenterRadius(){ return center.findAngle();}
+float line::getCenterRadius(){ return center.findRad();}
 float line::getCenterX(){ return center.getX(); }
 float line::getCenterY(){ return center.getY(); }
 
-
+float line::getClosestRadius(){
+	float min = 999999;
+	for(int i=0; i<x.size(); i++){
+		if(ptDist(x[i],y[i],0,0) < min){
+			min = ptDist(x[i],y[i],0,0);
+		}
+	}
+	return min;
+}

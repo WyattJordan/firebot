@@ -26,6 +26,7 @@ int main(int argc, char **argv)
 	Lidar lid;
 	lid.setNav(&nav);
 
+	sleep(2);
 	ros::Subscriber sub = n.subscribe<sensor_msgs::LaserScan>("/scan", 1000, &Lidar::scanCallback, &lid);
 
 	ros::spin();

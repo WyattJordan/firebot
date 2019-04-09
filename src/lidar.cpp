@@ -68,7 +68,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		if(abs(prevOdom_(2) - currentPos(2))*180/PI < 5) updatePosition = true;
 	}//*/
 
-	if(1){
+	if(0){
 		cout<<"\n";
 		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
 		findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
@@ -80,7 +80,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		cleanBigJumps();   // removes furniture jumps and any jumps counted twice 
 		//startRooms_.push_back(classifyRoomFromJumps()); // used to determine room for starting location, will run findLines
 	}
-	if(0 && startCount_++ < 10){ // classify the room multiple times before determining which room the 'bot is in 
+	if(1 && startCount_++ < 10){ // classify the room multiple times before determining which room the 'bot is in 
 		time_t start, finish;
 		time(&start);
 		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
@@ -99,9 +99,17 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	if(!localized_ && localRoom_ != -1){ 
 		cout<<"localizing to room "<<localRoom_<<"\n";
 		localized_ = checkLocalize();
+		cout<<"done initial localize sequence\n";
 	}
 	else if(localized_){
-		cout<<"done initial localize sequence\n";
+		nav_->makeLineMarks(lines_, true, true);
+		if(startCount_++ > 50){
+			startCount_ = 0;
+			localized_ = false;
+			localRoom_ = -1;
+			startRooms_.resize(0);
+			cout<<"\n\n\n\n\n";
+		}
 	}
 	
 	//findLines(); // Split-and-Merge line algo, see Auto. Mobile Robots 2nd ed by Siegwart, Nourbakhsh, Scaramuzza, pg 249
@@ -141,8 +149,20 @@ bool Lidar::checkLocalize(){ // checks some conditions for a good scan to initia
 		return true;
 	}
 	else if(localRoom_ == 4 && cJumps_.size()==2){ 
-		int outsideWalls = 0;
-		room4Localization();
+		int r4long = 0;  // determine which side the door is on from longer range measurements
+		for(float d : rad_) {if(d>160) r4long++;}
+		bool down = r4long > 5;
+		outsideWalls_.resize(0);
+		for(int i=0; i<lines_.size(); i++){
+			if(lines_[i].getClosestRadius() > 60) outsideWalls_.push_back(i);
+		}
+		if( outsideWalls_.size()>0 && (down && outsideWalls_.size()<3) || (!down && outsideWalls_.size() == 1) ){
+			room4Localization(down);
+		}
+		else{
+			cout<<"room 4 not localized_ based on outsideWalls num: "<<outsideWalls_.size()<<" with down = "<<down<<"\n";
+			return false;
+		}
 		return true;
 	}
 	cout<<"room "<<localRoom_<<" localization conditions not met...\n";
@@ -150,39 +170,13 @@ bool Lidar::checkLocalize(){ // checks some conditions for a good scan to initia
 	return false;
 }
 
-int Lidar::modeRoom(){
-	std::sort(startRooms_.begin(), startRooms_.end());
-
-	int number = startRooms_[0];
-	int mode = number;
-	int count = 1;
-	int countMode = 1;
-
-	for(int i=1; i<startRooms_.size(); i++) {
-	      	if(startRooms_[i] == number){ // count occurrences of the current number
-		       ++count;
-	      	}
-	    	else{ // now this is a different number
-		if (count > countMode){
-			countMode = count; // mode is the biggest ocurrences
-			mode = number;
-		}
-		count = 1; // reset count for the new number
-		number = startRooms_[i];
-		}
-	}
-	return mode;
-}
-
 void Lidar::room1Localization(){ }
 void Lidar::room2Localization(){ }
 void Lidar::room3Localization(){ }
 
-void Lidar::room4Localization(){
-	int r4long = 0;  // determine which side the door is on from longer range measurements
-	for(float d : rad_) {if(d>160) r4long++;}
+void Lidar::room4Localization(bool down){
 	EndPoint ep1, ep2;
-	if(r4long > 5){	// adjust map model based on door config and set global localization pt as entrance to door
+	if(down){	// adjust map model based on door config and set global localization pt as entrance to door
 		ep1 = nav_->getMapPoint(11);
 		ep2 = nav_->getMapPoint(19);
 		nav_->setSmallRoomUpper(false);
@@ -201,68 +195,39 @@ void Lidar::room4Localization(){
 	int nClosest = getCloserJumpPt(cJumps_[1]);
 	EndPoint lDoorPt((xVal_[closest] + xVal_[nClosest]) / 2.0, (yVal_[closest] + yVal_[nClosest]) / 2.0);
 
-	int wall1 = -1;
-	int wall2 = -1;
-	float angleToDoor = lDoorPt.findAngle();
-	// find two walls with closest polar angle to doorway opening
-	for(int w=0; w<2; w++){
-		int min = 0;
-		for(int i=0; i<lines_.size(); i++){
-			float diff = abs(lines_[i].getCenterTheta() - angleToDoor); // all in lidar frame
-			if(diff < min){
-				if(w==0){ // if finding the first wall
-					min = diff;
-					wall1 = i;
-				}
-				else if(i !=wall1){ // if finding the 2nd wall and this one isn't the first
-					min = diff;
-					wall2 = i;
-				}
-			}
+	int wall = -1;
+	if(outsideWalls_.size()!=1){ // in this case size = 2
+		int wall1 = outsideWalls_[0];
+		int wall2 = outsideWalls_[1];
+		float dist1 = lines_[wall1].getClosestRadius();
+		float dist2 = lines_[wall2].getClosestRadius();
+		if(std::max(dist1, dist2) > 80){ // it's picking up the far wall of room2
+			cout<<"picked wall based on eliminating far (over 80cm nearest)\n ";
+			wall = dist1 < dist2 ? wall1 : wall2;
+		}	
+		else{ // use the wall with more points in it, the other one is noise (hopefully)
+			cout<<"picked wall based on most points of outside walls\n";
+			wall = lines_[wall1].numPts() > lines_[wall2].numPts() ? wall1 : wall2;
 		}
 	}
-
-	// now eliminate wall with closest endpoint to doorway (should be smaller wall)
-	float xDoor = lDoorPt.getX();
-	float yDoor = lDoorPt.getY();
-	
-	float wall1Dist = std::min(pt2PtDist(xDoor,yDoor, lines_[wall1].getEndPtX1(),lines_[wall1].getEndPtY1())  , 
-				pt2PtDist(xDoor,yDoor, lines_[wall1].getEndPtX2(),lines_[wall1].getEndPtY2()));
-	float wall2Dist = std::min(pt2PtDist(xDoor,yDoor, lines_[wall2].getEndPtX1(),lines_[wall2].getEndPtY1())  , 
-				pt2PtDist(xDoor,yDoor, lines_[wall2].getEndPtX2(),lines_[wall2].getEndPtY2()));
-
-	int wall = wall1Dist > wall2Dist ? wall1 : wall2; // use the wall with further of closer endpoints to doorway
-
-	cout<<"using wall w/ idx: "<<wall<<" which is has center "<<lines_[wall].getCenterRadius()<<" cm away at angle "<<lines_[wall].getCenterTheta()<<"\n";
-	
+	else{
+		cout<<"picked wall based on it being the only one\n";
+		wall = outsideWalls_[0];
+	}
+	cout<<"using wall w/ idx: "<<wall<<" which has center "<<lines_[wall].getCenterRadius()<<" cm away at angle "<<lines_[wall].getCenterTheta()<<"\n";
 	//	localizeFromPt(lDoorPt, gDoorPt);
 }
 
 // to detect furniture look at dist between endpoint of first jump and start of second jump
 int Lidar::classifyRoomFromJumps(){
 	cout<<"finding room from jumps... ";
-
 	// Check room4 first, if there are two close big jumps (the doorway) it's room 4
-	float room4NearLimit = 70; 
-	cJumps_.resize(0);
-	for(int j : jump_){
-		if(getCloserJumpRadius(j) < room4NearLimit){
-			cJumps_.push_back(j);
-		}
-	}
-	cout<<"big jumps = "<<jump_.size()<<" closeJumpCount = "<<cJumps_.size()<<"\n";
-
-	if(cJumps_.size() == 2){
-		cout<<"classified as room4\n";
-		return 4;
-	}
-	else if(jump_.size() > 1){ // rooms 2 and 3 only have one jump but room 1 has at least 2
-		cout<<"classified as room1\n";
-		return 1;
-	}
-	else{
 		
-		float max = 0; // determine if it's room2 or room3 based on size of max jump
+	if(jump_.size()==0){
+		cout<<"no big jumps found!!!\n";
+	}
+	else if(jump_.size()==1){// either room2 or room3, pick which based on size of max jump
+		float max = 0; 
 		for(int j : jump_){
 			if(getFurtherJumpRadius(j) > max )
 				max = getFurtherJumpRadius(j);
@@ -275,6 +240,20 @@ int Lidar::classifyRoomFromJumps(){
 		else{
 			cout<<"classified as room 3\n";
 			return 3;
+		}
+	}
+	else{ // pick either room 1 or 4 based on if the two closest big jumps are seperated by a DoorWidth
+		// sort the jumps by closest
+		std::sort(jump_.begin(),jump_.end(),[this](int a, int b) -> bool {return getCloserJumpRadius(a)< getCloserJumpRadius(b);});
+		float dist = pt2PtDist(xVal_[getCloserJumpPt(jump_[0])],yVal_[getCloserJumpPt(jump_[0])],
+					xVal_[getCloserJumpPt(jump_[1])],yVal_[getCloserJumpPt(jump_[1])]);
+		if(abs(dist - DoorWidth) < DoorWidthTol){
+			cout<<"classified as room4\n";
+			return 4;
+		}
+		else{
+			cout<<"classified as room1\n";
+			return 1;
 		}
 	}
 }
@@ -619,3 +598,28 @@ float Lidar::getCloserJumpRadius(int i){  return rad_[getCloserJumpPt(i)]; }
 float Lidar::getFurtherJumpRadius(int i){ return rad_[getFurtherJumpPt(i)]; }
 bool Lidar::jumpAway(int i){ return rad_[i] < rad_[getEndIdx(i)]; }
 void Lidar::setNav(Nav *nav){ nav_ = nav; }
+
+int Lidar::modeRoom(){
+	std::sort(startRooms_.begin(), startRooms_.end());
+
+	int number = startRooms_[0];
+	int mode = number;
+	int count = 1;
+	int countMode = 1;
+
+	for(int i=1; i<startRooms_.size(); i++) {
+	      	if(startRooms_[i] == number){ // count occurrences of the current number
+		       ++count;
+	      	}
+	    	else{ // now this is a different number
+		if (count > countMode){
+			countMode = count; // mode is the biggest ocurrences
+			mode = number;
+		}
+		count = 1; // reset count for the new number
+		number = startRooms_[i];
+		}
+	}
+	return mode;
+}
+
