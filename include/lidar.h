@@ -54,7 +54,7 @@ class Lidar{
 		Nav* nav_;
 		Robot* rob_;
 		int startCount_, localRoom_;
-	        vector<int> startRooms_;
+	        vector<int> startRooms_, outliers_;
 		bool localized_;
 
 		// Point data is stored in 4 vectors with cartesian and polar coordinates
@@ -81,7 +81,7 @@ class Lidar{
 		int getEndIdx(int s);
 
 		int modeRoom();
-		bool localize();
+		bool checkLocalize();
 		// Knowing in room 4 determine location
 		void room1Localization();
 		void room2Localization();

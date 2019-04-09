@@ -7,6 +7,9 @@
 #include <vector>
 #include <utility>
 #include <algorithm>
+// for rand
+#include <stdlib.h>
+#include <time.h>
 
 using namespace std;
 
@@ -60,7 +63,7 @@ public:
         float getLength();
         bool isCandle();
         bool isFurniture();
-		float radDist(int i);
+	float radDist(int i);
 
 private:
         vector <float> x;

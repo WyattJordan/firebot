@@ -142,6 +142,8 @@ bool Lidar::checkLocalize(){ // checks some conditions for a good scan to initia
 	}
 	else if(localRoom_ == 4 && cJumps_.size()==2){ 
 		int outsideWalls = 0;
+		//for(
+		
 		room4Localization();
 		return true;
 	}
@@ -204,18 +206,18 @@ void Lidar::room4Localization(){
 	int wall1 = -1;
 	int wall2 = -1;
 	float angleToDoor = lDoorPt.findAngle();
-	// find two walls with closest polar angle to doorway opening
+	// find two walls with furthest polar angle to doorway opening
 	for(int w=0; w<2; w++){
-		int min = 0;
+		int max = 0;
 		for(int i=0; i<lines_.size(); i++){
 			float diff = abs(lines_[i].getCenterTheta() - angleToDoor); // all in lidar frame
-			if(diff < min){
+			if(diff > max){
 				if(w==0){ // if finding the first wall
-					min = diff;
+					max = diff;
 					wall1 = i;
 				}
 				else if(i !=wall1){ // if finding the 2nd wall and this one isn't the first
-					min = diff;
+					max = diff;
 					wall2 = i;
 				}
 			}

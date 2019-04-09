@@ -160,10 +160,20 @@ bool line::canMerge(line a){
 	float angle1 = atan(a.getSlope())*180.0/PI;
 	float angle2 = atan(getSlope())*180.0/PI;
 	float angleDiff = abs(angle1 - angle2);
-	bool sameAngle = (angleDiff < 5 || angleDiff > 175);
+	bool sameAngle = (angleDiff < 10 || angleDiff > 170); // if within 10 deg of each other
 
-	if(sameAngle && myDist < MergeLineDistThresh){
-		if(abs(slopProd + 1) > 1){ 
+	if(sameAngle && myDist < MergeLineDistThresh){ // MergeLineDistThresh is usually 35cm
+		srand(time(NULL));
+		bool merge = true;
+		for(int i=0; i<3; i++){ // check that 3 randomly selected points in the line fit on this line
+			int pt = rand() % a.numPts();
+			float err = findDist(a.getXPoint(pt),a.getYPoint(pt) ); // perpendicular dist from pt to line
+			if( err > PerpThresh ){
+				merge = false;
+				break;
+			}
+		}
+		if(merge){ 
 			//cout<<"merging m1 = "<<a.getSlope()<<" m2 = "<<getSlope()<<" slopProd = "<<slopProd<<" angle1 = "<<
 			//angle1<<" angle2 = "<<angle2<<" angleDiff = "<<angleDiff<<"\n";
 			return true;
