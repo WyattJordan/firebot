@@ -38,9 +38,11 @@ int main(int argc, char **argv){
 
 
 	// Spin off threads
-	std::thread mainLogic, driveLoop, publishNavLoop, protoThread;
-	// loop for publishing marker arrays
+	std::thread mainLogic, driveLoop, publishNavLoop, pubTrans, protoThread;
+	// loop for publishing markers in rviz and to transform them appropriately, only for visualization
 	publishNavLoop = std::thread(boost::bind(&Nav::publishLoop, &nav));	
+	pubTrans = std::thread(boost::bind(&Robot::pubTransformContinual, &rob, 10)); // at 10 Hz
+
 	// loop for controlling motors w/ PID and odometry math
 	driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
 

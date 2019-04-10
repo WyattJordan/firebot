@@ -9,8 +9,9 @@
 #include "pid.h"
 #include "Endpoint.h"
 #include "definitions.h"
-#include <dynamic_reconfigure/server.h>
+#include <dynamic_reconfigure/server.h> // dynamic recon was breaking things
 #include <firebot/ReconConfig.h>
+#include <tf/transform_broadcaster.h>
 
 #include <thread>
 #include <string>
@@ -65,11 +66,9 @@ class Robot{
 		void driveLoop();
 		void recon(firebot::ReconConfig &config, uint32_t level);
 		void lidarCallback(); // runs everytime a new lidar scan comes in
+		void pubTransformContinual(int rate); // rate in HZ
 		void pinThread();
 		void openSerial();
-		void setSerialMotors();
-		bool getSerialEncoders();
-		void setSerialArms();
 		void setNav(Nav* nv);
 		Vector3f getOdomWorldLoc();
 
@@ -94,27 +93,41 @@ class Robot{
 		int wayUpdateRate_, mapUpdateRate_, robUpdateRate_;
 		int delay_;
 		deque<EndPoint> navStack;
-		bool startNavStack_, firstNav_, facingFirst_, reversed_, positionUpdated_, pt2pt_;
+		bool startNavStack_, firstNav_, facingFirst_, reversed_, pt2pt_;
+		
+		// For updating the position from the Nav class
+		bool updateDriving_, updateSavedPos_; 
+		float travelDist_;
+		void updatePosition();
+		float getTravelDist();
+		tf::Transform getTransform();
+		tf::TransformBroadcaster br_;
+		tf::Transform tfTrans_;
+
 
 		// odometry vars;
 		Matrix3f rob2world_;	// rotation matrix calculated given pose
 		Vector3f robotstep_, worldstep_, odomWorldLoc_; // distance changes in robot + world frames
 		void calculateTransform(float theta);
-
 		void calculateOdom();
+
+		void setSerialMotors();
+		bool getSerialEncoders();
+		void setSerialArms();
 		void setRamp(float s, float t);
 		void rampUpSpeed();
-		void executeNavStack();
-		float getPoseToPoint(EndPoint pt, EndPoint* pt2 = NULL);
 		void speed2power(float adj);
 		void power2pwm();
 
 		void periodicOutput();
 		void outputTime(clk::time_point t1, clk::time_point t2);
 
+		void executeNavStack();
+		float getPoseToPoint(EndPoint pt, EndPoint* pt2 = NULL);
 		float distToNextPoint();
-		float toRad(float deg);
+
 		void testDistToStop();
 		void moveInSquare();
 		void msleep(int t);
+		float toRad(float deg);
 };

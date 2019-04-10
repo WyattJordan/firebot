@@ -29,6 +29,25 @@ void Nav::setOdomLoc(Vector3f od){
 	odomWorldLocCpy_ = od;
 }
 
+void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, tf::Transform trans){
+	// GIVEN - there is at least one line with R^2 > 0.85
+	
+	// sort by RSquared to use for pose calculations
+
+	// pick all lines above 0.85? and find matching pose estimate
+	
+	// weight all these to get final pose estimate
+	
+	// weight against travel distance (dirty kalman)
+	
+	// got final pose update
+	
+
+
+	// TODO make updates for locations
+
+
+}
 // Robot.cpp drive loop sets the bool flags at set rates
 void Nav::publishLoop(){
 	while(1){
