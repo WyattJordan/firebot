@@ -68,7 +68,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		if(abs(prevOdom_(2) - currentPos(2))*180/PI < 5) updatePosition = true;
 	}//*/
 
-	if(1){
+	if(startCount_++%7==0){
 		cout<<"\n";
 		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
 		findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
@@ -521,7 +521,10 @@ void Lidar::findLines(bool pubSegmets){
 	for(int lm=0; lm<lines_.size(); lm++){
 		cout<<lines_[lm].getRSquared()<<", ";
 
-		if(lines_[lm].getRSquared() < 0.3){
+		if(lines_[lm].getRSquared() < 0.1){ // TODO pick a value for linear regression thresh
+			lines_.erase(lines_.begin() + lm);
+			lm--;
+
 
 		}
 

@@ -24,7 +24,7 @@ line::line(){
 float line::getRSquared(){
 	float yAvg = 0;
 	for( float ypt : y){
-		yAvg += y;
+		yAvg += ypt;
 	}
 	yAvg /= (float) y.size();
 	float SSR = 0; // regression sum of squares
@@ -32,7 +32,7 @@ float line::getRSquared(){
 
 	for(int i=0; i<y.size(); i++){
 		float yPred = slope*x[i] + intercept;
-		SSR  += pow(y[i] - yPred, 2);
+		SSR  += pow(yPred - yAvg, 2);
 		SSTO += pow(y[i] - yAvg,  2);
 	}
 	return SSR/SSTO;
