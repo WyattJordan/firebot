@@ -7,7 +7,7 @@ void Lidar::defaults(){
 	prevOdom_ << -100, -100, 0;
 	startCount_ = 0;
 	localRoom_ = -1;
-	localized_ = false;
+	started_ = false;
 	startRooms_.resize(0);
 }
 
@@ -96,16 +96,16 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 			cout<<"found mode to be "<<localRoom_<<"\n";
 		}
 	}
-	if(!localized_ && localRoom_ != -1){ 
+	if(!started_ && localRoom_ != -1){ 
 		cout<<"localizing to room "<<localRoom_<<"\n";
-		localized_ = checkLocalize();
+		started_ = checkLocalize();
 		cout<<"done initial localize sequence\n";
 	}
-	else if(localized_){
+	else if(started_){
 		nav_->makeLineMarks(lines_, true, true);
 		if(startCount_++ > 50){
 			startCount_ = 0;
-			localized_ = false;
+			started_ = false;
 			localRoom_ = -1;
 			startRooms_.resize(0);
 			cout<<"\n\n\n\n\n";
@@ -160,7 +160,7 @@ bool Lidar::checkLocalize(){ // checks some conditions for a good scan to initia
 			room4Localization(down);
 		}
 		else{
-			cout<<"room 4 not localized_ based on outsideWalls num: "<<outsideWalls_.size()<<" with down = "<<down<<"\n";
+			cout<<"room 4 not started_ based on outsideWalls num: "<<outsideWalls_.size()<<" with down = "<<down<<"\n";
 			return false;
 		}
 		return true;
@@ -515,6 +515,16 @@ void Lidar::findLines(bool pubSegmets){
 				lines_.erase(lines_.begin() + nextIdx);
 				lm--;
 		}
+	}
+	// Deleting any bad lines that managed to stay in there
+	cout<<"lines R^2 vals are: ";
+	for(int lm=0; lm<lines_.size(); lm++){
+		cout<<lines_[lm].getRSquared()<<", ";
+
+		if(lines_[lm].getRSquared() < 0.3){
+
+		}
+
 	}
 	/*cout<<"num after merging lines: "<<lines_.size()<<" with sizes: ";
 	for(int i=0; i<lines_.size(); i++){

@@ -20,6 +20,24 @@ line::line(){
         furniture = false;
 }
 
+//  see: https://newonlinecourses.science.psu.edu/stat501/node/255/
+float line::getRSquared(){
+	float yAvg = 0;
+	for( float ypt : y){
+		yAvg += y;
+	}
+	yAvg /= (float) y.size();
+	float SSR = 0; // regression sum of squares
+	float SSTO = 0; // total sum of squares
+
+	for(int i=0; i<y.size(); i++){
+		float yPred = slope*x[i] + intercept;
+		SSR  += pow(y[i] - yPred, 2);
+		SSTO += pow(y[i] - yAvg,  2);
+	}
+	return SSR/SSTO;
+}
+
 void line::buildLine() {
         float xAvg = 0;
        	float yAvg = 0;

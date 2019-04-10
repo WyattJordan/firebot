@@ -53,6 +53,7 @@ public:
 		float getCenterTheta();
 		float getCenterRadius();
 		float getClosestRadius();
+		float getRSquared();
 
         void mergeLines(line a);
         bool canMerge(line a);

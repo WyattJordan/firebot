@@ -55,7 +55,7 @@ class Lidar{
 		Robot* rob_;
 		int startCount_, localRoom_;
 	        vector<int> startRooms_, outliers_;
-		bool localized_;
+		bool started_;
 
 		// Point data is stored in 4 vectors with cartesian and polar coordinates
 		vector<float> xVal_;
