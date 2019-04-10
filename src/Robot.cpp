@@ -27,17 +27,31 @@ void Robot::mainLogic(){
 	navStack.push_back(nav_->getWayPoint(2));
 	navStack.push_back(nav_->getWayPoint(3));
 	navStack.push_back(nav_->getWayPoint(4));
+	/*navStack.push_back(nav_->getWayPoint(19));
+	navStack.push_back(nav_->getWayPoint(16));
+	navStack.push_back(nav_->getWayPoint(15));
+	navStack.push_back(nav_->getWayPoint(13));
+	navStack.push_back(nav_->getWayPoint(5));*/
+	// loop back to 4 code around middle wall
 	navStack.push_back(nav_->getWayPoint(18));
 	navStack.push_back(nav_->getWayPoint(5));
 	navStack.push_back(nav_->getWayPoint(13));
-	navStack.push_back(nav_->getWayPoint(15));//*/
-	navStack.push_back(nav_->getWayPoint(16));//*/
-	navStack.push_back(nav_->getWayPoint(19));//*/
+	navStack.push_back(nav_->getWayPoint(12));
+/*	navStack.push_back(nav_->getWayPoint(15));///
+	navStack.push_back(nav_->getWayPoint(16));///
+	navStack.push_back(nav_->getWayPoint(19));///
 	navStack.push_back(nav_->getWayPoint(4));//*/
-	navStack.push_back(nav_->getWayPoint(18));
+/*	navStack.push_back(nav_->getWayPoint(18));
+	navStack.push_back(nav_->getWayPoint(9));
+	navStack.push_back(nav_->getWayPoint(10));
+	navStack.push_back(nav_->getWayPoint(14));
+	navStack.push_back(nav_->getWayPoint(15));
+	navStack.push_back(nav_->getWayPoint(13));
+	navStack.push_back(nav_->getWayPoint(5));//*/
+/*	navStack.push_back(nav_->getWayPoint(18));
 	navStack.push_back(nav_->getWayPoint(6));
 	navStack.push_back(nav_->getWayPoint(7));
-	navStack.push_back(nav_->getWayPoint(8));
+	navStack.push_back(nav_->getWayPoint(8));//*/
 	pt2pt_ = true;
 	executeNavStack();
 }
@@ -74,6 +88,7 @@ Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constru
 	eStop_ = reversed_ = positionUpdated_ = pt2pt_ = false;
 	firstNav_ = facingFirst_ = true;
 	ramp_ = firstRamp_ = false;
+	robUpdateRate_ = mapUpdateRate_ = wayUpdateRate_ = 1;
 
 	debugDrive_ = runPID_ = false;
 	lDrive_ = rDrive_ = 0;
@@ -122,11 +137,11 @@ void Robot::outputTime(clk::time_point t1, clk::time_point t2){
 // stopping distance from 0.5 speed in 1s is 22.5cm
 // acceleration distance from 0 to 0.5 in 0.5s is 6.44cm
 // therefore if the point being navigated to is less than 12.5 + 6.44 use 0.2 speed
+// OPERATION: pt2pt mode runs at 0.2 speed and stops at every waypoint in navStack
+// default mode faces first point then runs at 0.5 speed with rounding of corners
 void Robot::executeNavStack(){
 	// TODO - update pose to next point when LIDAR updates position
 
-	// pt2pt runs at 0.2 speed and stops at every waypoint in navStack
-	// otherwise faces first point then runs at 0.5 speed with rounding
 	while(navStack.size()>0){
 		float dist = distToNextPoint();
 		if(firstNav_){ // if starting to navigate!
@@ -146,7 +161,7 @@ void Robot::executeNavStack(){
 			facingFirst_ = true; // wait for first turn
 		}
 		else if(facingFirst_){ // turning to face first point
-			float error = abs(odomWorldLoc_(2)*180.0/PI - setPose_);
+			float error = ab(odomWorldLoc_(2)*180.0/PI - setPose_);
 			//ramp_ = false; // ramp is running for some reason here....
 			//cout<<"error is: "<<error<<" at speed "<<speed_<<"\n";
 			if(error < SamePoseThreshDeg || ab(adj_) < 0.1){ // PID has finished turning, no more adj needed
@@ -154,7 +169,7 @@ void Robot::executeNavStack(){
 				facingFirst_ = false;
 				float s = dist < MinDistFor50 || pt2pt_ ? 0.2 : 0.5; // if it's very close use 20%
 				//cout<<"ramping speed up to "<<s<<"\n";
-				setRamp(s, 0.5); // start driving to next point
+				setRamp(s, 0.5); // start driving to next point, take half second to accelerate
 			}
 		}
 
@@ -170,7 +185,7 @@ void Robot::executeNavStack(){
 		}
 		else if(navStack.size()>1){ // fluid 90deg turns assumes running at 0.5 speed (!pt2pt_)
 			float poseToNextPoint = getPoseToPoint(navStack.front());  // basically the current pose
-			float poseAfterTurn = getPoseToPoint(navStack.front(), &navStack.at(1));
+			float poseAfterTurn = getPoseToPoint(navStack.front(), &navStack.at(1)); // find pose between next two pts
 			float turnDiff = poseAfterTurn - poseToNextPoint; // amount it will need to turn
 			if(turnDiff < -180) turnDiff += 360;
 			if(turnDiff > 180) turnDiff += 360;
@@ -182,7 +197,7 @@ void Robot::executeNavStack(){
 				cout<<"setPose = "<<setPose_<<" and poseToNextPoint = "<<poseToNextPoint<<" and turnDiff = "<<turnDiff<<"\n";
 				navStack.pop_front();
 				// if approaching waypoint at an angle and arriving close to it turnDiff could be low but pose needs to change
-				setPose_ = poseToNextPoint; 
+				setPose_ = getPoseToPoint(navStack.front());
 			}
 			else if(positionUpdated_){
 				// TODO - recalculate Pose to be used based on new position and wayPoint
@@ -263,7 +278,7 @@ float Robot::getPoseToPoint(EndPoint pt, EndPoint* pt2){
 // 	8. Wait time remaining such that this loop took 20ms (or ms_ ms)
 void Robot::driveLoop(){
 	cout<<"talking to arduino... \n";
-	delay_ = 20; // also the default in Recon.cfg
+	delay_ = 20; // also the default in Recon.cfg, this is the us delay for waiting for enc values after pinging arduino
 	getSerialEncoders(); // just make sure arduino is connected
 	cout<<"got encoders\n";
 
@@ -271,7 +286,6 @@ void Robot::driveLoop(){
 	nav_->pubMap_ = true;
 	nav_->pubRob_ = true;
 	usleep(5*ms_); // sleep 5 loops before starting
-	robUpdateRate_ = mapUpdateRate_ = wayUpdateRate_ = 1;
 
 	cout<<"starting driveLoop\n";
 	while(1){

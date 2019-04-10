@@ -1,5 +1,5 @@
 /* Launcher.cpp
- * Creates the main Robot object which handles pretty much everything.
+  Creates the main Robot object which handles pretty much everything.
  * Sets up all the publisher and subscriber methods for that Robot object.
  * May be responsible for launching some threads in the future.
  * Note: Robot obj may need to be warned when member data is being written
@@ -52,26 +52,28 @@ int main(int argc, char **argv){
 	std::thread mainLogic, driveLoop, publishNavLoop, protoThread;
 	// loop for publishing marker arrays
 	publishNavLoop = std::thread(boost::bind(&Nav::publishLoop, &nav));	
+	//publishNavLoop = std::thread(boost::bind(&Nav::publishLoopContinual, &nav));	
 	// loop for controlling motors w/ PID and odometry math
-	//driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
+	driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
 
 	// loop for talking to odroid board
-	protoThread = std::thread(boost::bind(&Robot::pinThread, &rob));	
+	//protoThread = std::thread(boost::bind(&Robot::pinThread, &rob));	
 		
-	while(1){
+/*	while(1){
 		nav.pubMap_ = true;
 		nav.pubWays_ = true;
 		sleep(1);
 	}
+	*/
 
 	// Countdown with delay before starting mainLogic loop
-/*	for(int i=0; i<3; i++){
+	for(int i=0; i<3; i++){
 		cout<<"start in "<<3-i<<"...\n";
 		usleep(1000*500); // half second
 		//sleep(1);
 	}
 	cout<<"\nGO!\n";
-	mainLogic = std::thread(boost::bind(&Robot::mainLogic, &rob));*/
+	mainLogic = std::thread(boost::bind(&Robot::mainLogic, &rob));//*/
 
 	ros::spin();
 	return 0;

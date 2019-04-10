@@ -184,13 +184,13 @@ include_directories(
 #add_definitions(${GCC_COVERAGE_COMPILE_FLAGS})
 
 
-#[[
+
 add_executable(launcher src/launcher.cpp src/Robot.cpp src/Endpoint.cpp src/Nav.cpp src/pid.cpp src/line.cpp)
 #target_compile_options(launcher PRIVATE -lwiringPi -lcrypt -lm -lrt)
 add_dependencies(launcher ${PROJECT_NAME}_gencfg)
 target_link_libraries(launcher ${catkin_LIBRARIES})
 target_link_libraries(launcher wiringPi)
-]]
+
 
 #[[ this takes a while to build so just don't build it for now
 add_executable(everything src/everything.cpp src/Robot.cpp src/pid.cpp src/Nav.cpp src/Endpoint.cpp src/lidar.cpp src/Endpoint.cpp src/line.cpp)
