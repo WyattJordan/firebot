@@ -69,7 +69,7 @@ class Robot{
 		void openSerial();
 		void setNav(Nav* nv);
 		Vector3f getOdomWorldLoc();
-		float getTravelDist();
+		Ref<Vector3f> getTravelDist();
 		tf::Transform getTransform();
 		void setExperimental(Vector3f pose);
 
@@ -98,7 +98,7 @@ class Robot{
 		
 		// For updating the position from the Nav class
 		bool updateDriving_, updateSavedPos_; 
-		float travelDist_;
+		Vector3f travelDist_;
 		void updatePosition();
 		tf::TransformBroadcaster br_;
 		tf::Transform tfTrans_;
@@ -121,6 +121,7 @@ class Robot{
 		void periodicOutput();
 		void outputTime(clk::time_point t1, clk::time_point t2);
 
+		bool buildNavStack(vector<int> ids,bool append=false);
 		void executeNavStack();
 		float getPoseToPoint(EndPoint pt, EndPoint* pt2 = NULL);
 		float distToNextPoint();

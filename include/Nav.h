@@ -47,7 +47,7 @@ class Nav{
 		void setSmallRoomUpper(bool up); // reconfigure the rooms
 		void setBigRoomUpper(bool up);   // "
 
-		void updatePositionAndMap(vector<line> lns, Vector3f pos, tf::Transform trans, float travelDist);
+		void updatePositionAndMap(vector<line> lns, Vector3f pos, tf::Transform trans, Ref<Vector3f> travelDist);
 		void publishLoop(); // calculate marks and publish as flags are set
 		void publishLoopContinual(); // calculate marks and publish every 2 seconds
 		void outputWays();  

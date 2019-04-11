@@ -52,14 +52,14 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	bool linearMove = false;
 	bool updatePosition = false;
 	tf::Transform oldTrans; // save values immediately if going to be used (computing all this will take time
-	float travelDist;
+	Vector3f travelDist = rob_->getTravelDist();
 	
 	Vector3f currentPos = rob_->getOdomWorldLoc(); // this is an undefined ref for some reason...
 	if(tickCount_++%LidarUpdateRate==0  && ! (prevOdom_(0) == -100 && prevOdom_(1) == -100)){ // if not the first run (default odom loc) 
 		// if the angle has changed less than 5deg between the two positions
-		if(abs(prevOdom_(2) - currentPos(2))*180/PI < 5.0) linearMove = true;
+		if(abs(prevOdom_(2) - currentPos(2))*180/PI < 2.0) linearMove = true;
 		if(linearMove) oldTrans = rob_->getTransform(); // save current copy
-		if(linearMove) travelDist = rob_->getTravelDist();
+		//if(linearMove) travelDist = rob_->getTravelDistRef();
 	}//*/
 
 	/*if(keypress_){

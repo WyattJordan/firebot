@@ -24,57 +24,13 @@ void Robot::mainLogic(){
 	cout<<"error is: "<<setPose_ - odomWorldLoc_(2)*180.0/PI<<"\n";
 */
 	//EndPoint go1(80+WheelDist, 89.5, -1, tmp); // to go from line crosses on stem basement
-	navStack.push_back(nav_->getWayPoint(2));
-	navStack.push_back(nav_->getWayPoint(3));
-	navStack.push_back(nav_->getWayPoint(4));
-	/*navStack.push_back(nav_->getWayPoint(19));
-	navStack.push_back(nav_->getWayPoint(16));
-	navStack.push_back(nav_->getWayPoint(15));
-	navStack.push_back(nav_->getWayPoint(13));
-	navStack.push_back(nav_->getWayPoint(5));*/
-	// loop back to 4 code around middle wall
-	navStack.push_back(nav_->getWayPoint(18));
-	navStack.push_back(nav_->getWayPoint(5));
-	navStack.push_back(nav_->getWayPoint(13));
-	navStack.push_back(nav_->getWayPoint(15));///
-	navStack.push_back(nav_->getWayPoint(16));///
-	navStack.push_back(nav_->getWayPoint(19));///
-	navStack.push_back(nav_->getWayPoint(4));//*/
+	vector<int> toCenterFromStart{2,3,4,18};
+	vector<int> fromCenterToR3{6,7,8};
+	vector<int> fromCenterAroundR4BackToCenter{9,10,14,15,13,5,18};
+	vector<int> fromCenterAroundR1BackToCenter{5,13,15,16,19,4,18};
 
-	navStack.push_back(nav_->getWayPoint(18));
-	navStack.push_back(nav_->getWayPoint(5));
-	navStack.push_back(nav_->getWayPoint(13));
-	navStack.push_back(nav_->getWayPoint(15));///
-	navStack.push_back(nav_->getWayPoint(16));///
-	navStack.push_back(nav_->getWayPoint(19));///
-	navStack.push_back(nav_->getWayPoint(4));
-
-	navStack.push_back(nav_->getWayPoint(18));
-	navStack.push_back(nav_->getWayPoint(5));
-	navStack.push_back(nav_->getWayPoint(13));
-	navStack.push_back(nav_->getWayPoint(15));///
-	navStack.push_back(nav_->getWayPoint(16));///
-	navStack.push_back(nav_->getWayPoint(19));///
-	navStack.push_back(nav_->getWayPoint(4));
-
-	navStack.push_back(nav_->getWayPoint(18));
-	navStack.push_back(nav_->getWayPoint(5));
-	navStack.push_back(nav_->getWayPoint(13));
-	navStack.push_back(nav_->getWayPoint(15));///
-	navStack.push_back(nav_->getWayPoint(16));///
-	navStack.push_back(nav_->getWayPoint(19));///
-	navStack.push_back(nav_->getWayPoint(4));
-/*	navStack.push_back(nav_->getWayPoint(18));
-	navStack.push_back(nav_->getWayPoint(9));
-	navStack.push_back(nav_->getWayPoint(10));
-	navStack.push_back(nav_->getWayPoint(14));
-	navStack.push_back(nav_->getWayPoint(15));
-	navStack.push_back(nav_->getWayPoint(13));
-	navStack.push_back(nav_->getWayPoint(5));//*/
-	navStack.push_back(nav_->getWayPoint(18));
-	/*navStack.push_back(nav_->getWayPoint(6));
-	navStack.push_back(nav_->getWayPoint(7));
-	navStack.push_back(nav_->getWayPoint(8));//*/
+	buildNavStack(toCenterFromStart);
+	for(int i=0; i<3; i++) buildNavStack(fromCenterAroundR1BackToCenter, true);
 	pt2pt_ = true;
 	executeNavStack();
 }
@@ -110,7 +66,7 @@ Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constru
 	runSpeed_ = 0.5; // set speed to run at for this competition
 	eStop_ = reversed_ = pt2pt_ = false;
 	updateSavedPos_ = updateDriving_ = false;
-	travelDist_ = 0;
+	travelDist_ << 0,0,0;
 	firstNav_ = facingFirst_ = true;
 	ramp_ = firstRamp_ = false;
 	robUpdateRate_ = mapUpdateRate_ = wayUpdateRate_ = 1;
@@ -158,13 +114,26 @@ void Robot::outputTime(clk::time_point t1, clk::time_point t2){
 	stc::duration_cast <stc::microseconds>(t2-t1).count()<< "us\n";
 }
 
+bool Robot::buildNavStack(vector<int> ids, bool append){
+	if(!append) navStack.resize(0);
+	for(int id : ids){
+		EndPoint ep = nav_->getWayPoint(id);
+		if(ep.getX() == -1 && ep.getY() == -1) {
+			navStack.resize(0);
+			return false;
+		}
+		navStack.push_back(nav_->getWayPoint(id));
+	}
+	return true;
+}
+
 // stopping distance from 0.5 speed in 0.5s is 12.5cm
 // stopping distance from 0.5 speed in 1s is 22.5cm
 // acceleration distance from 0 to 0.5 in 0.5s is 6.44cm
 // therefore if the point being navigated to is less than 12.5 + 6.44 use 0.2 speed
 // OPERATION: pt2pt mode runs at 0.2 speed and stops at every waypoint in navStack
 // default mode faces first point then runs at 0.5 speed with rounding of corners
-void Robot::executeNavStack(){
+void Robot::executeNavStack(){ // runs in parallel to driveLoop, called from mainLogic
 	// TODO - update pose to next point when LIDAR updates position
 
 	while(navStack.size()>0){
@@ -290,8 +259,8 @@ float Robot::getPoseToPoint(EndPoint pt, EndPoint* pt2){
 // This is the main thread that runs and controls the 'bot the mainLogic
 // loop simply adjusts variables that this thread is referencing.
 // Flow:
-// 	1. Get Encoder counts via arduino
-// 	2. Determine new world location from counts
+// 	1. Get Encoder counts via arduino 
+// 	2. Determine new world location from counts or if a LIDAR update occurred
 // 	3. Check if the speed is being ramped and if so increment speed_
 // 	4. Check if a navStack is running and if so set pose accordingly
 // 	5. Run the PID and and calculate lDrive and rDrive
@@ -318,7 +287,6 @@ void Robot::driveLoop(){
 		auto t2 = stc::steady_clock::now(); // measure length of time remaining
 		calculateOdom(); 
 		rampUpSpeed();
-		//executeNavStack();
 		
 		if(runPID_){ // this should almost always be the one running
 			if(debugDrive_) cout<<"in pid, odomWorldLoc_ = "<<odomWorldLoc_(0)
@@ -443,10 +411,10 @@ void Robot::calculateOdom(){
 		calculateTransform(theta);	      // find transform using half the step	
 		worldstep_ = rob2world_*robotstep_; 
 		odomWorldLoc_ += worldstep_;
-		travelDist_ += x; // y is always 0 (can't move sideways with differential drive
+		Vector3f v(x,x,x);
+		travelDist_ += v; // keeps track of dist traveled between updates in x,y,theta (Nav resets w/ pass by ref)
 	}
 	else{ // set variables for updating the position
-		travelDist_ = 1; // resets when updated, but don't let it be 0
 
 		if(navStack.size()>0)  updateDriving_ = true; // adjust heading if driving 
 	}
@@ -461,7 +429,7 @@ void Robot::pubTransformContinual(int rate){
 		//tfTrans_.setOrigin(tf::Vector3(experimental_(0), experimental_(1), 0)); // x,y,0 cm shift, could be problematic...
 		tfTrans_.setOrigin(tf::Vector3(odomWorldLoc_(0), odomWorldLoc_(1), 0)); // x,y,0 cm shift, could be problematic...
 		tf::Quaternion q;
-		//q.setRPY(0,0,experimental_(2)); // radian shift
+		q.setRPY(0,0,experimental_(2)); // radian shift
 		q.setRPY(0,0,odomWorldLoc_(2)); // radian shift
 		tfTrans_.setRotation(q);
 		br_.sendTransform(tf::StampedTransform(tfTrans_, ros::Time::now(), GLOBALFRAME, ROBOTFRAME));
@@ -629,7 +597,7 @@ void Robot::setSerialArms(){
 ////////////////// SIMPLE FUNCTIONS ////////////////////////////////
 void Robot::setNav(Nav* nv){ nav_ = nv; }
 Vector3f Robot::getOdomWorldLoc(){return odomWorldLoc_;};
-float Robot::getTravelDist(){ return travelDist_;}
+Ref<Vector3f> Robot::getTravelDist(){ return travelDist_;}
 tf::Transform Robot::getTransform(){ return tfTrans_;}
 
 void Robot::setExperimental(Vector3f pose){experimental_ = pose;}

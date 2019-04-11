@@ -41,15 +41,17 @@ void Nav::setOdomLoc(Vector3f od){
 	odomWorldLocCpy_ = od;
 }
 
-void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, tf::Transform trans, float travelDist){
+void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, tf::Transform trans, Ref<Vector3f> travelDist){
 	// GIVEN - there is at least one line with R^2 > 0.85, R^2 values have been made
 	
 	// sort by RSquared to use for pose calculations
 	std::sort(lns.begin(),lns.end(),[](line a, line b) -> bool {return a.getRSquared() > b.getRSquared();});
 
 	vector<float> poses, R;
+	vector<int> lineIdxs; // indexes of lines sorted by R squared and useable (within LineAngleThresh) if idx<0 it's a vertical line
 	
-	for(line l : lns){ // this is confusing stuff
+	for(int i=0; i<lns.size(); i++){ // this is confusing stuff
+		line l = lns[i];
 		if(l.getRSquared() > 0.8){
 			// angle is wall angle in global frame (= angle in lidar frame + pose angle) should be close to vertical or horizontal
 			float angle = 180.0/PI * (atan(l.getSlope()) + pos(2)); // range is unknown due to pos(2) from 'bot
@@ -61,11 +63,13 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, tf::Transform tra
 				float error = ab(90.0-angle) < ab(270.0-angle) ? (90.0-angle) : (270.0-angle);
 				poses.push_back(pos(2) - error); // subtract the error from the thought position to get the actual
 				R.push_back(l.getRSquared());
+				lineIdxs.push_back(-1*i); // save as negative idx for vertical line
 			}
 			else if( ab(angle) < LineAngleThresh || ab(180.0-angle) < LineAngleThresh){ // use as horizontal line
 				float error = ab(angle) < ab(180.0-angle)      ?     angle    : (180.0-angle);
 				poses.push_back(pos(2) - error);
 				R.push_back(l.getRSquared());
+				lineIdxs.push_back(i); // keep as positive for horizontal line
 			}
 		}
 
@@ -77,17 +81,25 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, tf::Transform tra
 		finalLidarPose += poses[i] * R[i] / sumR;
 	}
 
-	float sumWeights = LidarErrorEquivalentDist + travelDist;
+	float sumWeights = LidarErrorEquivalentDist + travelDist(2);
 	// Lidar is weighted heavier when the robot has traveled further between updates
-	float finalPose = finalLidarPose*travelDist/ sumWeights + pos(2)*LidarErrorEquivalentDist/ sumWeights;
+	float finalPose = finalLidarPose*travelDist(2)/ sumWeights + pos(2)*LidarErrorEquivalentDist/ sumWeights;
 					
 	cout<<"Lidar thinks pose is: "<<finalLidarPose<<" but after weighting with odom: "<<finalPose<<"\n";
+	// use old pos and get current position to get position difference?
 	Vector3f tmp;
 	tmp << 0, 0, finalLidarPose;
 	rob_->setExperimental(tmp);
 
 
 	// TODO make updates for locations
+	int updateX = 0;
+	int updateY = 0;
+	// should these have different travel distances ? one for x,y, and theta?
+	if(lineIdxs.size()>0){
+
+	}
+	
 
 
 }
