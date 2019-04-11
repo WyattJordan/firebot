@@ -13,8 +13,6 @@
 #include "Robot.h"
 #include <ros/console.h>
 #include "sensor_msgs/LaserScan.h"
-#include <firebot/ReconConfig.h>
-#include <dynamic_reconfigure/server.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <thread>     // 3 for thread and sharedptr
 #include <iostream> 
@@ -78,14 +76,3 @@ int main(int argc, char **argv){
 	ros::spin();
 	return 0;
 }
-
-// seems to be causing issues, be careful if this is used
-/*void setupServer(Robot rob){
-	cout<<"setting up server... ";
-	dynamic_reconfigure::Server<firebot::ReconConfig> server;
-	dynamic_reconfigure::Server<firebot::ReconConfig>::CallbackType f;
-	// callback recquires a function then an instance of the class (here Robot)
-	f = boost::bind(&Robot::recon, &rob, _1, _2);
-	server.setCallback(f);
-	cout<<"server running\n";
-}*/

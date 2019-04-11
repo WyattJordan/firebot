@@ -5,8 +5,6 @@
 #include "lidar.h"
 #include <ros/console.h>
 #include "sensor_msgs/LaserScan.h"
-#include <firebot/ReconConfig.h>
-#include <dynamic_reconfigure/server.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <thread>     // 3 for thread and sharedptr
 #include <iostream> 

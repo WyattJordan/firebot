@@ -9,8 +9,6 @@
 #include "pid.h"
 #include "Endpoint.h"
 #include "definitions.h"
-#include <dynamic_reconfigure/server.h> // dynamic recon was breaking things
-#include <firebot/ReconConfig.h>
 #include <tf/transform_broadcaster.h>
 
 #include <thread>
@@ -65,7 +63,6 @@ class Robot{
 		Robot();
 		void mainLogic();
 		void driveLoop();
-		void recon(firebot::ReconConfig &config, uint32_t level);
 		void lidarCallback(); // runs everytime a new lidar scan comes in
 		void pubTransformContinual(int rate); // rate in HZ
 		void pinThread();

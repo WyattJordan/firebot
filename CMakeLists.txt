@@ -33,7 +33,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
-  dynamic_reconfigure
+  #dynamic_reconfigure
   rosconsole
   sensor_msgs
   tf
@@ -114,9 +114,9 @@ find_package(catkin REQUIRED COMPONENTS
 ##     and list every .cfg file to be processed
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
- generate_dynamic_reconfigure_options(
-   cfg/Recon.cfg
- )
+#[[ generate_dynamic_reconfigure_options(
+	 #cfg/Recon.cfg
+ )]]
 
 ###################################
 ## catkin specific configuration ##
@@ -187,7 +187,7 @@ include_directories(
 
 add_executable(launcher src/launcher.cpp src/Robot.cpp src/Endpoint.cpp src/Nav.cpp src/pid.cpp src/line.cpp)
 #target_compile_options(launcher PRIVATE -lwiringPi -lcrypt -lm -lrt)
-add_dependencies(launcher ${PROJECT_NAME}_gencfg)
+#add_dependencies(launcher ${PROJECT_NAME}_gencfg)
 target_link_libraries(launcher ${catkin_LIBRARIES})
 target_link_libraries(launcher wiringPi)
 
@@ -195,7 +195,7 @@ target_link_libraries(launcher wiringPi)
 # this takes a while to build so just don't build it for now
 add_executable(everything src/everything.cpp src/Robot.cpp src/pid.cpp src/Nav.cpp src/Endpoint.cpp src/lidar.cpp src/line.cpp)
 #target_compile_options(launcher PRIVATE -lwiringPi -lcrypt -lm -lrt)
-add_dependencies(everything ${PROJECT_NAME}_gencfg)
+#add_dependencies(everything ${PROJECT_NAME}_gencfg)
 target_link_libraries(everything ${catkin_LIBRARIES})
 target_link_libraries(everything wiringPi)
 #]]

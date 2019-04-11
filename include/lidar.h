@@ -39,7 +39,6 @@ class Lidar{
 		void setNav(Nav *nav);
 		void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan);
 		void input();
-		void processData(const sensor_msgs::LaserScan::ConstPtr& scan);
 		void findJumps(bool findBig); // finds either big jumps and furniture jumps or only furn jumps
 		int classifyRoomFromJumps();
 		void findLines(bool pubSegmets=false);
@@ -59,7 +58,6 @@ class Lidar{
 	        vector<int> startRooms_, outliers_;
 		bool started_, keypress_;
 		unsigned int tickCount_;
-		vector<int> startRooms_, outliers_;
 
 		// Point data is stored in 4 vectors with cartesian and polar coordinates
 		vector<float> xVal_, yVal_, rad_, degrees_;
