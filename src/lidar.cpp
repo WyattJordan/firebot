@@ -52,14 +52,12 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	bool linearMove = false;
 	bool updatePosition = false;
 	tf::Transform oldTrans; // save values immediately if going to be used (computing all this will take time
-	Vector3f travelDist = rob_->getTravelDist();
 	
 	Vector3f currentPos = rob_->getOdomWorldLoc(); // this is an undefined ref for some reason...
 	if(tickCount_++%LidarUpdateRate==0  && ! (prevOdom_(0) == -100 && prevOdom_(1) == -100)){ // if not the first run (default odom loc) 
 		// if the angle has changed less than 5deg between the two positions
 		if(abs(prevOdom_(2) - currentPos(2))*180/PI < 2.0) linearMove = true;
 		if(linearMove) oldTrans = rob_->getTransform(); // save current copy
-		//if(linearMove) travelDist = rob_->getTravelDistRef();
 	}//*/
 
 	/*if(keypress_){
@@ -110,22 +108,23 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		}
 	}*/
 	else if(linearMove){ // normal scan update
-		cout<<"linear movement! Going to process data!\n";
+	/*	cout<<"\nlinear movement! Going to process data!\n";
 		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame) shifted!!!
 		findJumps(false);  // don't look for big jumps, just furniture
 		findFurniture();   // determines what is furniture from smallJump_ 
 		nav_->makeFurnMarks(furns_); // publishfurniture in rviz
-		findLines(true); // pub segments on, might want this off (too much processing)
+		findLines(false); // pub segments off, might want leave this off (too much processing)
 		nav_->makeLineMarks(lines_, true, true);
 
 		// TODO - conditions for a good scan to update position
 		if( getMaxRSquare() > 0.85 ){
 			cout<<"got good lines, asking Nav to update position\n";
-			nav_->updatePositionAndMap(lines_, currentPos, oldTrans, travelDist);
+			// travel distance cannot be saved at scan start because it must be pass by ref
+			nav_->updatePositionAndMap(lines_, currentPos, oldTrans, rob_->getTravelDist());
 		}
 		else{
 			updatePosition = false;
-		}
+		}*/
 	}
 
 	prevOdom_ = currentPos;//*/
@@ -328,7 +327,7 @@ void Lidar::findFurniture(){
 	//		j++; // next jump will be the end of this piece of furniture so skip that // not necesarily...
 		}
 		else{
-			cout<<"jump "<<smallJump_[j]<<" not counted as furn due to curveHeight\n";
+			//cout<<"jump "<<smallJump_[j]<<" not counted as furn due to curveHeight\n";
 		}
 	}
 
@@ -517,7 +516,6 @@ void Lidar::findLines(bool pubSegmets){
 			lm--;
 		}
 	}
-	cout<<"\n";
 
 	// Merging line models
 	if(pubSegmets) nav_->makeLineMarks(lines_, false, true); // publish unmerged lines in rviz

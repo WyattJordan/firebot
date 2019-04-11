@@ -47,7 +47,7 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, tf::Transform tra
 	// sort by RSquared to use for pose calculations
 	std::sort(lns.begin(),lns.end(),[](line a, line b) -> bool {return a.getRSquared() > b.getRSquared();});
 
-	vector<float> poses, R;
+	vector<float> poses, R; // in radians and unitless respectively
 	vector<int> lineIdxs; // indexes of lines sorted by R squared and useable (within LineAngleThresh) if idx<0 it's a vertical line
 	
 	for(int i=0; i<lns.size(); i++){ // this is confusing stuff
@@ -61,13 +61,13 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, tf::Transform tra
 			// check if the global angle is closer to vertical or horizontal within a limit
 			if( ab(90.0-angle) < LineAngleThresh || ab(270.0-angle) < LineAngleThresh){ // use as vertical line
 				float error = ab(90.0-angle) < ab(270.0-angle) ? (90.0-angle) : (270.0-angle);
-				poses.push_back(pos(2) - error); // subtract the error from the thought position to get the actual
+				poses.push_back(pos(2) - PI/180.0*error); // subtract the error from the thought position to get the actual
 				R.push_back(l.getRSquared());
 				lineIdxs.push_back(-1*i); // save as negative idx for vertical line
 			}
 			else if( ab(angle) < LineAngleThresh || ab(180.0-angle) < LineAngleThresh){ // use as horizontal line
 				float error = ab(angle) < ab(180.0-angle)      ?     angle    : (180.0-angle);
-				poses.push_back(pos(2) - error);
+				poses.push_back(pos(2) - PI/180.0*error);
 				R.push_back(l.getRSquared());
 				lineIdxs.push_back(i); // keep as positive for horizontal line
 			}
@@ -77,6 +77,7 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, tf::Transform tra
 
 	float sumR = std::accumulate(R.begin(), R.end(), 0.0);
 	float finalLidarPose = 0;
+	float justAvgPose = std::accumulate(poses.begin(), poses.end(), 0.0) / (float)poses.size();
 	for(int i=0; i<poses.size(); i++){ // weighted average for pose based on R^2 value of lines used
 		finalLidarPose += poses[i] * R[i] / sumR;
 	}
@@ -85,10 +86,12 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, tf::Transform tra
 	// Lidar is weighted heavier when the robot has traveled further between updates
 	float finalPose = finalLidarPose*travelDist(2)/ sumWeights + pos(2)*LidarErrorEquivalentDist/ sumWeights;
 					
-	cout<<"Lidar thinks pose is: "<<finalLidarPose<<" but after weighting with odom: "<<finalPose<<"\n";
+	cout<<"Lidar used "<<poses.size()<<" lines and avg pose is: "<<180.0/PI*justAvgPose<<" but weighted is: "<<180.0/PI*finalLidarPose<<
+		" but after weighting with odom: "<<180.0/PI*finalPose<< " with dist = "<<travelDist(2)<<"\n";
+	travelDist(2) = 0;
 	// use old pos and get current position to get position difference?
 	Vector3f tmp;
-	tmp << 0, 0, finalLidarPose;
+	tmp << 0, 0, finalLidarPose; // VERY IMPORTANT WHICH GETS SENT
 	rob_->setExperimental(tmp);
 
 

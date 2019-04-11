@@ -121,6 +121,7 @@ class Robot{
 		void periodicOutput();
 		void outputTime(clk::time_point t1, clk::time_point t2);
 
+		float prevdist_;
 		bool buildNavStack(vector<int> ids,bool append=false);
 		void executeNavStack();
 		float getPoseToPoint(EndPoint pt, EndPoint* pt2 = NULL);

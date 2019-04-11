@@ -16,7 +16,7 @@ void Robot::mainLogic(){
 
 	//testDistToStop();
 	//odomWorldLoc_   << 0,0,90.0*PI/180.0; // starting at corner of STEM lines on floor 
-	odomWorldLoc_   << 15+2, 34.5,0; // start at back left w/ steel block
+	odomWorldLoc_   << 15+2, 34.5, 0; // start at back left w/ steel block
 	experimental_ = odomWorldLoc_;
 	runPID_ = true;
 /*	setPose_ = 5; // for testing PID to see min gains needed for certain accuracies
@@ -70,6 +70,7 @@ Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constru
 	firstNav_ = facingFirst_ = true;
 	ramp_ = firstRamp_ = false;
 	robUpdateRate_ = mapUpdateRate_ = wayUpdateRate_ = 1;
+	prevdist_ = 9999; // used for checking if missed a waypt
 
 	debugDrive_ = runPID_ = false;
 	lDrive_ = rDrive_ = 0;
@@ -135,9 +136,10 @@ bool Robot::buildNavStack(vector<int> ids, bool append){
 // default mode faces first point then runs at 0.5 speed with rounding of corners
 void Robot::executeNavStack(){ // runs in parallel to driveLoop, called from mainLogic
 	// TODO - update pose to next point when LIDAR updates position
-
 	while(navStack.size()>0){
-		float dist = distToNextPoint();
+		float dist = distToNextPoint(); // distance from next waypoint
+		int pts = navStack.size();
+		
 		if(firstNav_){ // if starting to navigate!
 			firstNav_ = false;
 			speed_ = 0; // make sure we are starting from a stationary position
@@ -154,29 +156,32 @@ void Robot::executeNavStack(){ // runs in parallel to driveLoop, called from mai
 			cout<<"starting to face first with pose = "<<setPose_<<"\n";
 			facingFirst_ = true; // wait for first turn
 		}
+
 		else if(facingFirst_){ // turning to face first point
-			float error = ab(odomWorldLoc_(2)*180.0/PI - setPose_);
-			//ramp_ = false; // ramp is running for some reason here....
-			//cout<<"error is: "<<error<<" at speed "<<speed_<<"\n";
-			if(error < SamePoseThreshDeg || ab(adj_) < 0.1){ // PID has finished turning, no more adj needed
+			speed_ = 0; // for some reason this wasn't 0... only other place it gets set is ramp
+			ramp_ = false; // ramp is running for some reason here....
+			float error = fmod(ab(odomWorldLoc_(2)*180.0/PI - setPose_), 360.0);
+			if(error < SamePoseThreshDeg /*|| ab(adj_) < 0.1*/){ // PID has finished turning, no more adj needed
 				//cout<<"done facing first\n";
 				facingFirst_ = false;
 				float s = dist < MinDistFor50 || pt2pt_ ? 0.2 : 0.5; // if it's very close use 20%
-				//cout<<"ramping speed up to "<<s<<"\n";
 				setRamp(s, 0.5); // start driving to next point, take half second to accelerate
 			}
 		}
 
 		else if(navStack.size() == 1 || pt2pt_){ // slowing down as approaching final point
 			if( (ab(ab(speed_) - 0.5) < 0.05 && dist < StopDist50) ||
-			    (ab(ab(speed_) - 0.2) < 0.05 && dist < StopDist20)){
+			    (ab(ab(speed_) - 0.2) < 0.05 && dist < StopDist20) ||
+			    dist>prevdist_+1){
 				setRamp(0, 0.5);
 				msleep(500);
 				cout<<"Popping marker "<<navStack.front().getID()<<" because arrived at loc\n";
+				if(dist>prevdist_+1)cout<<"dist: "<<dist<<" prevdist_: "<<prevdist_<<"\n";
 				navStack.pop_front();
 				firstNav_ = true; // this is either the last point or a pt2pt nav so reset 
 			}
 		}
+
 		else if(navStack.size()>1){ // fluid 90deg turns assumes running at 0.5 speed (!pt2pt_)
 			float poseToNextPoint = getPoseToPoint(navStack.front());  // basically the current pose
 			float poseAfterTurn = getPoseToPoint(navStack.front(), &navStack.at(1)); // find pose between next two pts
@@ -209,8 +214,16 @@ void Robot::executeNavStack(){ // runs in parallel to driveLoop, called from mai
 				cout<<"Popping marker "<<navStack.front().getID()<<" because SMALL turning\n";
 				navStack.pop_front();
 			}
+			else if(dist>prevdist_+1){
+				setPose_ = poseAfterTurn;	
+				cout<<"Popping marker "<<navStack.front().getID()<<" because MISSED it\n";
+				navStack.pop_front();
+			}//*/
 		}
-	}
+		
+		if(pts < navStack.size()){ prevdist_ = 99999;} // a marker was popped so reset dist
+		else {prevdist_ = dist;}
+	}// while loop
 }
 
 // determines distance between robot pos (odomWorldLoc_) and next point in navstack
@@ -231,7 +244,7 @@ float Robot::distToNextPoint(){
 // returns in Degrees from 0-360!
 float Robot::getPoseToPoint(EndPoint pt, EndPoint* pt2){
 	float t;
-	if(pt2 == NULL){
+	if(pt2 == NULL){ // defualt if ommitted
 		pt.calcPolar(odomWorldLoc_(0),odomWorldLoc_(1)); // find polar with robot as origin
 		t = pt.getCalculatedTheta();
 	}
@@ -423,14 +436,13 @@ void Robot::calculateOdom(){
 }
 
 void Robot::pubTransformContinual(int rate){
-
 	while(1){
 		tf::Transform tfTrans_;
 		//tfTrans_.setOrigin(tf::Vector3(experimental_(0), experimental_(1), 0)); // x,y,0 cm shift, could be problematic...
 		tfTrans_.setOrigin(tf::Vector3(odomWorldLoc_(0), odomWorldLoc_(1), 0)); // x,y,0 cm shift, could be problematic...
 		tf::Quaternion q;
 		q.setRPY(0,0,experimental_(2)); // radian shift
-		q.setRPY(0,0,odomWorldLoc_(2)); // radian shift
+		//q.setRPY(0,0,odomWorldLoc_(2)); // radian shift
 		tfTrans_.setRotation(q);
 		br_.sendTransform(tf::StampedTransform(tfTrans_, ros::Time::now(), GLOBALFRAME, ROBOTFRAME));
 		msleep(1/(float) rate * 1000.0);

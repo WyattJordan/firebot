@@ -8,7 +8,7 @@
 
 // constants for Robot::executeNavStack()
 #define WayPointStartThreshold 4.0  // pt must be at least X cm away for Robot to move towards it
-#define MinDistFor50 20.0 		// must be at least X cm away from pt to use 0.5 speed
+#define MinDistFor50 20.0 	// must be at least X cm away from pt to use 0.5 speed
 #define StartBigTurnDist50 17.5 // for a >70 deg turn start X cm before the corner pt
 #define StartSmallTurnDist50 12 // for <70 deg turns get closer to the point (center of map has slight turns)
 #define StopDist50 13.0 // takes X cm to stop the robot when driving at 50% (found experimentally)
@@ -33,10 +33,10 @@
 #define FurnDistTolerance 2.0  // point between furn endpoints must have at least X smaller polar radius than the average of the endpoints
 
 // used for building lines
-#define PerpThresh 2.0 			// point err from line model cannot exceed this X cm to be added to the line
+#define PerpThresh 2.0 		// point err from line model cannot exceed this X cm to be added to the line
 #define PrevPointDistThresh 10  // point cannot be greater than X cm away from prev pt, stop lines from adding points that are far away (closing off doorways)
 #define MinPtsForLine 10   
-#define MergeLineDistThresh 35 // two lines must have a combination of endpoints with distance < X cm to be merged (should be less than DoorWidth
+#define MergeLineDistThresh 35  // two lines must have a combination of endpoints with distance < X cm to be merged (should be less than DoorWidth
 #define MinRSquared 0.7
 
 // used for classifying as room 4 or 1
@@ -44,8 +44,8 @@
 #define DoorWidthTol 8.0  // when checking if the 2 big jumps in room 4 are close enough to eachother to be a doorway
 
 // used for position updates in Nav
-#define LineAngleThresh 10.0 		  // must be within X deg to use for pose update
-#define LidarErrorEquivalentDist 10.0 // weighs the theta updates as if the lidar has the same amount of error as X cm of travel w/ encoders
-#define LidarUpdateRate 1 			  // will update every X scans (scans occure every 0.1s)
+#define LineAngleThresh 10.0 	  	// must be within X deg to use for pose update
+#define LidarErrorEquivalentDist 10.0   // weighs the theta updates as if the lidar has the same amount of error as X cm of travel w/ encoders
+#define LidarUpdateRate 1  	  	// will update every X scans (scans occure every 0.1s)
 
 
