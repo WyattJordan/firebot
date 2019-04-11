@@ -2,11 +2,7 @@
  *
  */
 #include "Nav.h"
-// don't use default constuctor, it must load the map and way files
-Nav::Nav(){}
-
-// This is the main constructor, initialize variables here
-Nav::Nav(int lvl, ros::Publisher* pub){  
+void Nav::defaults(){
 	smallRoomConf_ = bigRoomConf_ = false;
 	pubMap_ = pubWays_ = pubRob_ = false;
 	vector<int> none;
@@ -14,12 +10,29 @@ Nav::Nav(int lvl, ros::Publisher* pub){
 	badPt_ = EndPoint(-1, -1, -1, none);
 	mapPoints_.resize(0);
 	wayPoints_.resize(0);
-	markerPub_ = pub;
 	cmapLine_ = {0.9, 0.5, 0.0};
 	cmapMark_ = {1.0, 0.1, 0.1};
 	cwayLine_ = {0.1, 0.9, 0.9};
 	cwayMark_ = {0.8, 0.1, 0.9};
 
+}
+// don't use default constuctor, it must load the map and way files
+Nav::Nav(){defaults();}
+
+Nav::Nav(int lvl, ros::Publisher* pub){  
+	defaults();
+	markerPub_ = pub;
+	cout<<"going to load files\n";
+	loadFiles(lvl);	
+	cout<<"going to init marks\n";
+	initRobotMarks();
+}
+
+// This is the main constructor, initialize variables here
+Nav::Nav(int lvl, ros::Publisher* pub, Robot* rob){  
+	defaults();
+	markerPub_ = pub;
+	rob_ = rob;
 	cout<<"going to load files\n";
 	loadFiles(lvl);	
 	cout<<"going to init marks\n";
@@ -29,19 +42,50 @@ void Nav::setOdomLoc(Vector3f od){
 	odomWorldLocCpy_ = od;
 }
 
-void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, tf::Transform trans){
-	// GIVEN - there is at least one line with R^2 > 0.85
+void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, tf::Transform trans, float travelDist){
+	// GIVEN - there is at least one line with R^2 > 0.85, R^2 values have been made
 	
 	// sort by RSquared to use for pose calculations
+	std::sort(lns.begin(),lns.end(),[](line a, line b) -> bool {return a.getRSquared() > b.getRSquared();});
 
-	// pick all lines above 0.85? and find matching pose estimate
+	vector<float> poses, R;
 	
-	// weight all these to get final pose estimate
-	
-	// weight against travel distance (dirty kalman)
-	
-	// got final pose update
-	
+	for(line l : lns){ // this is confusing stuff
+		if(l.getRSquared() > 0.8){
+			// angle is wall angle in global frame (= angle in lidar frame + pose angle) should be close to vertical or horizontal
+			float angle = 180.0/PI * (atan(l.getSlope()) + pos(2)); // range is unknown due to pos(2) from 'bot
+			angle = fmod(angle, 360.0);  
+			angle = angle < 0 ? angle + 360.0 : angle; // range is now 0 to 360
+
+			// check if the global angle is closer to vertical or horizontal within a limit
+			if( abs(90.0-angle) < LineAngleThresh || abs(270.0-angle) < LineAngleThresh){ // use as vertical line
+				float error = abs(90.0-angle) < abs(270.0-angle) ? (90.0-angle) : (270.0-angle);
+				poses.push_back(pos(2) - error); // subtract the error from the thought position to get the actual
+				R.push_back(l.getRSquared());
+			}
+			else if( abs(angle) < LineAngleThresh || abs(180.0-angle) < LineAngleThresh){ // use as horizontal line
+				float error = abs(angle) < abs(180.0-angle)      ?     angle    : (180.0-angle);
+				poses.push_back(pos(2) - error);
+				R.push_back(l.getRSquared());
+			}
+		}
+
+	}
+
+	float sumR = std::accumulate(R.begin(), R.end(), 0.0);
+	float finalLidarPose = 0;
+	for(int i=0; i<poses.size(); i++){ // weighted average for pose based on R^2 value of lines used
+		finalLidarPose += poses[i] * R[i] / sumR;
+	}
+
+	float sumWeights = LidarErrorEquivalentDist + travelDist;
+	// Lidar is weighted heavier when the robot has traveled further between updates
+	float finalPose = finalLidarPose*travelDist/ sumWeights + pos(2)*LidarErrorEquivalentDist/ sumWeights;
+					
+	cout<<"Lidar thinks pose is: "<<finalLidarPose<<" but after weighting with odom: "<<finalPose<<"\n";
+	Vector3f tmp;
+	tmp << 0, 0, finalLidarPose;
+	rob_->setExperimental(tmp);
 
 
 	// TODO make updates for locations

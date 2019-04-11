@@ -47,12 +47,14 @@ class Lidar{
 		void findRoom();
 		void findStartLocation(EndPoint endR1, EndPoint endR2, EndPoint endG1, EndPoint endG2);
 		bool canMerge(line a);
+		float getMaxRSquare();
 
 	private:
 		Vector3f prevOdom_;
 		Nav* nav_;
 		Robot* rob_;
 		int startCount_, localRoom_;
+		unsigned int tickCount_;
 		vector<int> startRooms_, outliers_;
 		bool started_;
 

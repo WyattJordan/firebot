@@ -38,12 +38,15 @@ void Lidar::processData(const sensor_msgs::LaserScan::ConstPtr& scan){
 
 void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	bool linearMove = false;
-	tf::Transform oldTrans;
+	bool updatePosition = false;
+	tf::Transform oldTrans; // save values immediately if going to be used (computing all this will take time
+	float travelDist;
 	Vector3f currentPos = rob_->getOdomWorldLoc(); // this is an undefined ref for some reason...
-	if(! (prevOdom_(0) == -100 && prevOdom_(1) == -100)){ // if not the first run (default odom loc) 
+	if(tickCount_++%LidarUpdateRate==0  && ! (prevOdom_(0) == -100 && prevOdom_(1) == -100)){ // if not the first run (default odom loc) 
 		// if the angle has changed less than 5deg between the two positions
 		if(abs(prevOdom_(2) - currentPos(2))*180/PI < 5.0) linearMove = true;
 		if(linearMove) oldTrans = rob_->getTransform(); // save current copy
+		if(linearMove) travelDist = rob_->getTravelDist();
 	}//*/
 
 	if(startCount_++%7==0){
@@ -90,7 +93,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		}
 	}*/
 	else if(linearMove){ // normal scan update
-		processData(scan, true); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame) shifted!!!
+		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame) shifted!!!
 		findJumps(false);  // don't look for big jumps, just furniture
 		findFurniture();   // determines what is furniture from smallJump_ 
 		nav_->makeFurnMarks(furns_); // publishfurniture in rviz
@@ -99,7 +102,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 
 		// TODO - conditions for a good scan to update position
 		if( getMaxRSquare() > 0.85 ){
-			nav_->updatePositionAndMap(lines_, currentPos, oldTrans);
+			nav_->updatePositionAndMap(lines_, currentPos, oldTrans, travelDist);
 		}
 		else{
 			updatePosition = false;
@@ -224,7 +227,7 @@ int Lidar::classifyRoomFromJumps(){
 	}
 	else{ // pick either room 1 or 4 based on if the two closest big jumps are seperated by a DoorWidth
 		// sort the jumps by closest
-		std::sort(jump_.begin(),jump_.end(),[this](int a, int b) -> bool {return getCloserJumpRadius(a)< getCloserJumpRadius(b);});
+		std::sort(jump_.begin(),jump_.end(),[this](int a, int b) -> bool {return getCloserJumpRadius(a) < getCloserJumpRadius(b);});
 		float dist = pt2PtDist(xVal_[getCloserJumpPt(jump_[0])],yVal_[getCloserJumpPt(jump_[0])],
 					xVal_[getCloserJumpPt(jump_[1])],yVal_[getCloserJumpPt(jump_[1])]);
 		if(abs(dist - DoorWidth) < DoorWidthTol){
@@ -415,8 +418,8 @@ void Lidar::findLines(bool pubSegmets){
 		if(rad_[p] ==  MAXDIST){
 			continue; // skip because it's out of range 
 		}
-		else if(furnIdxs_.size()!=0 && std::find(furnIdxs_.begin(), furnIdxs_.end(), p) != furnIdxs_.end() || 
-				outliers_.size()!=0 && std::find(outliers_.begin(), outliers_.end(), p) != outliers_.end()){
+		else if((furnIdxs_.size()!=0 && std::find(furnIdxs_.begin(), furnIdxs_.end(), p) != furnIdxs_.end()) || 
+				(outliers_.size()!=0 && std::find(outliers_.begin(), outliers_.end(), p) != outliers_.end())){
 			//cout<<"pt "<<p<<" of "<<rad_.size()<<" was in furnIdxs_ \n";
 			continue; // skip because it's a piece of furniture or a bad point
 		}
@@ -444,7 +447,8 @@ void Lidar::findLines(bool pubSegmets){
 
 			if(p < rad_.size()-1) {
 				tmp.addPointEnd(xVal_[p],yVal_[p]); // add the current pt which wasn't added to to tmp
-				tmp.addPointEnd(xVal_[++p],yVal_[++p]); // add the next pt
+				p++;
+				tmp.addPointEnd(xVal_[p],yVal_[p]); // add the next pt
 				tmp.buildLine();
 			}
 			else{
@@ -623,6 +627,7 @@ float Lidar::getMaxRSquare(){
 			max = ln.getRSquared();
 		}
 	}
+	return max;
 }
 
 Lidar::Lidar(){
@@ -630,11 +635,12 @@ Lidar::Lidar(){
 } // do not use this
 
 void Lidar::defaults(){
-	prevOdom_ << -100, -100, 0;
+	prevOdom_ << -100, -100, 0.4*PI; // start at random pos
 	startCount_ = 0;
 	localRoom_ = -1;
 	started_ = false;
 	startRooms_.resize(0);
+	tickCount_ = 0;
 }
 
 Lidar::Lidar(Robot *robRef, Nav* navRef){

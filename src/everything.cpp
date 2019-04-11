@@ -23,7 +23,7 @@ int main(int argc, char **argv){
 	// Create the Navigation object and set it up
 	ros::NodeHandle n;
 	ros::Publisher navPub = n.advertise<visualization_msgs::MarkerArray>("NavMarkers",1000);
-	Nav nav(1, &navPub); // level 1	
+	Nav nav(1, &navPub, &rob); // level 1	
 	rob.setNav(&nav); // give the robot the nav object so they can chit chat
 	nav.makeMapMarks("marker_ns"); // make initial sets for publishing
 	nav.makeWayMarks("ways_ns");

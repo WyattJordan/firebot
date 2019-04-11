@@ -17,6 +17,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <cmath>
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
 
@@ -71,6 +72,9 @@ class Robot{
 		void openSerial();
 		void setNav(Nav* nv);
 		Vector3f getOdomWorldLoc();
+		float getTravelDist();
+		tf::Transform getTransform();
+		void setExperimental(Vector3f pose);
 
 	private:
 		Nav *nav_;
@@ -99,15 +103,13 @@ class Robot{
 		bool updateDriving_, updateSavedPos_; 
 		float travelDist_;
 		void updatePosition();
-		float getTravelDist();
-		tf::Transform getTransform();
 		tf::TransformBroadcaster br_;
 		tf::Transform tfTrans_;
 
 
 		// odometry vars;
 		Matrix3f rob2world_;	// rotation matrix calculated given pose
-		Vector3f robotstep_, worldstep_, odomWorldLoc_; // distance changes in robot + world frames
+		Vector3f robotstep_, worldstep_, odomWorldLoc_, experimental_; // distance changes in robot + world frames
 		void calculateTransform(float theta);
 		void calculateOdom();
 

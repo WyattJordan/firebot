@@ -17,6 +17,7 @@ void Robot::mainLogic(){
 	//testDistToStop();
 	//odomWorldLoc_   << 0,0,90.0*PI/180.0; // starting at corner of STEM lines on floor 
 	odomWorldLoc_   << 15+2, 34.5,0; // start at back left w/ steel block
+	experimental_ = odomWorldLoc_;
 	runPID_ = true;
 /*	setPose_ = 5; // for testing PID to see min gains needed for certain accuracies
 	sleep(2);
@@ -422,7 +423,7 @@ void Robot::calculateOdom(){
 		travelDist_ += x; // y is always 0 (can't move sideways with differential drive
 	}
 	else{ // set variables for updating the position
-		travelDist_ = 0;
+		travelDist_ = 1; // resets when updated, but don't let it be 0
 
 		if(navStack.size()>0)  updateDriving_ = true; // adjust heading if driving 
 	}
@@ -431,11 +432,12 @@ void Robot::calculateOdom(){
 }
 
 void Robot::pubTransformContinual(int rate){
+
 	while(1){
 		tf::Transform tfTrans_;
-		tfTrans_.setOrigin(tf::Vector3(odomWorldLoc_(0), odomWorldLoc_(1), 0)); // x,y,0 cm shift, could be problematic...
+		tfTrans_.setOrigin(tf::Vector3(experimental_(0), experimental_(1), 0)); // x,y,0 cm shift, could be problematic...
 		tf::Quaternion q;
-		q.setRPY(0,0,odomWorldLoc_(2)); // radian shift
+		q.setRPY(0,0,experimental_(2)); // radian shift
 		tfTrans_.setRotation(q);
 		br_.sendTransform(tf::StampedTransform(tfTrans_, ros::Time::now(),ROBOTFRAME, GLOBALFRAME));
 		msleep(1/(float) rate * 1000.0);
@@ -604,6 +606,8 @@ void Robot::setNav(Nav* nv){ nav_ = nv; }
 Vector3f Robot::getOdomWorldLoc(){return odomWorldLoc_;};
 float Robot::getTravelDist(){ return travelDist_;}
 tf::Transform Robot::getTransform(){ return tfTrans_;}
+
+void Robot::setExperimental(Vector3f pose){experimental_ = pose;}
 
 float Robot::toRad(float deg){ return deg*PI2/360.0; }
 void Robot::msleep(int t){ usleep(1000*t); }
