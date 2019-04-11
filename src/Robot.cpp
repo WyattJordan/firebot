@@ -33,26 +33,26 @@ void Robot::mainLogic(){
 	navStack.push_back(nav_->getWayPoint(13));
 	navStack.push_back(nav_->getWayPoint(5));*/
 	// loop back to 4 code around middle wall
-	navStack.push_back(nav_->getWayPoint(18));
+/*	navStack.push_back(nav_->getWayPoint(18));
 	navStack.push_back(nav_->getWayPoint(5));
 	navStack.push_back(nav_->getWayPoint(13));
-	navStack.push_back(nav_->getWayPoint(12));
+	navStack.push_back(nav_->getWayPoint(12));*/
 /*	navStack.push_back(nav_->getWayPoint(15));///
 	navStack.push_back(nav_->getWayPoint(16));///
 	navStack.push_back(nav_->getWayPoint(19));///
 	navStack.push_back(nav_->getWayPoint(4));//*/
-/*	navStack.push_back(nav_->getWayPoint(18));
+	navStack.push_back(nav_->getWayPoint(18));
 	navStack.push_back(nav_->getWayPoint(9));
 	navStack.push_back(nav_->getWayPoint(10));
 	navStack.push_back(nav_->getWayPoint(14));
 	navStack.push_back(nav_->getWayPoint(15));
 	navStack.push_back(nav_->getWayPoint(13));
 	navStack.push_back(nav_->getWayPoint(5));//*/
-/*	navStack.push_back(nav_->getWayPoint(18));
-	navStack.push_back(nav_->getWayPoint(6));
+	navStack.push_back(nav_->getWayPoint(18));
+	/*navStack.push_back(nav_->getWayPoint(6));
 	navStack.push_back(nav_->getWayPoint(7));
 	navStack.push_back(nav_->getWayPoint(8));//*/
-	pt2pt_ = true;
+	pt2pt_ = false;
 	executeNavStack();
 }
 

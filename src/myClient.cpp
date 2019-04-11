@@ -18,7 +18,7 @@ int main(int argc, char **argv)
 	Nav nav(1, &navPub); // level 1	
 	nav.makeMapMarks("marker_ns"); // make initial sets for publishing
 	nav.makeWayMarks("ways_ns");
-	std::thread publishNavLoop;
+	std::thread publishNavLoop, input;
 
 	// publish whatever markers are made every second (markers changed by lidar class sending furniture and lines to it)
 	publishNavLoop = std::thread(boost::bind(&Nav::publishLoopContinual, &nav));	
@@ -26,7 +26,8 @@ int main(int argc, char **argv)
 	Lidar lid;
 	lid.setNav(&nav);
 
-	sleep(2);
+	input = std::thread(boost::bind(&Lidar::input, &lid));	
+
 	ros::Subscriber sub = n.subscribe<sensor_msgs::LaserScan>("/scan", 1000, &Lidar::scanCallback, &lid);
 
 	ros::spin();

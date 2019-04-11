@@ -21,7 +21,7 @@ line::line(){
 }
 
 //  see: https://newonlinecourses.science.psu.edu/stat501/node/255/
-float line::getRSquared(){
+float line::makeRSquared(){
 	float yAvg = 0;
 	for( float ypt : y){
 		yAvg += ypt;
@@ -35,7 +35,8 @@ float line::getRSquared(){
 		SSR  += pow(yPred - yAvg, 2);
 		SSTO += pow(y[i] - yAvg,  2);
 	}
-	return SSR/SSTO;
+	RSquare = SSR/SSTO;
+	return RSquare;
 }
 
 void line::buildLine() {
@@ -216,24 +217,25 @@ void line::addPointStart(float xVal, float yVal) {
         y.insert(y.begin(), yVal);
 };
 
-float line::getXPoint(int point){ return x[point]; };
-float line::getYPoint(int point){ return y[point]; };
-int line::numPts() { return x.size(); }
 
 //it. getLineDist
+int   line::numPts() { return x.size(); }
 float line::getLineDist(){ return lineDist; }
+float line::getLength(){ return length; }
+// line equation gets and sets
+void  line::setSlope(float s){ slope = s; };
+void  line::setIntercept(float i){ intercept = i; };
+void  line::setGood(bool a){ isLine = a; }
 float line::getIntercept() { return intercept; };
 float line::getSlope() { return slope; };
-float line::getLength(){ return length; }
-//it. setGood
-void line::setSlope(float s){ slope = s; };
-void line::setIntercept(float i){ intercept = i; };
-void line::setGood(bool a){ isLine = a; }
-//it. isGoodLine
+float line::getRSquared() { return RSquare; };
+// get line types
 bool line::isGoodLine(){ return isLine; }
 bool line::isCandle(){ return candle; }
 bool line::isFurniture(){ return furniture; }
-//it. getEndPt line
+// get special points
+float line::getXPoint(int point){ return x[point]; };
+float line::getYPoint(int point){ return y[point]; };
 float line::getEndPtX1(){ return end1.getX(); }
 float line::getEndPtY1(){ return end1.getY(); }
 float line::getEndPtX2(){ return end2.getX(); }

@@ -29,10 +29,12 @@
 #define FurnWidthTolerance 5.0 // distance between furn endpoints should be FurnWidth +/- X, this just filters out large differences in jumps
 #define FurnDistTolerance 2.0 // point between furn endpoints must have at least X smaller polar radius
 
+// for findLines
 #define PerpThresh 2.0 // err from line model cannot exceed this
 #define PrevPointDistThresh 10 // stop lines from adding points that are far away (closing off doorways)
 #define MinPtsForLine 10
 #define MergeLineDistThresh 35
+#define MinRSquared 0.7
 
 // used for classifying as room 4 or 1
 #define DoorWidth 46 

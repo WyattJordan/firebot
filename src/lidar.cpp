@@ -9,6 +9,7 @@ void Lidar::defaults(){
 	localRoom_ = -1;
 	started_ = false;
 	startRooms_.resize(0);
+	keypress_ = true;
 }
 
 Lidar::Lidar(Robot *robRef, Nav* navRef){
@@ -47,6 +48,12 @@ void Lidar::processData(const sensor_msgs::LaserScan::ConstPtr& scan){
 			}*/
 		}
 	}
+	//removes the first and last two points because they are usually bad datapoints
+	removePt(0);
+	removePt(0);
+	removePt(rad_.size()-1);
+	removePt(rad_.size()-1);
+
 	for(int i=0; i < rad_.size(); i++){ // remove points from the studs or near their angles
 		if(degrees_[i] > 37 && degrees_[i] < 41   ||
 		   degrees_[i] > 137 && degrees_[i] < 141 ||
@@ -58,7 +65,13 @@ void Lidar::processData(const sensor_msgs::LaserScan::ConstPtr& scan){
 	}
 }
 
+void Lidar::input(){
+	while(1){
+		cin.get();
+		keypress_ = true;
+	}
 
+}
 
 void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	/*bool updatePosition = false;
@@ -68,7 +81,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		if(abs(prevOdom_(2) - currentPos(2))*180/PI < 5) updatePosition = true;
 	}//*/
 
-	if(startCount_++%7==0){
+	if(keypress_){
 		cout<<"\n";
 		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
 		findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
@@ -77,8 +90,12 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		findLines(true); // pub segments on
 		nav_->makeLineMarks(lines_, true, true);
 
+
 		cleanBigJumps();   // removes furniture jumps and any jumps counted twice 
 		//startRooms_.push_back(classifyRoomFromJumps()); // used to determine room for starting location, will run findLines
+		cout<<"\ndone this scan\n\n";
+		keypress_ = false;
+
 	}
 	if(0 && startCount_++ < 10){ // classify the room multiple times before determining which room the 'bot is in 
 		time_t start, finish;
@@ -96,12 +113,12 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 			cout<<"found mode to be "<<localRoom_<<"\n";
 		}
 	}
-	if(!started_ && localRoom_ != -1){ 
+	if(0 && !started_ && localRoom_ != -1){ 
 		cout<<"localizing to room "<<localRoom_<<"\n";
 		started_ = checkLocalize();
 		cout<<"done initial localize sequence\n";
 	}
-	else if(started_){
+	else if(0 && started_){
 		nav_->makeLineMarks(lines_, true, true);
 		if(startCount_++ > 50){
 			startCount_ = 0;
@@ -504,31 +521,50 @@ void Lidar::findLines(bool pubSegmets){
 		} // loop thru line models
 	} // loop thru checkpts
 	//cout<<"num pts addedback = "<<addedback<<"\n";
-	
+	// TODO -  delete line segments with R^2 < 0.1
+	cout<<lines_.size()<<" raw lines R^2 are: \n";
+	for(int lm=0; lm<lines_.size(); lm++){
+		if(lines_[lm].makeRSquared() > 0.1){
+			cout<<lines_[lm].makeRSquared()<<", ";
+		}
+		else{
+			lines_.erase(lines_.begin() + lm);
+			lm--;
+		}
+	}
+	cout<<"\n";
+
 	// Merging line models
 	if(pubSegmets) nav_->makeLineMarks(lines_, false, true); // publish unmerged lines in rviz
+
 	for(int lm=0; lm<lines_.size(); lm++){
 		int nextIdx = (lm+1)%lines_.size();
 		if(lines_[lm].canMerge(lines_[nextIdx])){
-			cout<<"can merge lines "<<lm<<" and "<<nextIdx<<"\n";
+			//cout<<"can merge lines "<<lm<<" and "<<nextIdx<<"\n";
 				lines_[lm].mergeLines( lines_[nextIdx] );
 				lines_.erase(lines_.begin() + nextIdx);
 				lm--;
 		}
 	}
-	// Deleting any bad lines that managed to stay in there
-	cout<<"lines R^2 vals are: ";
+	// Make RSquared values and delete any bad lines that managed to stay in there
+	cout<<lines_.size()<<" merged lines R^2 vals are: \n";
 	for(int lm=0; lm<lines_.size(); lm++){
-		cout<<lines_[lm].getRSquared()<<", ";
-
-		if(lines_[lm].getRSquared() < 0.1){ // TODO pick a value for linear regression thresh
+		if(lines_[lm].makeRSquared() > 0.7){
+			cout<<lines_[lm].makeRSquared()<<", ";
+		}
+		else{
+			lines_.erase(lines_.begin() + lm);
+			lm --;
+		}
+	}
+	// TODO delete lines w/ R^2 values under 0.7
+/*	for(int lm=0; lm<lines_.size(); lm++){
+		cout<<lines_[lm].makeRSquared()<<", ";
+		if(lines_[lm].getRSquared() < MinRSquared){ 
 			lines_.erase(lines_.begin() + lm);
 			lm--;
-
-
 		}
-
-	}
+	}*/
 	/*cout<<"num after merging lines: "<<lines_.size()<<" with sizes: ";
 	for(int i=0; i<lines_.size(); i++){
 		cout<<lines_[i].numPts()<<", ";

@@ -53,6 +53,7 @@ public:
 		float getCenterTheta();
 		float getCenterRadius();
 		float getClosestRadius();
+		float makeRSquared();
 		float getRSquared();
 
         void mergeLines(line a);
@@ -72,6 +73,7 @@ private:
         vector <float> y;
         float slope;
         float intercept;
+	float RSquare;
         EndPoint end1;
         EndPoint end2;
 	EndPoint center;
