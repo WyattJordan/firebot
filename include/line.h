@@ -77,12 +77,12 @@ private:
         EndPoint end1;
         EndPoint end2;
 	EndPoint center;
-        float lineDist;
-        bool isLine;
-        float length;
-        bool candle;
-        bool furniture;
-        float distBetPts = 6*3.14159*180/590;
+	float lineDist;
+	bool isLine;
+	float length;
+	bool candle;
+	bool furniture;
+	float distBetPts = 6*3.14159*180/590;
 	float xAvg;
 	float yAvg;
 	float xSum;

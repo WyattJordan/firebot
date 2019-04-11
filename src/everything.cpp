@@ -23,7 +23,7 @@ int main(int argc, char **argv){
 	// Create the Navigation object and set it up
 	ros::NodeHandle n;
 	ros::Publisher navPub = n.advertise<visualization_msgs::MarkerArray>("NavMarkers",1000);
-	Nav nav(1, &navPub); // level 1	
+	Nav nav(1, &navPub, &rob); // level 1	
 	rob.setNav(&nav); // give the robot the nav object so they can chit chat
 	nav.makeMapMarks("marker_ns"); // make initial sets for publishing
 	nav.makeWayMarks("ways_ns");
@@ -38,9 +38,11 @@ int main(int argc, char **argv){
 
 
 	// Spin off threads
-	std::thread mainLogic, driveLoop, publishNavLoop, protoThread;
-	// loop for publishing marker arrays
+	std::thread mainLogic, driveLoop, publishNavLoop, pubTrans, protoThread;
+	// loop for publishing markers in rviz and to transform them appropriately, only for visualization
 	publishNavLoop = std::thread(boost::bind(&Nav::publishLoop, &nav));	
+	pubTrans = std::thread(boost::bind(&Robot::pubTransformContinual, &rob, 10)); // at 10 Hz
+
 	// loop for controlling motors w/ PID and odometry math
 	driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
 

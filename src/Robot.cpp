@@ -12,12 +12,12 @@ void Robot::mainLogic(){
 	eStop_ = false;
 	speed_ = 0;
 	
-	// TODO -- only works w/ 0.3 speed, something else must also be at 0.3 to make it work... 
 	cout<<"started PID while stopped speed = "<<speed_<<"\n";
 
 	//testDistToStop();
 	//odomWorldLoc_   << 0,0,90.0*PI/180.0; // starting at corner of STEM lines on floor 
 	odomWorldLoc_   << 15+2, 34.5,0; // start at back left w/ steel block
+	experimental_ = odomWorldLoc_;
 	runPID_ = true;
 /*	setPose_ = 5; // for testing PID to see min gains needed for certain accuracies
 	sleep(2);
@@ -85,7 +85,9 @@ Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constru
 	fudge_ = 0.949; // accounts for difference between right and left wheel
 	speed_ = 0;      // start stopped
 	runSpeed_ = 0.5; // set speed to run at for this competition
-	eStop_ = reversed_ = positionUpdated_ = pt2pt_ = false;
+	eStop_ = reversed_ = pt2pt_ = false;
+	updateSavedPos_ = updateDriving_ = false;
+	travelDist_ = 0;
 	firstNav_ = facingFirst_ = true;
 	ramp_ = firstRamp_ = false;
 	robUpdateRate_ = mapUpdateRate_ = wayUpdateRate_ = 1;
@@ -199,18 +201,15 @@ void Robot::executeNavStack(){
 				// if approaching waypoint at an angle and arriving close to it turnDiff could be low but pose needs to change
 				setPose_ = getPoseToPoint(navStack.front());
 			}
-			else if(positionUpdated_){
-				// TODO - recalculate Pose to be used based on new position and wayPoint
+			else if(updateDriving_){
 				cout<<"POSITION UPDATED AND POSE RECALCULATED!!!\n";
 				// recalculate in case updates between poseToNextPoint being made and this line
-				float poseToNextPointJustInCase = getPoseToPoint(navStack.front()); 
-				setPose_ = poseToNextPointJustInCase; 
+				setPose_ = getPoseToPoint(navStack.front()); 
+				updateDriving_ = false;
 			}
 			else if(dist < StartBigTurnDist50 && turnDiff > 70){ // if large turn start early
-				// TODO - calculate next pose (usually factor of 90) and set it
 				setPose_ = poseAfterTurn;	
-				cout<<"BIG turning to pose: "<<poseAfterTurn<<"\n";
-				cout<<"Popping marker "<<navStack.front().getID()<<" because BIG turning\n";
+				cout<<"BIG turning to pose: "<<poseAfterTurn<<". Popping marker "<<navStack.front().getID()<<"\n";
 				navStack.pop_front();
 			}
 			else if(dist < StartSmallTurnDist50){
@@ -398,6 +397,11 @@ void Robot::periodicOutput(){
 
 }
 
+void Robot::updatePosition(){
+	// save the new variable
+	updateSavedPos_ = true;
+}
+
 // Increment locX, locY, locP with the new encoder vals
 void Robot::calculateOdom(){
 	bool debug = 0;//debugDrive_;
@@ -408,25 +412,99 @@ void Robot::calculateOdom(){
 	float x = WheelRad / 2.0 * (lRad + rRad);
 	float y = 0;
 	float p = WheelRad / (2.0 * WheelDist) * (rRad - lRad);
-	robotstep_ <<  x, y, p;
-	//if(debug) cout<<"robot step:\n"<<robotstep_<<"\n";
-	if(debug) cout<<"odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";	
-	float theta = odomWorldLoc_(2) + robotstep_(2)/2.0; // radians!
+	robotstep_ <<  x, y, p; // this is in the robot (lidar) frame
 
-	if(debug) cout<<"using theta = "<<theta<<" for rob2world_\n";
-	calculateTransform(theta);	      // find transform using half the step	
-	//if(debug) cout<<"rob2world_ =\n"<<rob2world_<<"\n";
-	worldstep_ = rob2world_*robotstep_; 
-	odomWorldLoc_ += worldstep_;
+	if(!updateSavedPos_){ 
+		float theta = odomWorldLoc_(2) + robotstep_(2)/2.0; // this is in radians!
+		if(debug) cout<<"using theta = "<<theta<<" for rob2world_\n";
+		calculateTransform(theta);	      // find transform using half the step	
+		worldstep_ = rob2world_*robotstep_; 
+		odomWorldLoc_ += worldstep_;
+		travelDist_ += x; // y is always 0 (can't move sideways with differential drive
+	}
+	else{ // set variables for updating the position
+		travelDist_ = 1; // resets when updated, but don't let it be 0
+
+		if(navStack.size()>0)  updateDriving_ = true; // adjust heading if driving 
+	}
 
 	//if(debug) cout<<"odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";	
+}
+
+void Robot::pubTransformContinual(int rate){
+
+	while(1){
+		tf::Transform tfTrans_;
+		tfTrans_.setOrigin(tf::Vector3(experimental_(0), experimental_(1), 0)); // x,y,0 cm shift, could be problematic...
+		tf::Quaternion q;
+		q.setRPY(0,0,experimental_(2)); // radian shift
+		tfTrans_.setRotation(q);
+		br_.sendTransform(tf::StampedTransform(tfTrans_, ros::Time::now(),ROBOTFRAME, GLOBALFRAME));
+		msleep(1/(float) rate * 1000.0);
+	}
 }
 
 // Given the robot's pose relative to the world calculate rob2world_.
 void Robot::calculateTransform(float theta){
 	rob2world_.topLeftCorner(2,2) << cos(theta), -sin(theta),
-					 sin(theta),  cos(theta);
+									 sin(theta),  cos(theta);
 }
+
+void Robot::setRamp(float s, float t){
+	rampTime_ = t;
+	rampSpeed_ = s;
+	firstRamp_ = true;
+	ramp_ = true; 
+}
+
+void Robot::rampUpSpeed(){
+	if(ramp_){
+		if(firstRamp_){
+			rampInc_ = (rampSpeed_ - speed_) / (rampTime_ / (ms_ / 1000.0));
+			firstRamp_ = false;
+			//cout<<"Starting ramp... rampInc_ = "<<rampInc_<<" speed = "<<speed_<<"\n";
+		}
+		speed_ = speed_ + rampInc_;
+		speed2power(0);
+		// if ramp has overshot or is very close to value
+		//cout<<"Ramping... rampInc_ = "<<rampInc_<<" speed = "<<speed_<<"\n";
+		if((rampSpeed_ == 0 && ab(speed_) < ab(rampInc_)) ||
+				(rampSpeed_ < 0 && speed_ < rampSpeed_) ||
+				(rampSpeed_ > 0 && speed_ > rampSpeed_)){
+
+			speed_ = rampSpeed_;
+			ramp_ = false;
+			//cout<<"exiting ramp... speed = "<<speed_<<"\n";
+		}	
+	}
+}
+
+//////////////////// Power and Speed Handling for serial //////////////////
+void Robot::speed2power(float adj){ // note uses local adj not member
+	lDrive_ = speed_ - adj;
+	rDrive_ = speed_*fudge_ + adj;	
+	/*if(!reversed_){
+	  lDrive_ = speed_ - adj;
+	  rDrive_ = speed_*fudge_ + adj;	
+	  }
+	  else {
+	  lDrive_ = (-1.0 * speed_) + adj;
+	  rDrive_ = (-1.0 * speed_)*fudge_ - adj;	
+	  }*/
+	power2pwm();
+}
+
+// scales -1:1 to 0:255
+void Robot::power2pwm(){
+	//if(debugDrive_) cout<<"making pwms with lDrive_ = "<<lDrive_<<" rDrive_ = "<<rDrive_<<"\n";
+	lPWM_ = lDrive_ >= 0 ? lDrive_*255.0 : -1*lDrive_*255.0;
+	rPWM_ = rDrive_ >= 0 ? rDrive_*255.0 : -1*rDrive_*255.0;
+	lForward_ = lDrive_ >= 0 ? 'f' : 'b'; // directions set by char for each motor
+	rForward_ = rDrive_ >= 0 ? 'f' : 'b';
+	//if(debugDrive_) cout<<"made pwms lPWM_= "<<(int)lPWM_<<" rPWm= "<<(int)rPWM_<<"\n";
+	//if(debugDrive_) cout<<"lforward: "<<lForward_<<"  rforward: "<<rForward_<<"\n";
+}
+
 
 // ^^^^^^^^^^^^^^^^^^^^^^^ START SERIAL FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^
 void Robot::openSerial(){
@@ -477,24 +555,6 @@ bool Robot::getSerialEncoders(){
 	//usleep(5000);
 	unsigned char encs[4];
 	int code = read(fd_, encs, 4); // read 2 integers from the arduino
-	
-	// single char method	
-/*	unsigned char enc1[1];
-	unsigned char enc2[1];
-	unsigned char enc3[1];
-	unsigned char enc4[1];
-	int code = 0;
-
-	int del = 1000; // 1 ms delay
-	code += read(fd_, enc1, 1);
-	usleep(del);
-	code += read(fd_, enc2, 1);
-	usleep(del);
-	code += read(fd_, enc3, 1);
-	usleep(del);
-	code += read(fd_, enc4, 1);
-	usleep(del); //*/
-
 
 	if(code == 4){
 		if(!reversed_){
@@ -541,66 +601,18 @@ void Robot::setSerialArms(){
 
 // ^^^^^^^^^^^^^^^^^^^^^^^ END SERIAL FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^
 
-void Robot::speed2power(float adj){ // note uses local adj not member
-	lDrive_ = speed_ - adj;
-	rDrive_ = speed_*fudge_ + adj;	
-	/*if(!reversed_){
-	  lDrive_ = speed_ - adj;
-	  rDrive_ = speed_*fudge_ + adj;	
-	  }
-	  else {
-	  lDrive_ = (-1.0 * speed_) + adj;
-	  rDrive_ = (-1.0 * speed_)*fudge_ - adj;	
-	  }*/
-	power2pwm();
-}
+////////////////// SIMPLE FUNCTIONS ////////////////////////////////
+void Robot::setNav(Nav* nv){ nav_ = nv; }
+Vector3f Robot::getOdomWorldLoc(){return odomWorldLoc_;};
+float Robot::getTravelDist(){ return travelDist_;}
+tf::Transform Robot::getTransform(){ return tfTrans_;}
 
-// scales -1:1 to 0:255
-void Robot::power2pwm(){
-	//if(debugDrive_) cout<<"making pwms with lDrive_ = "<<lDrive_<<" rDrive_ = "<<rDrive_<<"\n";
-	lPWM_ = lDrive_ >= 0 ? lDrive_*255.0 : -1*lDrive_*255.0;
-	rPWM_ = rDrive_ >= 0 ? rDrive_*255.0 : -1*rDrive_*255.0;
-	lForward_ = lDrive_ >= 0 ? 'f' : 'b'; // directions set by char for each motor
-	rForward_ = rDrive_ >= 0 ? 'f' : 'b';
-	//if(debugDrive_) cout<<"made pwms lPWM_= "<<(int)lPWM_<<" rPWm= "<<(int)rPWM_<<"\n";
-	//if(debugDrive_) cout<<"lforward: "<<lForward_<<"  rforward: "<<rForward_<<"\n";
-}
-
-void Robot::setRamp(float s, float t){
-	rampTime_ = t;
-	rampSpeed_ = s;
-	firstRamp_ = true;
-	ramp_ = true; 
-}
-
-void Robot::rampUpSpeed(){
-	if(ramp_){
-		if(firstRamp_){
-			rampInc_ = (rampSpeed_ - speed_) / (rampTime_ / (ms_ / 1000.0));
-			firstRamp_ = false;
-			//cout<<"Starting ramp... rampInc_ = "<<rampInc_<<" speed = "<<speed_<<"\n";
-		}
-		speed_ = speed_ + rampInc_;
-		speed2power(0);
-		// if ramp has overshot or is very close to value
-		//cout<<"Ramping... rampInc_ = "<<rampInc_<<" speed = "<<speed_<<"\n";
-		if((rampSpeed_ == 0 && ab(speed_) < ab(rampInc_)) ||
-				(rampSpeed_ < 0 && speed_ < rampSpeed_) ||
-				(rampSpeed_ > 0 && speed_ > rampSpeed_)){
-
-			speed_ = rampSpeed_;
-			ramp_ = false;
-			//cout<<"exiting ramp... speed = "<<speed_<<"\n";
-		}	
-	}
-}
-
+void Robot::setExperimental(Vector3f pose){experimental_ = pose;}
 
 float Robot::toRad(float deg){ return deg*PI2/360.0; }
 void Robot::msleep(int t){ usleep(1000*t); }
-void Robot::setNav(Nav* nv){ nav_ = nv; }
-Vector3f Robot::getOdomWorldLoc(){return odomWorldLoc_;};
 
+////////////////////////////// BASIC MOVEMENT TESTS ///////////////////////////////////////
 void Robot::testDistToStop(){
 	// Testing 90deg turn distance overshoot for setting StartTurnDist50 and StartTurnDist20
 	/*

@@ -1,28 +1,4 @@
 #include "lidar.h"
-Lidar::Lidar(){
-	defaults();
-} // do not use this
-
-void Lidar::defaults(){
-	prevOdom_ << -100, -100, 0;
-	startCount_ = 0;
-	localRoom_ = -1;
-	started_ = false;
-	startRooms_.resize(0);
-	keypress_ = true;
-}
-
-Lidar::Lidar(Robot *robRef, Nav* navRef){
-	rob_ = robRef;
-	nav_ = navRef;
-	defaults();
-}
-
-Lidar::Lidar(Nav* navRef){
-	nav_ = navRef;
-	defaults();
-}
-
 void Lidar::processData(const sensor_msgs::LaserScan::ConstPtr& scan){
 	int num = scan->scan_time / scan->time_increment;
 	degrees_.resize(0);
@@ -55,10 +31,10 @@ void Lidar::processData(const sensor_msgs::LaserScan::ConstPtr& scan){
 	removePt(rad_.size()-1);
 
 	for(int i=0; i < rad_.size(); i++){ // remove points from the studs or near their angles
-		if(degrees_[i] > 37 && degrees_[i] < 41   ||
-		   degrees_[i] > 137 && degrees_[i] < 141 ||
-		   degrees_[i] > 319 && degrees_[i] < 323 ||
-		   degrees_[i] > 219 && degrees_[i] < 223){
+		if((degrees_[i] > 37 && degrees_[i] < 41)   ||
+		   (degrees_[i] > 137 && degrees_[i] < 141) ||
+		   (degrees_[i] > 319 && degrees_[i] < 323) ||
+		   (degrees_[i] > 219 && degrees_[i] < 223)){
 			removePt(i);
 			i--;
 		}
@@ -74,11 +50,16 @@ void Lidar::input(){
 }
 
 void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
-	/*bool updatePosition = false;
+	bool linearMove = false;
+	bool updatePosition = false;
+	tf::Transform oldTrans; // save values immediately if going to be used (computing all this will take time
+	float travelDist;
 	Vector3f currentPos = rob_->getOdomWorldLoc(); // this is an undefined ref for some reason...
-	if(! (prevOdom_(0) == -100 && prevOdom_(1) == -100)){ // if not the first run (default odom loc) 
+	if(tickCount_++%LidarUpdateRate==0  && ! (prevOdom_(0) == -100 && prevOdom_(1) == -100)){ // if not the first run (default odom loc) 
 		// if the angle has changed less than 5deg between the two positions
-		if(abs(prevOdom_(2) - currentPos(2))*180/PI < 5) updatePosition = true;
+		if(abs(prevOdom_(2) - currentPos(2))*180/PI < 5.0) linearMove = true;
+		if(linearMove) oldTrans = rob_->getTransform(); // save current copy
+		if(linearMove) travelDist = rob_->getTravelDist();
 	}//*/
 
 	if(keypress_){
@@ -118,7 +99,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		started_ = checkLocalize();
 		cout<<"done initial localize sequence\n";
 	}
-	else if(0 && started_){
+	/*else if(started_){ // testing picking room code by reseting on keypress
 		nav_->makeLineMarks(lines_, true, true);
 		if(startCount_++ > 50){
 			startCount_ = 0;
@@ -127,22 +108,24 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 			startRooms_.resize(0);
 			cout<<"\n\n\n\n\n";
 		}
-	}
-	
-	//findLines(); // Split-and-Merge line algo, see Auto. Mobile Robots 2nd ed by Siegwart, Nourbakhsh, Scaramuzza, pg 249
-	//nav_->makeLineMarks(lines_, true); // publish lines in rviz
+	}*/
+	else if(linearMove){ // normal scan update
+		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame) shifted!!!
+		findJumps(false);  // don't look for big jumps, just furniture
+		findFurniture();   // determines what is furniture from smallJump_ 
+		nav_->makeFurnMarks(furns_); // publishfurniture in rviz
+		findLines(true); // pub segments on, might want this off (too much processing)
+		nav_->makeLineMarks(lines_, true, true);
 
-	// publish transformation from global to laser_frame
-	/*
-	static tf::TransformBroadcaster br;	
-	tf::Transform trans;
-	trans.setOrigin(tf::Vector3(currentPos(0), currentPos(1), 0));
-	tf::Quaternion q;
-	q.setRPY(0,0,currentPos(2));
-	trans.setRotation(q);
-	// determine the frame laser_frame in the global frame
-	br.sendTransform(tf::StampedTransform(trans, ros::Time::now(),ROBOTFRAME, GLOBALFRAME));
-	cout<<"sent tf frame via broacaster\n";
+		// TODO - conditions for a good scan to update position
+		if( getMaxRSquare() > 0.85 ){
+			nav_->updatePositionAndMap(lines_, currentPos, oldTrans, travelDist);
+		}
+		else{
+			updatePosition = false;
+		}
+	}
+
 	prevOdom_ = currentPos;//*/
 }
 
@@ -261,7 +244,7 @@ int Lidar::classifyRoomFromJumps(){
 	}
 	else{ // pick either room 1 or 4 based on if the two closest big jumps are seperated by a DoorWidth
 		// sort the jumps by closest
-		std::sort(jump_.begin(),jump_.end(),[this](int a, int b) -> bool {return getCloserJumpRadius(a)< getCloserJumpRadius(b);});
+		std::sort(jump_.begin(),jump_.end(),[this](int a, int b) -> bool {return getCloserJumpRadius(a) < getCloserJumpRadius(b);});
 		float dist = pt2PtDist(xVal_[getCloserJumpPt(jump_[0])],yVal_[getCloserJumpPt(jump_[0])],
 					xVal_[getCloserJumpPt(jump_[1])],yVal_[getCloserJumpPt(jump_[1])]);
 		if(abs(dist - DoorWidth) < DoorWidthTol){
@@ -452,8 +435,8 @@ void Lidar::findLines(bool pubSegmets){
 		if(rad_[p] ==  MAXDIST){
 			continue; // skip because it's out of range 
 		}
-		else if(furnIdxs_.size()!=0 && std::find(furnIdxs_.begin(), furnIdxs_.end(), p) != furnIdxs_.end() || 
-				outliers_.size()!=0 && std::find(outliers_.begin(), outliers_.end(), p) != outliers_.end()){
+		else if((furnIdxs_.size()!=0 && std::find(furnIdxs_.begin(), furnIdxs_.end(), p) != furnIdxs_.end()) || 
+				(outliers_.size()!=0 && std::find(outliers_.begin(), outliers_.end(), p) != outliers_.end())){
 			//cout<<"pt "<<p<<" of "<<rad_.size()<<" was in furnIdxs_ \n";
 			continue; // skip because it's a piece of furniture or a bad point
 		}
@@ -481,7 +464,8 @@ void Lidar::findLines(bool pubSegmets){
 
 			if(p < rad_.size()-1) {
 				tmp.addPointEnd(xVal_[p],yVal_[p]); // add the current pt which wasn't added to to tmp
-				tmp.addPointEnd(xVal_[++p],yVal_[++p]); // add the next pt
+				p++;
+				tmp.addPointEnd(xVal_[p],yVal_[p]); // add the next pt
 				tmp.buildLine();
 			}
 			else{
@@ -672,3 +656,36 @@ int Lidar::modeRoom(){
 	return mode;
 }
 
+float Lidar::getMaxRSquare(){
+	float max = 0;
+	for(line ln : lines_){
+		if(ln.getRSquared() > max){
+			max = ln.getRSquared();
+		}
+	}
+	return max;
+}
+
+Lidar::Lidar(){
+	defaults();
+} // do not use this
+
+void Lidar::defaults(){
+	prevOdom_ << -100, -100, 0.4*PI; // start at random pos
+	startCount_ = 0;
+	localRoom_ = -1;
+	started_ = false;
+	startRooms_.resize(0);
+	tickCount_ = 0;
+}
+
+Lidar::Lidar(Robot *robRef, Nav* navRef){
+	rob_ = robRef;
+	nav_ = navRef;
+	defaults();
+}
+
+Lidar::Lidar(Nav* navRef){
+	nav_ = navRef;
+	defaults();
+}

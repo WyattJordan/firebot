@@ -7,6 +7,7 @@
 #include <ros/console.h> 
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
+#include <tf/transform_broadcaster.h>
 #include "Robot.h"
 #include "Endpoint.h"
 #include "line.h"
@@ -19,6 +20,7 @@
 #include <vector>
 #include <time.h>
 #include <chrono>
+#include <numeric>
 using std::vector;
 using std::cout;
 using std::string;
@@ -37,12 +39,14 @@ class Nav{
 		bool pubWays_, pubMap_, pubRob_; // flags for publishLoop() set by rob obj
 
 		Nav(); // don't use
+		Nav(int lvl, ros::Publisher *pub, Robot* rob); // read map and way from file given level
 		Nav(int lvl, ros::Publisher *pub); // read map and way from file given level
 
 		void setOdomLoc(Vector3f od);	 // rob obj sends data over
 		void setSmallRoomUpper(bool up); // reconfigure the rooms
 		void setBigRoomUpper(bool up);   // "
 
+		void updatePositionAndMap(vector<line> lns, Vector3f pos, tf::Transform trans, float travelDist);
 		void publishLoop(); // calculate marks and publish as flags are set
 		void publishLoopContinual(); // calculate marks and publish every 2 seconds
 		void outputWays();  
@@ -61,6 +65,7 @@ class Nav{
 		EndPoint& getBadPoint();
 		
 	private:
+		Robot* rob_;
 		bool smallRoomConf_, bigRoomConf_; 	// passed to reconfigure rooms
 		string worldFrame_;		// specify world frame label
 		vector<EndPoint> mapPoints_;	// graph of map corners and key points
@@ -74,6 +79,7 @@ class Nav{
 		ros::Publisher *markerPub_; 	// publisher for all MarkerArrays
 		Vector3f odomWorldLocCpy_;		// copy of loc in world frame from Robot, READ ONLY
 
+		void defaults();
 		void loadFiles(int lvl); // get data from config files
 		void initRobotMarks();   // sets type, ns, frame, color
 		void calcRobotMarks();   // sets the xyz
