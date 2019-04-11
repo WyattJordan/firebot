@@ -46,6 +46,6 @@
 // used for position updates in Nav
 #define LineAngleThresh 10.0 		  // must be within X deg to use for pose update
 #define LidarErrorEquivalentDist 10.0 // weighs the theta updates as if the lidar has the same amount of error as X cm of travel w/ encoders
-#define LidarUpdateRate 3 			  // will update every X scans (scans occure every 0.1s)
+#define LidarUpdateRate 1 			  // will update every X scans (scans occure every 0.1s)
 
 

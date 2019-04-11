@@ -21,6 +21,7 @@
 #include <time.h>
 #include <chrono>
 #include <numeric>
+#include <cmath>
 using std::vector;
 using std::cout;
 using std::string;

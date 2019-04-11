@@ -46,7 +46,6 @@ void Lidar::input(){
 		cin.get();
 		keypress_ = true;
 	}
-
 }
 
 void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
@@ -54,6 +53,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	bool updatePosition = false;
 	tf::Transform oldTrans; // save values immediately if going to be used (computing all this will take time
 	float travelDist;
+	
 	Vector3f currentPos = rob_->getOdomWorldLoc(); // this is an undefined ref for some reason...
 	if(tickCount_++%LidarUpdateRate==0  && ! (prevOdom_(0) == -100 && prevOdom_(1) == -100)){ // if not the first run (default odom loc) 
 		// if the angle has changed less than 5deg between the two positions
@@ -62,7 +62,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		if(linearMove) travelDist = rob_->getTravelDist();
 	}//*/
 
-	if(keypress_){
+	/*if(keypress_){
 		cout<<"\n";
 		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
 		findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
@@ -77,7 +77,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		cout<<"\ndone this scan\n\n";
 		keypress_ = false;
 
-	}
+	}*/
 	if(0 && startCount_++ < 10){ // classify the room multiple times before determining which room the 'bot is in 
 		time_t start, finish;
 		time(&start);
@@ -110,6 +110,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		}
 	}*/
 	else if(linearMove){ // normal scan update
+		cout<<"linear movement! Going to process data!\n";
 		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame) shifted!!!
 		findJumps(false);  // don't look for big jumps, just furniture
 		findFurniture();   // determines what is furniture from smallJump_ 
@@ -119,6 +120,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 
 		// TODO - conditions for a good scan to update position
 		if( getMaxRSquare() > 0.85 ){
+			cout<<"got good lines, asking Nav to update position\n";
 			nav_->updatePositionAndMap(lines_, currentPos, oldTrans, travelDist);
 		}
 		else{
@@ -294,7 +296,7 @@ void Lidar::findFurniture(){
 
 		bool endsAreBack = rad_[middle] < rad_[pt1] && rad_[middle] < rad_[pt2];
 		if(!endsAreBack){ // both ends of the furniture should be further from the bot than the center
-			cout<<"deleted jump "<<smallJump_[j]<<" because both ends aren't less than middle at "<<middle<<" with radius "<<rad_[middle]<<"\n";
+			//cout<<"deleted jump "<<smallJump_[j]<<" because both ends aren't less than middle at "<<middle<<" with radius "<<rad_[middle]<<"\n";
 			continue;
 		}
 		if(step > 80){ // if this statement runs something is wrong, probably with the loop around
@@ -504,12 +506,11 @@ void Lidar::findLines(bool pubSegmets){
 			if(added){break;} // don't check against all other line models if it gets added to one
 		} // loop thru line models
 	} // loop thru checkpts
-	//cout<<"num pts addedback = "<<addedback<<"\n";
-	// TODO -  delete line segments with R^2 < 0.1
-	cout<<lines_.size()<<" raw lines R^2 are: \n";
+
+	//cout<<lines_.size()<<" raw lines R^2 are: \n";
 	for(int lm=0; lm<lines_.size(); lm++){
 		if(lines_[lm].makeRSquared() > 0.1){
-			cout<<lines_[lm].makeRSquared()<<", ";
+	//		cout<<lines_[lm].makeRSquared()<<", ";
 		}
 		else{
 			lines_.erase(lines_.begin() + lm);
@@ -531,10 +532,10 @@ void Lidar::findLines(bool pubSegmets){
 		}
 	}
 	// Make RSquared values and delete any bad lines that managed to stay in there
-	cout<<lines_.size()<<" merged lines R^2 vals are: \n";
+	//cout<<lines_.size()<<" merged lines R^2 vals are: \n";
 	for(int lm=0; lm<lines_.size(); lm++){
 		if(lines_[lm].makeRSquared() > 0.7){
-			cout<<lines_[lm].makeRSquared()<<", ";
+			//cout<<lines_[lm].makeRSquared()<<", ";
 		}
 		else{
 			lines_.erase(lines_.begin() + lm);

@@ -33,15 +33,38 @@ void Robot::mainLogic(){
 	navStack.push_back(nav_->getWayPoint(13));
 	navStack.push_back(nav_->getWayPoint(5));*/
 	// loop back to 4 code around middle wall
-/*	navStack.push_back(nav_->getWayPoint(18));
+	navStack.push_back(nav_->getWayPoint(18));
 	navStack.push_back(nav_->getWayPoint(5));
 	navStack.push_back(nav_->getWayPoint(13));
-	navStack.push_back(nav_->getWayPoint(12));*/
-/*	navStack.push_back(nav_->getWayPoint(15));///
+	navStack.push_back(nav_->getWayPoint(15));///
 	navStack.push_back(nav_->getWayPoint(16));///
 	navStack.push_back(nav_->getWayPoint(19));///
 	navStack.push_back(nav_->getWayPoint(4));//*/
+
 	navStack.push_back(nav_->getWayPoint(18));
+	navStack.push_back(nav_->getWayPoint(5));
+	navStack.push_back(nav_->getWayPoint(13));
+	navStack.push_back(nav_->getWayPoint(15));///
+	navStack.push_back(nav_->getWayPoint(16));///
+	navStack.push_back(nav_->getWayPoint(19));///
+	navStack.push_back(nav_->getWayPoint(4));
+
+	navStack.push_back(nav_->getWayPoint(18));
+	navStack.push_back(nav_->getWayPoint(5));
+	navStack.push_back(nav_->getWayPoint(13));
+	navStack.push_back(nav_->getWayPoint(15));///
+	navStack.push_back(nav_->getWayPoint(16));///
+	navStack.push_back(nav_->getWayPoint(19));///
+	navStack.push_back(nav_->getWayPoint(4));
+
+	navStack.push_back(nav_->getWayPoint(18));
+	navStack.push_back(nav_->getWayPoint(5));
+	navStack.push_back(nav_->getWayPoint(13));
+	navStack.push_back(nav_->getWayPoint(15));///
+	navStack.push_back(nav_->getWayPoint(16));///
+	navStack.push_back(nav_->getWayPoint(19));///
+	navStack.push_back(nav_->getWayPoint(4));
+/*	navStack.push_back(nav_->getWayPoint(18));
 	navStack.push_back(nav_->getWayPoint(9));
 	navStack.push_back(nav_->getWayPoint(10));
 	navStack.push_back(nav_->getWayPoint(14));
@@ -52,7 +75,7 @@ void Robot::mainLogic(){
 	/*navStack.push_back(nav_->getWayPoint(6));
 	navStack.push_back(nav_->getWayPoint(7));
 	navStack.push_back(nav_->getWayPoint(8));//*/
-	pt2pt_ = false;
+	pt2pt_ = true;
 	executeNavStack();
 }
 
@@ -435,11 +458,13 @@ void Robot::pubTransformContinual(int rate){
 
 	while(1){
 		tf::Transform tfTrans_;
-		tfTrans_.setOrigin(tf::Vector3(experimental_(0), experimental_(1), 0)); // x,y,0 cm shift, could be problematic...
+		//tfTrans_.setOrigin(tf::Vector3(experimental_(0), experimental_(1), 0)); // x,y,0 cm shift, could be problematic...
+		tfTrans_.setOrigin(tf::Vector3(odomWorldLoc_(0), odomWorldLoc_(1), 0)); // x,y,0 cm shift, could be problematic...
 		tf::Quaternion q;
-		q.setRPY(0,0,experimental_(2)); // radian shift
+		//q.setRPY(0,0,experimental_(2)); // radian shift
+		q.setRPY(0,0,odomWorldLoc_(2)); // radian shift
 		tfTrans_.setRotation(q);
-		br_.sendTransform(tf::StampedTransform(tfTrans_, ros::Time::now(),ROBOTFRAME, GLOBALFRAME));
+		br_.sendTransform(tf::StampedTransform(tfTrans_, ros::Time::now(), GLOBALFRAME, ROBOTFRAME));
 		msleep(1/(float) rate * 1000.0);
 	}
 }

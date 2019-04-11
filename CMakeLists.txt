@@ -184,21 +184,10 @@ include_directories(
 #add_definitions(${GCC_COVERAGE_COMPILE_FLAGS})
 
 
-
-add_executable(launcher src/launcher.cpp src/Robot.cpp src/Endpoint.cpp src/Nav.cpp src/pid.cpp src/line.cpp)
-#target_compile_options(launcher PRIVATE -lwiringPi -lcrypt -lm -lrt)
-#add_dependencies(launcher ${PROJECT_NAME}_gencfg)
+#[[add_executable(launcher src/launcher.cpp src/Robot.cpp src/Endpoint.cpp src/Nav.cpp src/pid.cpp src/line.cpp)
 target_link_libraries(launcher ${catkin_LIBRARIES})
 target_link_libraries(launcher wiringPi)
-
-
-# this takes a while to build so just don't build it for now
-add_executable(everything src/everything.cpp src/Robot.cpp src/pid.cpp src/Nav.cpp src/Endpoint.cpp src/lidar.cpp src/line.cpp)
-#target_compile_options(launcher PRIVATE -lwiringPi -lcrypt -lm -lrt)
-#add_dependencies(everything ${PROJECT_NAME}_gencfg)
-target_link_libraries(everything ${catkin_LIBRARIES})
-target_link_libraries(everything wiringPi)
-#]]
+]]
 
 
 #Stuff for LIDAR
@@ -206,18 +195,31 @@ add_executable(rplidarNode src/node.cpp ${RPLIDAR_SDK_SRC})
 target_link_libraries(rplidarNode ${catkin_LIBRARIES})
 
 if($ENV{lidarWithRobot} STREQUAL "true")
-	message("\n\nMaking rpProcessor node with Robot.cpp and all dependencies\n\n")
+	message("\n\nMaking everything and all dependencies\n\n")
+	add_executable(everything src/everything.cpp src/Robot.cpp src/pid.cpp src/Nav.cpp src/Endpoint.cpp src/lidar.cpp src/line.cpp)
+	target_link_libraries(everything ${catkin_LIBRARIES})
+	target_link_libraries(everything wiringPi)
+	target_link_libraries(everything ${catkin_LIBRARIES})
+	install(TARGETS everything
+	  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+	  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+	  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+	)
+else()
+	message("\n\nMaking rpProcessor node only\n\n")
 	add_executable(rpProcessor src/myClient.cpp src/lidar.cpp src/Nav.cpp src/Robot.cpp src/line.cpp src/Endpoint.cpp src/pid.cpp)
 	target_compile_options(rpProcessor PRIVATE -lwiringPi -lcrypt -lm -lrt)
 	target_link_libraries(rpProcessor wiringPi)
-else()
-	message("\n\nMaking rpProcessor node only with nav for rviz\n\n")
-	add_executable(rpProcessor src/myClient.cpp src/lidar.cpp src/Nav.cpp src/line.cpp src/Endpoint.cpp)
+	target_link_libraries(rpProcessor ${catkin_LIBRARIES})
+	install(TARGETS rpProcessor
+	  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+	  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+	  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+	)
 endif()
 
-target_link_libraries(rpProcessor ${catkin_LIBRARIES})
 
-install(TARGETS rplidarNode rpProcessor
+install(TARGETS rplidarNode
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -227,8 +229,6 @@ install(DIRECTORY launch rviz sdk
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
   USE_SOURCE_PERMISSIONS
 )
-
-
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node

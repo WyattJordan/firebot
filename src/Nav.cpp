@@ -14,7 +14,6 @@ void Nav::defaults(){
 	cmapMark_ = {1.0, 0.1, 0.1};
 	cwayLine_ = {0.1, 0.9, 0.9};
 	cwayMark_ = {0.8, 0.1, 0.9};
-
 }
 // don't use default constuctor, it must load the map and way files
 Nav::Nav(){defaults();}
@@ -22,9 +21,9 @@ Nav::Nav(){defaults();}
 Nav::Nav(int lvl, ros::Publisher* pub){  
 	defaults();
 	markerPub_ = pub;
-	cout<<"going to load files\n";
+	cout<<"going to load files with just pub\n";
 	loadFiles(lvl);	
-	cout<<"going to init marks\n";
+	cout<<"going to init marks with just pub\n";
 	initRobotMarks();
 }
 
@@ -33,9 +32,9 @@ Nav::Nav(int lvl, ros::Publisher* pub, Robot* rob){
 	defaults();
 	markerPub_ = pub;
 	rob_ = rob;
-	cout<<"going to load files\n";
+	cout<<"going to load files with rob\n";
 	loadFiles(lvl);	
-	cout<<"going to init marks\n";
+	cout<<"going to init marks with rob\n";
 	initRobotMarks();
 }
 void Nav::setOdomLoc(Vector3f od){
@@ -58,13 +57,13 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, tf::Transform tra
 			angle = angle < 0 ? angle + 360.0 : angle; // range is now 0 to 360
 
 			// check if the global angle is closer to vertical or horizontal within a limit
-			if( abs(90.0-angle) < LineAngleThresh || abs(270.0-angle) < LineAngleThresh){ // use as vertical line
-				float error = abs(90.0-angle) < abs(270.0-angle) ? (90.0-angle) : (270.0-angle);
+			if( ab(90.0-angle) < LineAngleThresh || ab(270.0-angle) < LineAngleThresh){ // use as vertical line
+				float error = ab(90.0-angle) < ab(270.0-angle) ? (90.0-angle) : (270.0-angle);
 				poses.push_back(pos(2) - error); // subtract the error from the thought position to get the actual
 				R.push_back(l.getRSquared());
 			}
-			else if( abs(angle) < LineAngleThresh || abs(180.0-angle) < LineAngleThresh){ // use as horizontal line
-				float error = abs(angle) < abs(180.0-angle)      ?     angle    : (180.0-angle);
+			else if( ab(angle) < LineAngleThresh || ab(180.0-angle) < LineAngleThresh){ // use as horizontal line
+				float error = ab(angle) < ab(180.0-angle)      ?     angle    : (180.0-angle);
 				poses.push_back(pos(2) - error);
 				R.push_back(l.getRSquared());
 			}
