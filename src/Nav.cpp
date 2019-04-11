@@ -47,53 +47,62 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, tf::Transform tra
 	// sort by RSquared to use for pose calculations
 	std::sort(lns.begin(),lns.end(),[](line a, line b) -> bool {return a.getRSquared() > b.getRSquared();});
 
-	vector<float> poses, R; // in radians and unitless respectively
-	vector<int> lineIdxs; // indexes of lines sorted by R squared and useable (within LineAngleThresh) if idx<0 it's a vertical line
-	
-	for(int i=0; i<lns.size(); i++){ // this is confusing stuff
-		line l = lns[i];
-		if(l.getRSquared() > 0.8){
-			// angle is wall angle in global frame (= angle in lidar frame + pose angle) should be close to vertical or horizontal
-			float angle = 180.0/PI * (atan(l.getSlope()) + pos(2)); // range is unknown due to pos(2) from 'bot
-			angle = fmod(angle, 360.0);  
-			angle = angle < 0 ? angle + 360.0 : angle; // range is now 0 to 360
+		vector<float> poses, R; // in radians and unitless respectively
+		vector<int> lineIdxs; // indexes of lines sorted by R squared and useable (within LineAngleThresh) if idx<0 it's a vertical line
+		
+		for(int i=0; i<lns.size(); i++){ // this is confusing stuff
+			line l = lns[i];
+			if(l.getRSquared() > 0.8){
+				// angle is wall angle in global frame (= angle in lidar frame + pose angle) should be close to vertical or horizontal
+				float angle = 180.0/PI * (atan(l.getSlope()) + pos(2)); // range is unknown due to pos(2) from 'bot
+				angle = fmod(angle, 360.0);  
+				angle = angle < 0 ? angle + 360.0 : angle; // range is now 0 to 360
 
-			// check if the global angle is closer to vertical or horizontal within a limit
-			if( ab(90.0-angle) < LineAngleThresh || ab(270.0-angle) < LineAngleThresh){ // use as vertical line
-				float error = ab(90.0-angle) < ab(270.0-angle) ? (90.0-angle) : (270.0-angle);
-				poses.push_back(pos(2) - PI/180.0*error); // subtract the error from the thought position to get the actual
-				R.push_back(l.getRSquared());
-				lineIdxs.push_back(-1*i); // save as negative idx for vertical line
-			}
-			else if( ab(angle) < LineAngleThresh || ab(180.0-angle) < LineAngleThresh){ // use as horizontal line
-				float error = ab(angle) < ab(180.0-angle)      ?     angle    : (180.0-angle);
-				poses.push_back(pos(2) - PI/180.0*error);
-				R.push_back(l.getRSquared());
-				lineIdxs.push_back(i); // keep as positive for horizontal line
+				// check if the global angle is closer to vertical or horizontal within a limit
+				if( ab(90.0-angle) < LineAngleThresh || ab(270.0-angle) < LineAngleThresh){ // use as vertical line
+					float error = ab(90.0-angle) < ab(270.0-angle) ? (90.0-angle) : (270.0-angle);
+					poses.push_back(pos(2) - PI/180.0*error); // subtract the error from the thought position to get the actual
+					R.push_back(l.getRSquared());
+					lineIdxs.push_back(-1*i); // save as negative idx for vertical line
+				}
+				else if( ab(angle) < LineAngleThresh || ab(180.0-angle) < LineAngleThresh){ // use as horizontal line
+					float error = ab(angle) < ab(180.0-angle)      ?     angle    : (180.0-angle);
+					poses.push_back(pos(2) - PI/180.0*error);
+					R.push_back(l.getRSquared());
+					lineIdxs.push_back(i); // keep as positive for horizontal line
+				}
 			}
 		}
 
+	if(travelDist(2) > 100){ // only update the angle of the pose every 200cm or more
+		if(poses.size()>0){
+			float sumR = std::accumulate(R.begin(), R.end(), 0.0);
+			float finalLidarPose = 0;
+			float justAvgPose = std::accumulate(poses.begin(), poses.end(), 0.0) / (float)poses.size();
+			for(int i=0; i<poses.size(); i++){ // weighted average for pose based on R^2 value of lines used
+				finalLidarPose += poses[i] * R[i] / sumR;
+			}
+
+			float sumWeights = LidarErrorEquivalentDist + travelDist(2);
+			// Lidar is weighted heavier when the robot has traveled further between updates
+			float finalPose = finalLidarPose*travelDist(2)/ sumWeights + pos(2)*LidarErrorEquivalentDist/ sumWeights;
+							
+			cout<<"Lidar used "<<poses.size()<<" lines and avg pose is: "<<180.0/PI*justAvgPose<<" but weighted is: "<<180.0/PI*finalLidarPose<<
+				" but after weighting with odom of"<<180.0/PI*pos(2)<<" got "<<180.0/PI*finalPose<< " with dist = "<<travelDist(2)<<"\n";
+			// use old pos and get current position to get position difference?
+			if(ab(finalLidarPose - pos(2)) < MaxLidarPoseDiff){
+				Vector3f tmp;
+				tmp << 0, 0, finalLidarPose; // VERY IMPORTANT WHICH GETS SENT
+				rob_->setExperimental(tmp); // juse for changing frame
+				//rob_->updatePosition(tmp); // actually changes robot pos
+				travelDist(2) = 0; // reset 
+				cout<<"used the pose to update!!!";
+			}
+			else{
+				cout<<"lidar estimate too different from current pose!!! did not use \n";
+			}
+		}
 	}
-
-	float sumR = std::accumulate(R.begin(), R.end(), 0.0);
-	float finalLidarPose = 0;
-	float justAvgPose = std::accumulate(poses.begin(), poses.end(), 0.0) / (float)poses.size();
-	for(int i=0; i<poses.size(); i++){ // weighted average for pose based on R^2 value of lines used
-		finalLidarPose += poses[i] * R[i] / sumR;
-	}
-
-	float sumWeights = LidarErrorEquivalentDist + travelDist(2);
-	// Lidar is weighted heavier when the robot has traveled further between updates
-	float finalPose = finalLidarPose*travelDist(2)/ sumWeights + pos(2)*LidarErrorEquivalentDist/ sumWeights;
-					
-	cout<<"Lidar used "<<poses.size()<<" lines and avg pose is: "<<180.0/PI*justAvgPose<<" but weighted is: "<<180.0/PI*finalLidarPose<<
-		" but after weighting with odom: "<<180.0/PI*finalPose<< " with dist = "<<travelDist(2)<<"\n";
-	travelDist(2) = 0;
-	// use old pos and get current position to get position difference?
-	Vector3f tmp;
-	tmp << 0, 0, finalLidarPose; // VERY IMPORTANT WHICH GETS SENT
-	rob_->setExperimental(tmp);
-
 
 	// TODO make updates for locations
 	int updateX = 0;

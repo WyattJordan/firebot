@@ -401,9 +401,9 @@ void Robot::periodicOutput(){
 
 }
 
-void Robot::updatePosition(){
-	// save the new variable
+void Robot::updatePosition(Vector3f newPos){
 	updateSavedPos_ = true;
+	newPos_ = newPos; // saves new var so it can be integrated at in calculateOdom (don't just hard change it)
 }
 
 // Increment locX, locY, locP with the new encoder vals
@@ -428,10 +428,15 @@ void Robot::calculateOdom(){
 		travelDist_ += v; // keeps track of dist traveled between updates in x,y,theta (Nav resets w/ pass by ref)
 	}
 	else{ // set variables for updating the position
-
+		for(int i=0; i<3; i++){ 
+			if(newPos_(i) != 0){ // some positions may not get updated (default to 0)
+			       	odomWorldLoc_(i) = newPos_(i);
+				travelDist_(i) == 1; // reset distance since updating that part of pose (x,y,theta)
+			}
+		}
+		calculateTransform(odomWorldLoc_(2));	      // find transform using half the step	
 		if(navStack.size()>0)  updateDriving_ = true; // adjust heading if driving 
 	}
-
 	//if(debug) cout<<"odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";	
 }
 
@@ -441,8 +446,8 @@ void Robot::pubTransformContinual(int rate){
 		//tfTrans_.setOrigin(tf::Vector3(experimental_(0), experimental_(1), 0)); // x,y,0 cm shift, could be problematic...
 		tfTrans_.setOrigin(tf::Vector3(odomWorldLoc_(0), odomWorldLoc_(1), 0)); // x,y,0 cm shift, could be problematic...
 		tf::Quaternion q;
-		q.setRPY(0,0,experimental_(2)); // radian shift
-		//q.setRPY(0,0,odomWorldLoc_(2)); // radian shift
+		//q.setRPY(0,0,experimental_(2)); // radian shift
+		q.setRPY(0,0,odomWorldLoc_(2)); // radian shift
 		tfTrans_.setRotation(q);
 		br_.sendTransform(tf::StampedTransform(tfTrans_, ros::Time::now(), GLOBALFRAME, ROBOTFRAME));
 		msleep(1/(float) rate * 1000.0);

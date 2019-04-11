@@ -108,7 +108,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		}
 	}*/
 	else if(linearMove){ // normal scan update
-	/*	cout<<"\nlinear movement! Going to process data!\n";
+		cout<<"\nlinear movement! Going to process data!\n";
 		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame) shifted!!!
 		findJumps(false);  // don't look for big jumps, just furniture
 		findFurniture();   // determines what is furniture from smallJump_ 
@@ -124,7 +124,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		}
 		else{
 			updatePosition = false;
-		}*/
+		}//*/
 	}
 
 	prevOdom_ = currentPos;//*/

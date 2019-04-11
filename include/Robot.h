@@ -65,8 +65,7 @@ class Robot{
 		void driveLoop();
 		void lidarCallback(); // runs everytime a new lidar scan comes in
 		void pubTransformContinual(int rate); // rate in HZ
-		void pinThread();
-		void openSerial();
+		void updatePosition(Vector3f newPos);
 		void setNav(Nav* nv);
 		Vector3f getOdomWorldLoc();
 		Ref<Vector3f> getTravelDist();
@@ -98,8 +97,7 @@ class Robot{
 		
 		// For updating the position from the Nav class
 		bool updateDriving_, updateSavedPos_; 
-		Vector3f travelDist_;
-		void updatePosition();
+		Vector3f travelDist_, newPos_;
 		tf::TransformBroadcaster br_;
 		tf::Transform tfTrans_;
 
@@ -110,6 +108,8 @@ class Robot{
 		void calculateTransform(float theta);
 		void calculateOdom();
 
+		void pinThread();
+		void openSerial();
 		void setSerialMotors();
 		bool getSerialEncoders();
 		void setSerialArms();

@@ -1,14 +1,19 @@
 On this computer:
 Localization notes:
-	find line with avg center at polar opposite location from bigjump
+
+	Distance updates!!!
+		use the equation of the line to determine it's distance from origin (lidar frame)
+		how frequent?
+			every 5cm? (while driving straight)
+		determining which wall it's seeing?
+			use the findVisibleMarkers() function to know what lines to check?
+			or just check all of them?
+			transform point into global frame
+			loop thru potential lines to see which best it fits and how well it fits that line
+			save updated x/y based on distance from that wall
+		weight based on measured distances (closer is better)
+			
 	get pose based on line slope
-	remove furniture based on furniture jumps before running findlines
-
-
-	Determine pre-emptive turn distance
-		make sure less than dist between 5 and 6 waypts
-	
-	PID tuning - make it go in a rectangle accurately
 
 	Thread Planning
 		driveLoop - does motor PID, odom calculations
@@ -20,6 +25,13 @@ Localization notes:
 ------------------------------ DONE + NOTES ------------------------------
 
 done:
+	remove furniture based on furniture jumps before running findlines
+
+	PID tuning - make it go in a rectangle accurately
+
+	Determine pre-emptive turn distance
+		make sure less than dist between 5 and 6 waypts
+
 	publish odom location at a certain rate
 		save driveloop rate as variable
 		have a counter increment + do math to publish at slower rate
@@ -36,7 +48,7 @@ done:
 		Eigen is breaking w/ size issues
 		THIS ISN'T MATLAB (arrays start at 1)
 
-ynamic reconfigure (went away with kernel update for wifi but restored after downgrade which left the wifi working? not complaining)
+dynamic reconfigure (went away with kernel update for wifi but restored after downgrade which left the wifi working? not complaining)
 
 
 Get wifi working:
