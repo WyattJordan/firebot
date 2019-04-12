@@ -50,7 +50,8 @@ class Nav{
 
 		//void updatePositionAndMap(vector<line> lns, Vector3f pos, tf::StampedTransform trans, Ref<Vector3f> travelDist);
 		//void updatePositionAndMap(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDist);
-		void updatePositionAndMap(vector<line> lns, Vector3f pos, time_t start, Ref<Vector3f> travelDist);
+		void updatePositionAndMap(vector<line> lns, Vector3f pos, time_t &start, Ref<Vector3f> travelDist);
+		float findWallValue(int PNXY, Vector3f pos, bool horiz);
 		void publishLoop(); // calculate marks and publish as flags are set
 		void publishLoopContinual(); // calculate marks and publish every 2 seconds
 		void outputWays();  
@@ -75,6 +76,7 @@ class Nav{
 		string worldFrame_;		// specify world frame label
 		vector<EndPoint> mapPoints_;	// graph of map corners and key points
 		vector<EndPoint> wayPoints_;	// graph of robot drive-to locations
+		vector<int> usedForUpdate_;     // IDs of most recent map pts used for updating location
 		vector<int> expectedIDs_;	// ids of markers expected to be visible
 		EndPoint safeZone_, candle1_, candle2_; // key location markers
 		EndPoint badPt_;		// used when an EndPoint isn't found

@@ -45,7 +45,7 @@ void setListener(boost::shared_ptr<tf::TransformListener> tfList){
 
 }
 
-void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t start, Ref<Vector3f> travelDist){
+void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t &start, Ref<Vector3f> travelDist){
 	// GIVEN - there is at least one line with R^2 > 0.85, R^2 values have been made
 	
 	// sort by closest for distance calculations
@@ -112,83 +112,112 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t start, Ref
 			}
 	}//*/
 
-	// TODO make updates for locations
-	vector<float> xUpdate, yUpdate, xDist, yDist; // lines are sorted by closest, xOppDist saves distances of used lines in reverse order 
-	// should these have different travel distances ? one for x,y, and theta?
-	if(travelDist(0) > 15 || travelDist(1) > 15){
-		// Given: lineIdxs has specifies good vert lines as 2 and horiz as 1 (bad are 0)
-		// Given: line with center pt
-		// Do: determine x and y location updates, wrap in a vector, send to rob_->updatePosition()
-		//
-		// Steps: 
-		// 1. write a function that finds the which global line has center closest to this line's center
-		// 		note: only check vert/horiz lines based on what's given
-		// 		note: need to transform the center pt from the lidar to the global frame!
-		// 2. determine robot distance from that line in lidar frame
-		// 3. determine robot distance in global frame 
-		// 		note: need to know which side of the line it's on... do this based on robot location?
-		
-		for(int i=0; i<lineIdxs.size(); i++){
-			line* sensed = &lns[i]; // get the line in the lidar frame
-			float dist2Line = sensed->findDist(0,0);
-			if(lineIdxs[i] > 0 && dist2Line < 100){ // it's been classified as a vert (2) or horiz (1) line and is within 1m
-				Matrix3f toWorld;
-				float theta = pos(2); // make rotation matrix
-				toWorld << cos(theta), -sin(theta), 0,
-						   sin(theta),  cos(theta), 0,
-						            0,           0, 1;
-				Vector3f lidarPt; // make x,y values in lidar frame + position of robot (in global but not rotated)
-				lidarPt << sensed->getCenterX() + pos(0), sensed->getCenterY() + pos(1), 0;
-				Vector3f globalPt = toWorld * lidarPt; // transform center of measured line in the global frame
-				publishGlobalLineCenter(globalPt);
-
-				line inMap = makeClosestLine(globalPt, lineIdxs[i]==1); // idx of 1 means horiz
-				if(!(inMap.getEndPtX1()==0 && inMap.getEndPtY1()==0)){  // if a line was found
-
-					if(lineIdxs[i]==2) { // vert line, so x val can be set 
-						// robot is at origin, line is in space so find distance to 0,0 +/- line location, which side of line determined by loc
-						float x = pos(0) > inMap.getEndPtX1() ? inMap.getEndPtX1() + dist2Line : inMap.getEndPtX1() - dist2Line;
-						xUpdate.push_back(x);
-						xDist.push_back(dist2Line);
-					} 
-					else { // horiz line so y val can be set
-						float y = pos(1) > inMap.getEndPtY1() ? inMap.getEndPtY1() + dist2Line : inMap.getEndPtY1() - dist2Line;
-						yUpdate.push_back(y);
-						yDist.push_back(dist2Line);
+	// Location updates: 
+	// Finds the closest line to the robot within 36cm and roughly horizontal (|slope| < 4) 
+	// Determines if the robot is facing NESW and if the line is on the right or left side
+	// From this info the global line is found based on closest to current robot pos
+	// Distance from this global line is used to update x or y accordingly
+	float xUpdate = 0;
+	float yUpdate = 0;
+	if(travelDist(0) > 5 || travelDist(1) > 5){
+		line* alignTo;
+		bool gotline = false;
+		for(int i=0; i<lns.size(); i++){ // lines are already sorted by closest so grab first good one
+			alignTo = &lns[i];
+			if(abs(alignTo->getSlope()) < 4 && alignTo->findDist(0,0) < 36){
+				cout<<"using line at angle "<<alignTo.getCenterTheta()<<" for near wall alignment";
+				gotline = true;
+				break;
+			}
+		}
+		// need to know 2 things, robot orientation (NESW) and if the line is on the left or right of the bot
+		if(gotline){ 
+			bool onRight = alignTo->getCenterY() > 0; // if the line in the lidar frame's center val is neg it's on right
+			float dir = pos(2)*180/PI;
+			while(dir<0) dir+=360.0; // make it positive ranging from 0-360
+			float from90 = fmod(dir,90.0); // how far the robot isfrom the 4 possible 90deg directions 
+			if(from90 < 5){ // if robot is within 8deg of NESW
+				int ENSW = round(dir/90.0)%4; // range 0 - 3 for ENWS respectively
+				if(ENSW%2==0){//setting xvalue (vert wall)
+					if((onRight && ENSW==1) || (!onRight && ENSW==3)){// add to x wall
+						float wallX= findWallValue(1, pos, false); 
+						xUpdate = wallX != 0 ? pos(0) + wallX : 0;
+					}
+					else{ // subtract from x wall
+						float wallX= findWallValue(2, pos, false); 
+						xUpdate = wallX != 0 ? pos(0) - wallX : 0;
+					}
+				}
+				else{//setting y values so horiz wall
+					if((onRight && ENSW==2) || (!onRight && ENSW==0)){// add to y wall
+						float wallY = findWallValue(3, pos, true); 
+						yUpdate = wallY != 0 ? pos(0) + wallY : 0;
+					}
+					else{ // subtract from y wall
+						float wallX= findWallValue(4, pos, true); 
+						yUpdate = wallY != 0 ? pos(0) - wallY : 0;
 					}
 				}
 			}
 		}
 	}
-	// TODO weigh by odometry location 
-	if(xUpdate.size()>0){
-		float avgX = std::accumulate(xUpdate.begin(), xUpdate.end(), 0.0) / (float) xUpdate.size();
-		float sumWeights = std::accumulate(xDist.begin(), xDist.end(), 0.0);
-		float weightedXUpdate = 0.0;
-		for(int i=0; i<xDist.size(); i++){weightedXUpdate += xUpdate[i] * (1 -  xDist[i] / sumWeights);}
-		updatedPos(0) = avgX;
-		travelDist(0) = 0; // reset distance since x update
-		cout<<"avgX update ="<<avgX<<" weighted by dists: "<<weightedXUpdate<<" odom said x= "<<pos(0)<<"\n";
-	}
-	if(yUpdate.size()>0){
-		float avgY = std::accumulate(yUpdate.begin(), yUpdate.end(), 0.0) / (float) yUpdate.size();
-		float sumWeights = std::accumulate(yDist.begin(), yDist.end(), 0.0);
-		float weightedYUpdate = 0.0;
-		for(int i=0; i<yDist.size(); i++){weightedYUpdate += yUpdate[i] * (1 -  yDist[i] / sumWeights);}
-		updatedPos(1) = avgY;
-		travelDist(1) = 0; // reset distance since y update
-		cout<<"avgY update ="<<avgY<<" weighted by dists: "<<weightedYUpdate<<" odom said y= "<<pos(1)<<"\n";
-	}
-
+	if(ab(xUpdate - pos(0))<15) updatedPos(0) = xUpdate; // make sure it's nothing crazy
+	if(ab(yUpdate - pos(1))<15) updatedPos(1) = yUpdate;
 	time_t finish;
 	time(&finish);
 	cout<<"ran all lidar processing and scan updating in: "<<difftime(start, finish)*1000<<" ms\n";
-	// send update
-	if(updatedPos(0) + updatedPos(1) + updatedPos(2) !=0){
+	if(updatedPos(0) + updatedPos(1) + updatedPos(2) !=0){ // send update
 		rob_->setExperimental(updatedPos); // just for changing frame to see if working
-		rob_->updatePosition(updatedPos);  // actually changes robot pos
+		//rob_->updatePosition(updatedPos);  // actually changes robot pos
 	}
 }
+float Nav::findWallValue(int PNXY, Vector3f pos, bool horiz){
+	float minDist = LARGENUM;
+	float globalWallVal = 0;
+
+	usedForUpdate_.resize(0);
+	
+	for(EndPoint mapPt : mapPoints_){
+		if(PNXY==1){ // adding to X, line is to left globally
+			if(mapPt.getX() > pos(0)){ continue; }
+		}
+		else if (PNXY==2){ // subbing from x, line is to right globally
+			if(mapPt.getX() < pos(0){ continue; }
+		}
+		else if (PNXY==3){ // adding to Y, line is below globally
+			if(mapPt.getY() > pos(1){ continue; }
+		}
+		else if (PNXY==4){ // subbing from y, line is above globally
+			if(mapPt.getY() < pos(1){ continue; }
+		}
+
+		// done filtering out mapPts based on location (cuts in half)
+		for(int k=0; k<mapPt.getNumNeighbors(); k++){
+			EndPoint neigh = getMapPoint(mapPt.getNeighborID(k));
+			bool ghoriz = abs(mapPt.getX() - neigh.getX()) > abs(mapPt.getY() - neigh.getY());
+			if((ghoriz && horiz) || (!ghoriz && !horiz){
+				EndPoint center;
+				if(horiz){ 
+					EndPoint tmp((mapPt.getX() + neigh.getX())/2.0, mapPt.getY()); 
+					center = tmp;
+				}
+				else{
+					EndPoint tmp(mapPt.getX(), (mapPt.getY() + neigh.getY())/2.0); 
+					center = tmp;
+				}
+				float dist = center.distBetween(pos(0), pos(1)); // dist between robot and center of line in map
+				if(dist<minDist){
+					globalWallVal = horiz ? mapPt.getY() : mapPt.getX();
+					usedForUpdate_.push_back(mapPt.getID());
+					usedForUpdate_.push_back(neigh.getID());
+				}
+			}
+	
+		}// loop thru neighs of this map pt
+	} // loop thru map pts
+	return globalWallVal;
+}
+
 
 line Nav::makeClosestLine(Vector3f gPt, bool horiz){
 	line l;
@@ -282,6 +311,7 @@ void Nav::setSmallRoomUpper(bool up){
 
 		getPoint(12,wayPoints_).setNeighbors(1,11);
 		getPoint(13,wayPoints_).setNeighbors(2,5,15);
+		cout<<"seet small room to upper opening\n";
 		}
 	else{
 		getPoint(11,mapPoints_).setNeighbors(1,12);
@@ -308,10 +338,11 @@ void Nav::setBigRoomUpper(bool up){
 	}
 	else{
 		getPoint(17,mapPoints_).setNeighbors(1,16);
-		removePoint(20,mapPoints_);
+		getPoint(20,mapPoints_).setNeighbors(2,1,3);
 
-		getPoint(4,wayPoints_).setNeighbors(2,3,5);
+		getPoint(4,wayPoints_).setNeighbors(2,3,18);
 		getPoint(16,wayPoints_).setNeighbors(2,15,17);
+		removePoint(19,wayPoints_);
 	}	
 	makeMapMarks("bigRoom_map");
 }
@@ -581,12 +612,15 @@ void Nav::makeFurnMarks(vector<EndPoint> furns){
 void Nav::populateMarks(string which, string NS,
 	   	visualization_msgs::MarkerArray &marks, color lncol, color markcol){
 	vector<EndPoint>* pts;
-	if(which == "map") { pts = &mapPoints_; }
-	if(which == "way") { pts = &wayPoints_; }
+	bool map;
+	if(which == "map") { pts = &mapPoints_; map = true;}
+	if(which == "way") { pts = &wayPoints_; map = false}
 	marks.markers.resize(2 * (pts->size()));
 	
 	// add vertical arrows at pt locations
 	for(int i=0; i<pts->size(); i++){
+		int id = (*pts[i]).getID();
+		bool markSpecial = map && std::find(usedForUpdate_.begin(), usedForUpdate_.end(), id) != usedForUpdate_.end();
 		marks.markers[i].header.frame_id = GLOBALFRAME;
 		marks.markers[i].ns = NS; 
 		marks.markers[i].id = i; //pts[i].getID();
@@ -605,9 +639,9 @@ void Nav::populateMarks(string which, string NS,
 		marks.markers[i].scale.y = 3;
 		marks.markers[i].scale.z = 3;
 		marks.markers[i].color.a = 1.0;	
-		marks.markers[i].color.r = (*pts)[i].isVisible() ? 0.0 : markcol.r;	
-		marks.markers[i].color.g = (*pts)[i].isVisible() ? 1.0 : markcol.g;
-		marks.markers[i].color.b = (*pts)[i].isVisible() ? 0.0 : markcol.b;	
+		marks.markers[i].color.r = (*pts)[i].isVisible() || markSpecial ? 0.0 : markcol.r;	
+		marks.markers[i].color.g = (*pts)[i].isVisible() || markSpecial ? 1.0 : markcol.g;
+		marks.markers[i].color.b = (*pts)[i].isVisible() || markSpecial ? 0.0 : markcol.b;	
 
 		// show text ID above marker with id += 1000
 		int idx = i+pts->size();
@@ -880,17 +914,9 @@ void Nav::outputMap(){  outputGraph(mapPoints_);	}
 void Nav::loadFiles(int lvl){
 	// the file loading into an Endpoint vector should be made into it's own function
 	// though this does require identical formatting in the file fields
- 	string mapfile, wayfile;
-	if(lvl == 3){
-		mapfile = "";
-	    wayfile = "";  //root is catkin ws
-	}	
-	else {
-		mapfile = "/home/eli/cat_ws/src/firebot/load/lvl1_map.txt"; 
-		wayfile = "/home/eli/cat_ws/src/firebot/load/wayPoints.txt";	
-	}
+	string mapfile = "/home/eli/cat_ws/src/firebot/load/lvl1_map.txt"; 
+	string wayfile = "/home/eli/cat_ws/src/firebot/load/wayPoints.txt";	
 
-   
 	std::ifstream file;
 	file.open(mapfile.c_str());
 	string entry = "";
@@ -917,7 +943,7 @@ void Nav::loadFiles(int lvl){
 		EndPoint tmp(std::atof(nums[0].c_str()), std::atof(nums[1].c_str()),
 		    std::atof(nums[2].c_str()),temp);
 		mapPoints_.push_back(tmp);
-		for(int i=0; i<5+count; i++) nums.erase(nums.begin()+0);
+		for(int i=0; i<6+count; i++) nums.erase(nums.begin()+0);
 	}
 
 	// SAME THING FOR WAY FILE WITH SOME ADJUSTMENTS /////////////////////////////////////

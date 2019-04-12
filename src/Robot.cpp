@@ -30,8 +30,11 @@ void Robot::mainLogic(){
 	vector<int> fromCenterAroundR1BackToCenter{5,13,15,16,19,4,18};
 
 	buildNavStack(toCenterFromStart);
-	for(int i=0; i<3; i++) buildNavStack(fromCenterAroundR1BackToCenter, true);
+	bool built = true;
+	for(int i=0; i<3; i++) built = buildNavStack(fromCenterAroundR1BackToCenter, true);
+	cout<<"built nav stack = "<<built<<"\n";
 	pt2pt_ = true;
+
 	executeNavStack();
 }
 
@@ -433,7 +436,7 @@ void Robot::calculateOdom(){
 			       	odomWorldLoc_(i) = newPos_(i);
 			}
 		}
-		if(newPos_(2)!=0) calculateTransform(odomWorldLoc_(2));	      // find transform using half the step	
+		if(newPos_(2)!=0) calculateTransform(odomWorldLoc_(2));
 		if(navStack.size()>0)  updateDriving_ = true; // adjust heading if driving 
 		updateSavedPos_ = false;
 	}
@@ -459,7 +462,7 @@ void Robot::pubTransformContinual(int rate){
 // Given the robot's pose relative to the world calculate rob2world_.
 void Robot::calculateTransform(float theta){
 	rob2world_.topLeftCorner(2,2) << cos(theta), -sin(theta),
-									 sin(theta),  cos(theta);
+					 sin(theta),  cos(theta);
 }
 
 void Robot::setRamp(float s, float t){

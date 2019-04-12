@@ -27,15 +27,15 @@ int main(int argc, char **argv){
 	rob.setNav(&nav); // give the robot the nav object so they can chit chat
 	nav.makeMapMarks("marker_ns"); // make initial sets for publishing
 	nav.makeWayMarks("ways_ns");
-	//nav.outputWays();
-	nav.setBigRoomUpper(false);
-	nav.setSmallRoomUpper(true);
+//	nav.outputMap();
+	nav.setSmallRoomUpper(false);
+	nav.setBigRoomUpper(true);
 	cout<<"made nav object and linked to rob\n";
+	cout<<"neighs to waypt 4 in main are: ";
 	
 	// Create and link lidar class
 	Lidar lid(&rob, &nav);
 	ros::Subscriber sub = n.subscribe<sensor_msgs::LaserScan>("/scan", 1000, &Lidar::scanCallback, &lid);
-
 
 	// Spin off threads
 	std::thread mainLogic, driveLoop, publishNavLoop, pubTrans, protoThread;
