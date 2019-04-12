@@ -44,7 +44,6 @@ class Nav{
 		Nav(int lvl, ros::Publisher *pub, Robot* rob); // read map and way from file given level
 		Nav(int lvl, ros::Publisher *pub); // read map and way from file given level
 
-		void setListener(boost::shared_ptr<tf::TransformListener> tfList);
 		void setOdomLoc(Vector3f od);	 // rob obj sends data over
 		void setSmallRoomUpper(bool up); // reconfigure the rooms
 		void setBigRoomUpper(bool up);   // "
@@ -72,7 +71,6 @@ class Nav{
 		
 	private:
 		Robot* rob_;
-		boost::shared_ptr<tf::TransformListener> tfList_;
 		bool smallRoomConf_, bigRoomConf_; 	// passed to reconfigure rooms
 		string worldFrame_;		// specify world frame label
 		vector<EndPoint> mapPoints_;	// graph of map corners and key points

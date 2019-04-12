@@ -435,6 +435,7 @@ void Robot::calculateOdom(){
 		}
 		if(newPos_(2)!=0) calculateTransform(odomWorldLoc_(2));	      // find transform using half the step	
 		if(navStack.size()>0)  updateDriving_ = true; // adjust heading if driving 
+		updateSavedPos_ = false;
 	}
 	//if(debug) cout<<"odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";	
 }

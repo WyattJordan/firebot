@@ -111,7 +111,7 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t start, Ref
 	}
 
 	// TODO make updates for locations
-	vector<float> xUpdate, yUpdate, xOppDist, yOppDist; // lines are sorted by closest, xOppDist saves distances of used lines in reverse order 
+	vector<float> xUpdate, yUpdate, xDist, yDist; // lines are sorted by closest, xOppDist saves distances of used lines in reverse order 
 	// should these have different travel distances ? one for x,y, and theta?
 	if(travelDist(0) > 15 || travelDist(1) > 15){
 		// Given: lineIdxs has specifies good vert lines as 2 and horiz as 1 (bad are 0)
@@ -148,12 +148,12 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t start, Ref
 						// robot is at origin, line is in space so find distance to 0,0 +/- line location, which side of line determined by loc
 						float x = pos(0) > inMap.getEndPtX1() ? inMap.getEndPtX1() + dist2Line : inMap.getEndPtX1() - dist2Line;
 						xUpdate.push_back(x);
-						xOppDist.insert(xOppDist.begin(),dist2Line);
+						xDist.push_back(dist2Line);
 					} 
 					else { // horiz line so y val can be set
 						float y = pos(1) > inMap.getEndPtY1() ? inMap.getEndPtY1() + dist2Line : inMap.getEndPtY1() - dist2Line;
 						yUpdate.push_back(y);
-						yOppDist.insert(yOppDist.begin(),dist2Line);
+						yDist.push_back(dist2Line);
 					}
 				}
 			}
@@ -162,18 +162,18 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t start, Ref
 	// TODO weigh by odometry location 
 	if(xUpdate.size()>0){
 		float avgX = std::accumulate(xUpdate.begin(), xUpdate.end(), 0.0) / (float) xUpdate.size();
-		float sumWeights = std::accumulate(xOppDist.begin(), xOppDist.end(), 0.0);
+		float sumWeights = std::accumulate(xDist.begin(), xDist.end(), 0.0);
 		float weightedXUpdate = 0.0;
-		for(int i=0; i<xOppDist.size(); i++){weightedXUpdate += xUpdate[i] * xOppDist[i] / sumWeights;}
+		for(int i=0; i<xDist.size(); i++){weightedXUpdate += xUpdate[i] * (1 -  xDist[i] / sumWeights);}
 		updatedPos(0) = avgX;
 		travelDist(0) = 0; // reset distance since x update
 		cout<<"avgX update ="<<avgX<<" weighted by dists: "<<weightedXUpdate<<"\n";
 	}
 	if(yUpdate.size()>0){
 		float avgY = std::accumulate(yUpdate.begin(), yUpdate.end(), 0.0) / (float) yUpdate.size();
-		float sumWeights = std::accumulate(yOppDist.begin(), yOppDist.end(), 0.0);
+		float sumWeights = std::accumulate(yDist.begin(), yDist.end(), 0.0);
 		float weightedYUpdate = 0.0;
-		for(int i=0; i<yOppDist.size(); i++){weightedYUpdate += yUpdate[i] * yOppDist[i] / sumWeights;}
+		for(int i=0; i<yDist.size(); i++){weightedYUpdate += yUpdate[i] * (1 -  yDist[i] / sumWeights);}
 		updatedPos(1) = avgY;
 		travelDist(1) = 0; // reset distance since y update
 		cout<<"avgY update ="<<avgY<<" weighted by dists: "<<weightedYUpdate<<"\n";
@@ -182,9 +182,10 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t start, Ref
 	time_t finish;
 	time(&finish);
 	cout<<"ran all lidar processing and scan updating in: "<<difftime(start, finish)*1000<<" ms\n";
+	// send update
 	if(updatedPos(0) + updatedPos(1) + updatedPos(2) !=0){
 		rob_->setExperimental(updatedPos); // just for changing frame to see if working
-		//rob_->updatePosition(updatedPos); // actually changes robot pos
+		rob_->updatePosition(updatedPos); // actually changes robot pos
 	}
 }
 

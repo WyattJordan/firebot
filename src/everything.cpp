@@ -43,9 +43,6 @@ int main(int argc, char **argv){
 	publishNavLoop = std::thread(boost::bind(&Nav::publishLoop, &nav));	
 	pubTrans = std::thread(boost::bind(&Robot::pubTransformContinual, &rob, 10)); // at 10 Hz
 
-	boost::shared_ptr<tf::TransformListener> listen;
-	nav.setListener(listen); // this MUST be a pointer of some kind!!
-
 	// loop for controlling motors w/ PID and odometry math
 	driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
 
