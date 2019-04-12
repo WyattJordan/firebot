@@ -111,7 +111,7 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t start, Ref
 	}
 
 	// TODO make updates for locations
-	vector<float> xUpdate, yUpdate;
+	vector<float> xUpdate, yUpdate, xOppDist, yOppDist; // lines are sorted by closest, xOppDist saves distances of used lines in reverse order 
 	// should these have different travel distances ? one for x,y, and theta?
 	if(travelDist(0) > 15 || travelDist(1) > 15){
 		// Given: lineIdxs has specifies good vert lines as 2 and horiz as 1 (bad are 0)
@@ -138,6 +138,7 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t start, Ref
 				Vector3f lidarPt; // make x,y values in lidar frame + position of robot (in global but not rotated)
 				lidarPt << sensed->getCenterX() + pos(0), sensed->getCenterY() + pos(1), 0;
 				Vector3f globalPt = toWorld * lidarPt; // get center of measured line in the global frame
+				publishGlobalLineCenter(globalPt);
 
 				line inMap = makeClosestLine(globalPt, lineIdxs[i]==2); // positive idx is horiz line
 				float dist2Line = sensed->findDist(0,0);
@@ -146,27 +147,36 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t start, Ref
 					if(lineIdxs[i]==2) { // vert line, so x val can be set 
 						// robot is at origin, line is in space so find distance to 0,0 +/- line location, which side of line determined by loc
 						float x = pos(0) > inMap.getEndPtX1() ? inMap.getEndPtX1() + dist2Line : inMap.getEndPtX1() - dist2Line;
-						xUpdate.push_back(x);} 
+						xUpdate.push_back(x);
+						xOppDist.insert(xOppDist.begin(),dist2Line);
+					} 
 					else { // horiz line so y val can be set
 						float y = pos(1) > inMap.getEndPtY1() ? inMap.getEndPtY1() + dist2Line : inMap.getEndPtY1() - dist2Line;
 						yUpdate.push_back(y);
+						yOppDist.insert(yOppDist.begin(),dist2Line);
 					}
 				}
 			}
 		}
 	}
 	// TODO weigh by odometry location 
-	if(xUpdate.size()!=0){
+	if(xUpdate.size()>0){
 		float avgX = std::accumulate(xUpdate.begin(), xUpdate.end(), 0.0) / (float) xUpdate.size();
+		float sumWeights = std::accumulate(xOppDist.begin(), xOppDist.end(), 0.0);
+		float weightedXUpdate = 0.0;
+		for(int i=0; i<xOppDist.size(); i++){weightedXUpdate += xUpdate[i] * xOppDist[i] / sumWeights;}
 		updatedPos(0) = avgX;
 		travelDist(0) = 0; // reset distance since x update
-		cout<<"avgX update ="<<avgX<<"\n";
+		cout<<"avgX update ="<<avgX<<" weighted by dists: "<<weightedXUpdate<<"\n";
 	}
-	if(yUpdate.size()!=0){
+	if(yUpdate.size()>0){
 		float avgY = std::accumulate(yUpdate.begin(), yUpdate.end(), 0.0) / (float) yUpdate.size();
+		float sumWeights = std::accumulate(yOppDist.begin(), yOppDist.end(), 0.0);
+		float weightedYUpdate = 0.0;
+		for(int i=0; i<yOppDist.size(); i++){weightedYUpdate += yUpdate[i] * yOppDist[i] / sumWeights;}
 		updatedPos(1) = avgY;
 		travelDist(1) = 0; // reset distance since y update
-		cout<<"avgY update ="<<avgY<<"\n";
+		cout<<"avgY update ="<<avgY<<" weighted by dists: "<<weightedYUpdate<<"\n";
 	}
 
 	time_t finish;
@@ -174,7 +184,7 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t start, Ref
 	cout<<"ran all lidar processing and scan updating in: "<<difftime(start, finish)*1000<<" ms\n";
 	if(updatedPos(0) + updatedPos(1) + updatedPos(2) !=0){
 		rob_->setExperimental(updatedPos); // just for changing frame to see if working
-		//rob_->updatePosition(tmp); // actually changes robot pos
+		//rob_->updatePosition(updatedPos); // actually changes robot pos
 	}
 }
 
@@ -497,6 +507,32 @@ void Nav::makeLineMarks(vector<line> lines, bool merged, bool addIDs){
 	//cout<<"pubbing line marks of size "<<lines.size()<<"\n";
 	lineMarks_ = tmp;
 	markerPub_->publish(lineMarks_);
+}
+
+void Nav::publishGlobalLineCenter(Vector3f gPt){
+
+	visualization_msgs::Marker tmp;
+	tmp.header.frame_id = GLOBALFRAME;
+	tmp.ns = "glob_line_center_measured";
+	tmp.id = globPtMarks_.markers.size();
+	tmp.type = visualization_msgs::Marker::CYLINDER;
+	tmp.action = visualization_msgs::Marker::ADD;
+	tmp.scale.x = 3;
+	tmp.scale.y = 3;
+	tmp.scale.z = 15;
+	tmp.pose.position.x = gPt(0);
+	tmp.pose.position.y = gPt(1);
+	tmp.pose.position.z = 0;
+	tmp.pose.orientation.x = 0;
+	tmp.pose.orientation.y = 0;
+	tmp.pose.orientation.z = 15.0/2.0; // half of scale.z for cylinder height
+	tmp.pose.orientation.w = 1;
+	tmp.color.a = 1.0;
+	tmp.color.r = 1.0;
+	tmp.color.g = 1.0;
+	tmp.color.b = 1.0;
+	globPtMarks_.markers.push_back(tmp);
+	markerPub_->publish(globPtMarks_);
 }
 
 void Nav::makeFurnMarks(vector<EndPoint> furns){

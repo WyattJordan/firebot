@@ -60,6 +60,7 @@ class Nav{
 		void makeWayMarks(string NS);
 		void makeFurnMarks(vector<EndPoint> furns);
 		void makeLineMarks(vector<line> lines, bool merged, bool addIDs=false);
+		void publishGlobalLineCenter(Vector3f gPt);
 		void publishMapAndWays();
 
 		bool removePoint(int id, vector<EndPoint> &pts);
@@ -81,7 +82,7 @@ class Nav{
 		EndPoint badPt_;		// used when an EndPoint isn't found
 		color cmapLine_, cmapMark_, cwayLine_, cwayMark_; // colors set in constr
 
-		visualization_msgs::MarkerArray mapMarks_, wayMarks_, robMarks_, furnMarks_, lineMarks_;// for rviz
+		visualization_msgs::MarkerArray mapMarks_, wayMarks_, robMarks_, furnMarks_, lineMarks_, globPtMarks_;// for rviz
 		ros::Publisher *markerPub_; 	// publisher for all MarkerArrays
 		Vector3f odomWorldLocCpy_;		// copy of loc in world frame from Robot, READ ONLY
 
