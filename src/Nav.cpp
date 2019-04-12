@@ -56,6 +56,7 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t start, Ref
 	vector<float> poses, R; // in radians and unitless respectively
 	vector<int> lineIdxs; // 0 means not good enough, 1 is horiz, 2 is vert
 	
+	// Determine if the lines are horiz or vertical and save the pose that the robot should be at for each line
 	for(int i=0; i<lns.size(); i++){ 
 		if(lns[i].getRSquared() > 0.8){
 			// angle is wall angle in global frame (= angle in lidar frame + pose angle) should be close to vertical or horizontal
@@ -86,6 +87,7 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t start, Ref
 	}
 
 	// Update the angle of the pose based on the poses vector just made
+	/*
 	if(travelDist(2) > 100 && poses.size()>0){ // only update the angle of the pose every 100cm or more
 			float sumR = std::accumulate(R.begin(), R.end(), 0.0);
 			float finalLidarPose = 0;
@@ -108,7 +110,7 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t start, Ref
 			else{
 				cout<<"lidar estimate too different from current pose!!! did not use \n";
 			}
-	}
+	}//*/
 
 	// TODO make updates for locations
 	vector<float> xUpdate, yUpdate, xDist, yDist; // lines are sorted by closest, xOppDist saves distances of used lines in reverse order 
@@ -127,22 +129,21 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t start, Ref
 		// 		note: need to know which side of the line it's on... do this based on robot location?
 		
 		for(int i=0; i<lineIdxs.size(); i++){
-			if(lineIdxs[i] != 0){ // it's either a vert (2) or horiz (1) line
-				line* sensed = &lns[i]; // save the line in the lidar frame
-				// TODO transform center pt of line into global frame!!!
+			line* sensed = &lns[i]; // get the line in the lidar frame
+			float dist2Line = sensed->findDist(0,0);
+			if(lineIdxs[i] > 0 && dist2Line < 100){ // it's been classified as a vert (2) or horiz (1) line and is within 1m
 				Matrix3f toWorld;
-				float theta = pos(2);
+				float theta = pos(2); // make rotation matrix
 				toWorld << cos(theta), -sin(theta), 0,
 						   sin(theta),  cos(theta), 0,
 						            0,           0, 1;
 				Vector3f lidarPt; // make x,y values in lidar frame + position of robot (in global but not rotated)
 				lidarPt << sensed->getCenterX() + pos(0), sensed->getCenterY() + pos(1), 0;
-				Vector3f globalPt = toWorld * lidarPt; // get center of measured line in the global frame
+				Vector3f globalPt = toWorld * lidarPt; // transform center of measured line in the global frame
 				publishGlobalLineCenter(globalPt);
 
-				line inMap = makeClosestLine(globalPt, lineIdxs[i]==2); // positive idx is horiz line
-				float dist2Line = sensed->findDist(0,0);
-				if(!(inMap.getEndPtX1()==0 && inMap.getEndPtY1()==0)){ // if a line was found
+				line inMap = makeClosestLine(globalPt, lineIdxs[i]==1); // idx of 1 means horiz
+				if(!(inMap.getEndPtX1()==0 && inMap.getEndPtY1()==0)){  // if a line was found
 
 					if(lineIdxs[i]==2) { // vert line, so x val can be set 
 						// robot is at origin, line is in space so find distance to 0,0 +/- line location, which side of line determined by loc
@@ -167,7 +168,7 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t start, Ref
 		for(int i=0; i<xDist.size(); i++){weightedXUpdate += xUpdate[i] * (1 -  xDist[i] / sumWeights);}
 		updatedPos(0) = avgX;
 		travelDist(0) = 0; // reset distance since x update
-		cout<<"avgX update ="<<avgX<<" weighted by dists: "<<weightedXUpdate<<"\n";
+		cout<<"avgX update ="<<avgX<<" weighted by dists: "<<weightedXUpdate<<" odom said x= "<<pos(0)<<"\n";
 	}
 	if(yUpdate.size()>0){
 		float avgY = std::accumulate(yUpdate.begin(), yUpdate.end(), 0.0) / (float) yUpdate.size();
@@ -176,7 +177,7 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t start, Ref
 		for(int i=0; i<yDist.size(); i++){weightedYUpdate += yUpdate[i] * (1 -  yDist[i] / sumWeights);}
 		updatedPos(1) = avgY;
 		travelDist(1) = 0; // reset distance since y update
-		cout<<"avgY update ="<<avgY<<" weighted by dists: "<<weightedYUpdate<<"\n";
+		cout<<"avgY update ="<<avgY<<" weighted by dists: "<<weightedYUpdate<<" odom said y= "<<pos(1)<<"\n";
 	}
 
 	time_t finish;
@@ -185,7 +186,7 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t start, Ref
 	// send update
 	if(updatedPos(0) + updatedPos(1) + updatedPos(2) !=0){
 		rob_->setExperimental(updatedPos); // just for changing frame to see if working
-		rob_->updatePosition(updatedPos); // actually changes robot pos
+		rob_->updatePosition(updatedPos);  // actually changes robot pos
 	}
 }
 
@@ -892,27 +893,31 @@ void Nav::loadFiles(int lvl){
    
 	std::ifstream file;
 	file.open(mapfile.c_str());
-	string line = "";
+	string entry = "";
 
 	vector<string> nums;
 	if (file.is_open()){
-                while(getline(file, line, ',')){
-                        nums.push_back(line); //cout<<line<<"\n";
+                while(getline(file, entry, ',')){
+                        nums.push_back(entry); //cout<<entry<<"\n";
                 }
                 file.close();
-        }
+	}
 	else{ ROS_ERROR("WARNING: map file not found!\n"); }
 
 	vector<int> temp;
-	while(nums.size()>=7){
+	while(nums.size()>=5){
+		int idx = 5;
+		int count = 0;
 		temp.resize(0);
 		// nums[3] and nums[4] are definite and potential corner types, ignored here	
-		if(nums[5].compare("x") != 0) temp.push_back(std::atof(nums[5].c_str())); 
-		if(nums[6].compare("x") != 0) temp.push_back(std::atof(nums[6].c_str())); 
+		while(nums[idx].compare("x") != 0){
+			temp.push_back(std::atof(nums[idx++].c_str())); 
+			count++;
+		}
 		EndPoint tmp(std::atof(nums[0].c_str()), std::atof(nums[1].c_str()),
 		    std::atof(nums[2].c_str()),temp);
 		mapPoints_.push_back(tmp);
-		for(int i=0; i<7; i++) nums.erase(nums.begin()+0);
+		for(int i=0; i<5+count; i++) nums.erase(nums.begin()+0);
 	}
 
 	// SAME THING FOR WAY FILE WITH SOME ADJUSTMENTS /////////////////////////////////////
@@ -920,8 +925,8 @@ void Nav::loadFiles(int lvl){
 	file.open(wayfile.c_str());
 	cout<<"outputting "<<wayfile<<"\n";
         if (file.is_open()){
-                while(getline(file, line, ',')){
-                        nums.push_back(line); //cout<<line<<"\n";
+                while(getline(file, entry, ',')){
+                        nums.push_back(entry); //cout<<entry<<"\n";
                 }
                 file.close();
         }
