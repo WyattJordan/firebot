@@ -125,7 +125,7 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t &start, Re
 		for(int i=0; i<lns.size(); i++){ // lines are already sorted by closest so grab first good one
 			alignTo = &lns[i];
 			if(abs(alignTo->getSlope()) < 4 && alignTo->findDist(0,0) < 36){
-				cout<<"using line at angle "<<alignTo.getCenterTheta()<<" for near wall alignment";
+				cout<<"using line at angle "<<alignTo->getCenterTheta()<<" for near wall alignment";
 				gotline = true;
 				break;
 			}
@@ -137,7 +137,7 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t &start, Re
 			while(dir<0) dir+=360.0; // make it positive ranging from 0-360
 			float from90 = fmod(dir,90.0); // how far the robot isfrom the 4 possible 90deg directions 
 			if(from90 < 5){ // if robot is within 8deg of NESW
-				int ENSW = round(dir/90.0)%4; // range 0 - 3 for ENWS respectively
+				int ENSW = ((int)round(dir/90.0))%4; // range 0 - 3 for ENWS respectively
 				if(ENSW%2==0){//setting xvalue (vert wall)
 					if((onRight && ENSW==1) || (!onRight && ENSW==3)){// add to x wall
 						float wallX= findWallValue(1, pos, false); 
@@ -154,7 +154,7 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t &start, Re
 						yUpdate = wallY != 0 ? pos(0) + wallY : 0;
 					}
 					else{ // subtract from y wall
-						float wallX= findWallValue(4, pos, true); 
+						float wallY= findWallValue(5, pos, true); 
 						yUpdate = wallY != 0 ? pos(0) - wallY : 0;
 					}
 				}
@@ -182,20 +182,20 @@ float Nav::findWallValue(int PNXY, Vector3f pos, bool horiz){
 			if(mapPt.getX() > pos(0)){ continue; }
 		}
 		else if (PNXY==2){ // subbing from x, line is to right globally
-			if(mapPt.getX() < pos(0){ continue; }
+			if(mapPt.getX() < pos(0)){ continue; }
 		}
 		else if (PNXY==3){ // adding to Y, line is below globally
-			if(mapPt.getY() > pos(1){ continue; }
+			if(mapPt.getY() > pos(1)){ continue; }
 		}
 		else if (PNXY==4){ // subbing from y, line is above globally
-			if(mapPt.getY() < pos(1){ continue; }
+			if(mapPt.getY() < pos(1)){ continue; }
 		}
 
 		// done filtering out mapPts based on location (cuts in half)
 		for(int k=0; k<mapPt.getNumNeighbors(); k++){
 			EndPoint neigh = getMapPoint(mapPt.getNeighborID(k));
 			bool ghoriz = abs(mapPt.getX() - neigh.getX()) > abs(mapPt.getY() - neigh.getY());
-			if((ghoriz && horiz) || (!ghoriz && !horiz){
+			if((ghoriz && horiz) || (!ghoriz && !horiz)){
 				EndPoint center;
 				if(horiz){ 
 					EndPoint tmp((mapPt.getX() + neigh.getX())/2.0, mapPt.getY()); 
@@ -614,12 +614,12 @@ void Nav::populateMarks(string which, string NS,
 	vector<EndPoint>* pts;
 	bool map;
 	if(which == "map") { pts = &mapPoints_; map = true;}
-	if(which == "way") { pts = &wayPoints_; map = false}
+	if(which == "way") { pts = &wayPoints_; map = false;}
 	marks.markers.resize(2 * (pts->size()));
 	
 	// add vertical arrows at pt locations
 	for(int i=0; i<pts->size(); i++){
-		int id = (*pts[i]).getID();
+		int id = (*pts)[i].getID();
 		bool markSpecial = map && std::find(usedForUpdate_.begin(), usedForUpdate_.end(), id) != usedForUpdate_.end();
 		marks.markers[i].header.frame_id = GLOBALFRAME;
 		marks.markers[i].ns = NS; 
