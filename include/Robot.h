@@ -69,7 +69,7 @@ class Robot{
 		void setNav(Nav* nv);
 		Vector3f getOdomWorldLoc();
 		Ref<Vector3f> getTravelDist();
-		tf::Transform getTransform();
+		tf::StampedTransform getTransform();
 		void setExperimental(Vector3f pose);
 
 	private:
@@ -99,7 +99,7 @@ class Robot{
 		bool updateDriving_, updateSavedPos_; 
 		Vector3f travelDist_, newPos_;
 		tf::TransformBroadcaster br_;
-		tf::Transform tfTrans_;
+		tf::StampedTransform tfTrans_;
 
 
 		// odometry vars;

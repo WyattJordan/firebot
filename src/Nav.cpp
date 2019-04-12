@@ -41,80 +41,190 @@ void Nav::setOdomLoc(Vector3f od){
 	odomWorldLocCpy_ = od;
 }
 
-void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, tf::Transform trans, Ref<Vector3f> travelDist){
+void setListener(boost::shared_ptr<tf::TransformListener> tfList){
+
+}
+
+void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t start, Ref<Vector3f> travelDist){
 	// GIVEN - there is at least one line with R^2 > 0.85, R^2 values have been made
 	
-	// sort by RSquared to use for pose calculations
-	std::sort(lns.begin(),lns.end(),[](line a, line b) -> bool {return a.getRSquared() > b.getRSquared();});
+	// sort by closest for distance calculations
+	std::sort(lns.begin(),lns.end(),[](line a, line b) -> bool {return a.findDist(0,0) < b.findDist(0,0);});
 
-		vector<float> poses, R; // in radians and unitless respectively
-		vector<int> lineIdxs; // indexes of lines sorted by R squared and useable (within LineAngleThresh) if idx<0 it's a vertical line
-		
-		for(int i=0; i<lns.size(); i++){ // this is confusing stuff
-			line l = lns[i];
-			if(l.getRSquared() > 0.8){
-				// angle is wall angle in global frame (= angle in lidar frame + pose angle) should be close to vertical or horizontal
-				float angle = 180.0/PI * (atan(l.getSlope()) + pos(2)); // range is unknown due to pos(2) from 'bot
-				angle = fmod(angle, 360.0);  
-				angle = angle < 0 ? angle + 360.0 : angle; // range is now 0 to 360
+	Vector3f updatedPos; 
+	updatedPos << 0,0,0; // might not update every part of the pose
+	vector<float> poses, R; // in radians and unitless respectively
+	vector<int> lineIdxs; // 0 means not good enough, 1 is horiz, 2 is vert
+	
+	for(int i=0; i<lns.size(); i++){ 
+		if(lns[i].getRSquared() > 0.8){
+			// angle is wall angle in global frame (= angle in lidar frame + pose angle) should be close to vertical or horizontal
+			float angle = 180.0/PI * (atan(lns[i].getSlope()) + pos(2)); // range is unknown due to pos(2) from 'bot
+			angle = fmod(angle, 360.0);  
+			angle = angle < 0 ? angle + 360.0 : angle; // range is now 0 to 360
 
-				// check if the global angle is closer to vertical or horizontal within a limit
-				if( ab(90.0-angle) < LineAngleThresh || ab(270.0-angle) < LineAngleThresh){ // use as vertical line
-					float error = ab(90.0-angle) < ab(270.0-angle) ? (90.0-angle) : (270.0-angle);
-					poses.push_back(pos(2) - PI/180.0*error); // subtract the error from the thought position to get the actual
-					R.push_back(l.getRSquared());
-					lineIdxs.push_back(-1*i); // save as negative idx for vertical line
-				}
-				else if( ab(angle) < LineAngleThresh || ab(180.0-angle) < LineAngleThresh){ // use as horizontal line
-					float error = ab(angle) < ab(180.0-angle)      ?     angle    : (180.0-angle);
-					poses.push_back(pos(2) - PI/180.0*error);
-					R.push_back(l.getRSquared());
-					lineIdxs.push_back(i); // keep as positive for horizontal line
-				}
+			// check if the global angle is closer to vertical or horizontal within a limit
+			if( ab(90.0-angle) < LineAngleThresh || ab(270.0-angle) < LineAngleThresh){ // use as vertical line
+				float error = ab(90.0-angle) < ab(270.0-angle) ? (90.0-angle) : (270.0-angle);
+				poses.push_back(pos(2) - PI/180.0*error); // subtract the error from the thought position to get the actual
+				R.push_back(lns[i].getRSquared());
+				lineIdxs.push_back(2); // save as vertical line
+			}
+			else if( ab(angle) < LineAngleThresh || ab(180.0-angle) < LineAngleThresh){ // use as horizontal line
+				float error = ab(angle) < ab(180.0-angle)      ?     angle    : (180.0-angle);
+				poses.push_back(pos(2) - PI/180.0*error);
+				R.push_back(lns[i].getRSquared());
+				lineIdxs.push_back(1); // horizontal line
+			}
+			else{ // not close enough to vert or horiz don't use
+				lineIdxs.push_back(-1);
 			}
 		}
+		else{ // R^2 is less than 0.8, don't use
+			lineIdxs.push_back(0);
+		}
+	}
 
-	if(travelDist(2) > 100){ // only update the angle of the pose every 200cm or more
-		if(poses.size()>0){
+	// Update the angle of the pose based on the poses vector just made
+	if(travelDist(2) > 100 && poses.size()>0){ // only update the angle of the pose every 100cm or more
 			float sumR = std::accumulate(R.begin(), R.end(), 0.0);
 			float finalLidarPose = 0;
 			float justAvgPose = std::accumulate(poses.begin(), poses.end(), 0.0) / (float)poses.size();
-			for(int i=0; i<poses.size(); i++){ // weighted average for pose based on R^2 value of lines used
-				finalLidarPose += poses[i] * R[i] / sumR;
+			for(int i=0; i<poses.size(); i++){ 
+				finalLidarPose += poses[i] * R[i] / sumR;// weighted average for pose based on R^2 value of lines used
 			}
 
 			float sumWeights = LidarErrorEquivalentDist + travelDist(2);
 			// Lidar is weighted heavier when the robot has traveled further between updates
 			float finalPose = finalLidarPose*travelDist(2)/ sumWeights + pos(2)*LidarErrorEquivalentDist/ sumWeights;
 							
-			cout<<"Lidar used "<<poses.size()<<" lines and avg pose is: "<<180.0/PI*justAvgPose<<" but weighted is: "<<180.0/PI*finalLidarPose<<
-				" but after weighting with odom of"<<180.0/PI*pos(2)<<" got "<<180.0/PI*finalPose<< " with dist = "<<travelDist(2)<<"\n";
-			// use old pos and get current position to get position difference?
+			cout<<"Lidar used "<<poses.size()<<" lines and avg pose is: "<<180.0/PI*justAvgPose<<" but weighted by R is: "<<180.0/PI*finalLidarPose<<
+				" but weighting with odom of"<<180.0/PI*pos(2)<<" got "<<180.0/PI*finalPose<< " with dist = "<<travelDist(2)<<"\n";
 			if(ab(finalLidarPose - pos(2)) < MaxLidarPoseDiff){
-				Vector3f tmp;
-				tmp << 0, 0, finalLidarPose; // VERY IMPORTANT WHICH GETS SENT
-				rob_->setExperimental(tmp); // juse for changing frame
-				//rob_->updatePosition(tmp); // actually changes robot pos
-				travelDist(2) = 0; // reset 
+				updatedPos(2) = finalLidarPose; // VERY IMPORTANT WHICH GETS SENT
+				travelDist(2) = 0; // reset lidar update travel dist 
 				cout<<"used the pose to update!!!";
 			}
 			else{
 				cout<<"lidar estimate too different from current pose!!! did not use \n";
 			}
-		}
 	}
 
 	// TODO make updates for locations
-	int updateX = 0;
-	int updateY = 0;
+	vector<float> xUpdate, yUpdate;
 	// should these have different travel distances ? one for x,y, and theta?
-	if(lineIdxs.size()>0){
+	if(travelDist(0) > 15 || travelDist(1) > 15){
+		// Given: lineIdxs has specifies good vert lines as 2 and horiz as 1 (bad are 0)
+		// Given: line with center pt
+		// Do: determine x and y location updates, wrap in a vector, send to rob_->updatePosition()
+		//
+		// Steps: 
+		// 1. write a function that finds the which global line has center closest to this line's center
+		// 		note: only check vert/horiz lines based on what's given
+		// 		note: need to transform the center pt from the lidar to the global frame!
+		// 2. determine robot distance from that line in lidar frame
+		// 3. determine robot distance in global frame 
+		// 		note: need to know which side of the line it's on... do this based on robot location?
+		
+		for(int i=0; i<lineIdxs.size(); i++){
+			if(lineIdxs[i] != 0){ // it's either a vert (2) or horiz (1) line
+				line* sensed = &lns[i]; // save the line in the lidar frame
+				// TODO transform center pt of line into global frame!!!
+				Matrix3f toWorld;
+				float theta = pos(2);
+				toWorld << cos(theta), -sin(theta), 0,
+						   sin(theta),  cos(theta), 0,
+						            0,           0, 1;
+				Vector3f lidarPt; // make x,y values in lidar frame + position of robot (in global but not rotated)
+				lidarPt << sensed->getCenterX() + pos(0), sensed->getCenterY() + pos(1), 0;
+				Vector3f globalPt = toWorld * lidarPt; // get center of measured line in the global frame
 
+				line inMap = makeClosestLine(globalPt, lineIdxs[i]==2); // positive idx is horiz line
+				float dist2Line = sensed->findDist(0,0);
+				if(!(inMap.getEndPtX1()==0 && inMap.getEndPtY1()==0)){ // if a line was found
+
+					if(lineIdxs[i]==2) { // vert line, so x val can be set 
+						// robot is at origin, line is in space so find distance to 0,0 +/- line location, which side of line determined by loc
+						float x = pos(0) > inMap.getEndPtX1() ? inMap.getEndPtX1() + dist2Line : inMap.getEndPtX1() - dist2Line;
+						xUpdate.push_back(x);} 
+					else { // horiz line so y val can be set
+						float y = pos(1) > inMap.getEndPtY1() ? inMap.getEndPtY1() + dist2Line : inMap.getEndPtY1() - dist2Line;
+						yUpdate.push_back(y);
+					}
+				}
+			}
+		}
 	}
-	
+	// TODO weigh by odometry location 
+	if(xUpdate.size()!=0){
+		float avgX = std::accumulate(xUpdate.begin(), xUpdate.end(), 0.0) / (float) xUpdate.size();
+		updatedPos(0) = avgX;
+		travelDist(0) = 0; // reset distance since x update
+		cout<<"avgX update ="<<avgX<<"\n";
+	}
+	if(yUpdate.size()!=0){
+		float avgY = std::accumulate(yUpdate.begin(), yUpdate.end(), 0.0) / (float) yUpdate.size();
+		updatedPos(1) = avgY;
+		travelDist(1) = 0; // reset distance since y update
+		cout<<"avgY update ="<<avgY<<"\n";
+	}
 
-
+	time_t finish;
+	time(&finish);
+	cout<<"ran all lidar processing and scan updating in: "<<difftime(start, finish)*1000<<" ms\n";
+	if(updatedPos(0) + updatedPos(1) + updatedPos(2) !=0){
+		rob_->setExperimental(updatedPos); // just for changing frame to see if working
+		//rob_->updatePosition(tmp); // actually changes robot pos
+	}
 }
+
+line Nav::makeClosestLine(Vector3f gPt, bool horiz){
+	line l;
+	float minDist = 99999;
+	EndPoint ep1, ep2;
+	ep1 = ep2 = badPt_;
+	bool badMatch = false;
+	for(EndPoint mapPt : mapPoints_){
+
+		for(int k=0; k<mapPt.getNumNeighbors(); k++){
+			EndPoint neigh = getMapPoint(mapPt.getNeighborID(k));
+			bool ghoriz = abs(mapPt.getX() - neigh.getX()) > abs(mapPt.getY() - neigh.getY());
+			EndPoint center;
+			if(ghoriz && horiz){ // horiz line in global frame and measured as horiz
+				EndPoint tmp((mapPt.getX() + neigh.getX())/2.0, mapPt.getY()); 
+				center = tmp;
+			}
+			else if(!ghoriz && !horiz){ // vert line in global frame and measured as vert
+				EndPoint tmp(mapPt.getX(), (mapPt.getY() + neigh.getY())/2.0); 
+				center = tmp;
+			}
+			else{ // measured and global value are different
+				cout<<"matched center pt to different angled line!!\n";
+				badMatch = true;
+				break;
+			}
+
+			float dist = center.distBetween(gPt(0), gPt(1));
+			if(dist<minDist){
+				minDist = dist;
+				ep1 = mapPt; //save the two endpoints that form the closest line
+				ep2 = neigh;
+			}
+		}
+		if(badMatch) break;
+	}
+	if(badMatch){
+		l.setEndpts(0,0,0,0);
+	}
+	else{
+
+		l.setEndpts(ep1.getX(), ep1.getX(), ep2.getX(), ep2.getX());
+		l.buildLine();
+	}
+	return l;
+}
+
+
 // Robot.cpp drive loop sets the bool flags at set rates
 void Nav::publishLoop(){
 	while(1){

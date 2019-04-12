@@ -55,6 +55,8 @@ public:
 		float getClosestRadius();
 		float makeRSquared();
 		float getRSquared();
+		//void setAsHoriz(bool b);
+		//bool getHoriz();
 
         void mergeLines(line a);
         bool canMerge(line a);
@@ -66,29 +68,29 @@ public:
         float getLength();
         bool isCandle();
         bool isFurniture();
-	float radDist(int i);
+		float radDist(int i);
 
 private:
         vector <float> x;
         vector <float> y;
         float slope;
         float intercept;
-	float RSquare;
+		float RSquare;
         EndPoint end1;
         EndPoint end2;
-	EndPoint center;
-	float lineDist;
-	bool isLine;
-	float length;
-	bool candle;
-	bool furniture;
-	float distBetPts = 6*3.14159*180/590;
-	float xAvg;
-	float yAvg;
-	float xSum;
-	float ySum;
-	float num;
-	float denum;
+		EndPoint center;
+		float lineDist;
+		bool isLine, horiz;
+		float length;
+		bool candle;
+		bool furniture;
+		float distBetPts = 6*3.14159*180/590;
+		float xAvg;
+		float yAvg;
+		float xSum;
+		float ySum;
+		float num;
+		float denum;
 };
 
 #endif

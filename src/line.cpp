@@ -50,7 +50,6 @@ void line::buildLine() {
 
         xAvg /= (x.size());
         yAvg /= (y.size());
-		center = EndPoint(xAvg, yAvg);
 
 		float num = 0, denum = 0;
         for (int i = 0; i < x.size(); i++) {
@@ -61,6 +60,7 @@ void line::buildLine() {
         intercept = yAvg - slope * xAvg;
         setEndpts(x[0], y[0], x[x.size()-1], y[y.size()-1]);
         length = ptDist(end1.getX(), end1.getY(), end2.getX(), end2.getY());
+		center = EndPoint(xAvg, slope * yAvg + intercept);
         if ((length > 1)&&(length < 4)){
                 candle = true;
                 furniture = false;
@@ -233,6 +233,8 @@ float line::getRSquared() { return RSquare; };
 bool line::isGoodLine(){ return isLine; }
 bool line::isCandle(){ return candle; }
 bool line::isFurniture(){ return furniture; }
+//void line::setAsHoriz(bool b){ horiz = b;}
+//bool line::getHoriz(){return horiz;}
 // get special points
 float line::getXPoint(int point){ return x[point]; };
 float line::getYPoint(int point){ return y[point]; };

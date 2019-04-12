@@ -7,7 +7,8 @@
 #include <ros/console.h> 
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
-#include <tf/transform_broadcaster.h>
+//#include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
 #include "Robot.h"
 #include "Endpoint.h"
 #include "line.h"
@@ -43,11 +44,14 @@ class Nav{
 		Nav(int lvl, ros::Publisher *pub, Robot* rob); // read map and way from file given level
 		Nav(int lvl, ros::Publisher *pub); // read map and way from file given level
 
+		void setListener(boost::shared_ptr<tf::TransformListener> tfList);
 		void setOdomLoc(Vector3f od);	 // rob obj sends data over
 		void setSmallRoomUpper(bool up); // reconfigure the rooms
 		void setBigRoomUpper(bool up);   // "
 
-		void updatePositionAndMap(vector<line> lns, Vector3f pos, tf::Transform trans, Ref<Vector3f> travelDist);
+		//void updatePositionAndMap(vector<line> lns, Vector3f pos, tf::StampedTransform trans, Ref<Vector3f> travelDist);
+		//void updatePositionAndMap(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDist);
+		void updatePositionAndMap(vector<line> lns, Vector3f pos, time_t start, Ref<Vector3f> travelDist);
 		void publishLoop(); // calculate marks and publish as flags are set
 		void publishLoopContinual(); // calculate marks and publish every 2 seconds
 		void outputWays();  
@@ -67,6 +71,7 @@ class Nav{
 		
 	private:
 		Robot* rob_;
+		boost::shared_ptr<tf::TransformListener> tfList_;
 		bool smallRoomConf_, bigRoomConf_; 	// passed to reconfigure rooms
 		string worldFrame_;		// specify world frame label
 		vector<EndPoint> mapPoints_;	// graph of map corners and key points
@@ -84,6 +89,9 @@ class Nav{
 		void loadFiles(int lvl); // get data from config files
 		void initRobotMarks();   // sets type, ns, frame, color
 		void calcRobotMarks();   // sets the xyz
+
+		// make a line from the map data that is closest to what was sensed by the lidar
+		line makeClosestLine(Vector3f gPt, bool horiz);
 
 		// cout a graph of endpoints
 		void outputGraph(vector<EndPoint> &pts);

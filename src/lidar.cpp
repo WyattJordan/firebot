@@ -51,13 +51,16 @@ void Lidar::input(){
 void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	bool linearMove = false;
 	bool updatePosition = false;
-	tf::Transform oldTrans; // save values immediately if going to be used (computing all this will take time
-	
+	//tf::StampedTransform oldTrans; // save values immediately if going to be used (computing all this will take time
+	ros::Time scanStamp = scan->header.stamp;
 	Vector3f currentPos = rob_->getOdomWorldLoc(); // this is an undefined ref for some reason...
+	time_t start;
+	time(&start);
+
 	if(tickCount_++%LidarUpdateRate==0  && ! (prevOdom_(0) == -100 && prevOdom_(1) == -100)){ // if not the first run (default odom loc) 
 		// if the angle has changed less than 5deg between the two positions
 		if(abs(prevOdom_(2) - currentPos(2))*180/PI < 2.0) linearMove = true;
-		if(linearMove) oldTrans = rob_->getTransform(); // save current copy
+		//if(linearMove) oldTrans = rob_->getTransform(); // save current copy
 	}//*/
 
 	/*if(keypress_){
@@ -120,7 +123,8 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		if( getMaxRSquare() > 0.85 ){
 			cout<<"got good lines, asking Nav to update position\n";
 			// travel distance cannot be saved at scan start because it must be pass by ref
-			nav_->updatePositionAndMap(lines_, currentPos, oldTrans, rob_->getTravelDist());
+			//nav_->updatePositionAndMap(lines_, currentPos, oldTrans, rob_->getTravelDist());
+			nav_->updatePositionAndMap(lines_, currentPos, start, rob_->getTravelDist());
 		}
 		else{
 			updatePosition = false;
@@ -157,7 +161,7 @@ bool Lidar::checkLocalize(){ // checks some conditions for a good scan to initia
 		for(int i=0; i<lines_.size(); i++){
 			if(lines_[i].getClosestRadius() > 60) outsideWalls_.push_back(i);
 		}
-		if( outsideWalls_.size()>0 && (down && outsideWalls_.size()<3) || (!down && outsideWalls_.size() == 1) ){
+		if( outsideWalls_.size()>0 && ((down && outsideWalls_.size()<3) || (!down && outsideWalls_.size() == 1) )){
 			room4Localization(down);
 		}
 		else{

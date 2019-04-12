@@ -2,8 +2,10 @@
 
 #include "ros/ros.h"
 #include "Robot.h"
+#include "Nav.h"
 #include "lidar.h"
 #include <ros/console.h>
+#include <tf/transform_listener.h>
 #include "sensor_msgs/LaserScan.h"
 #include <visualization_msgs/MarkerArray.h>
 #include <thread>     // 3 for thread and sharedptr
@@ -26,8 +28,8 @@ int main(int argc, char **argv){
 	nav.makeMapMarks("marker_ns"); // make initial sets for publishing
 	nav.makeWayMarks("ways_ns");
 	//nav.outputWays();
-	//nav.setBigRoomUpper(big);
-	//nav.setSmallRoomUpper(small);
+	nav.setBigRoomUpper(false);
+	nav.setSmallRoomUpper(true);
 	cout<<"made nav object and linked to rob\n";
 	
 	// Create and link lidar class
@@ -40,6 +42,9 @@ int main(int argc, char **argv){
 	// loop for publishing markers in rviz and to transform them appropriately, only for visualization
 	publishNavLoop = std::thread(boost::bind(&Nav::publishLoop, &nav));	
 	pubTrans = std::thread(boost::bind(&Robot::pubTransformContinual, &rob, 10)); // at 10 Hz
+
+	boost::shared_ptr<tf::TransformListener> listen;
+	nav.setListener(listen); // this MUST be a pointer of some kind!!
 
 	// loop for controlling motors w/ PID and odometry math
 	driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	

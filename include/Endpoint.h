@@ -35,6 +35,8 @@ class EndPoint{
 		vector<int> getNeighborList() const;
 		void setNeighbors(int n, ...);
 		//void setNeighbors(int n1, int n2);
+		float distBetween(EndPoint ep);
+		float distBetween(float X, float Y);
 
 		int getID() const;
 		float getX() const;

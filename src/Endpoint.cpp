@@ -40,6 +40,12 @@ void EndPoint::clear(){
 	x = 0; y = 0;
 }
 
+float EndPoint::distBetween(EndPoint ep){
+	return pow(pow(x-ep.getX(),2)+pow(y-ep.getY(),2) ,0.5);
+}
+float EndPoint::distBetween(float X, float Y){
+	return pow(pow(x-X,2)+pow(y-Y,2) ,0.5);
+}
 void EndPoint::setNeighbors(int n, ...){
 //void EndPoint::setNeighbors(int n1, int n2){
 	va_list neighs;

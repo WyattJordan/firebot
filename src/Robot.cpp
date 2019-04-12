@@ -431,10 +431,9 @@ void Robot::calculateOdom(){
 		for(int i=0; i<3; i++){ 
 			if(newPos_(i) != 0){ // some positions may not get updated (default to 0)
 			       	odomWorldLoc_(i) = newPos_(i);
-				travelDist_(i) == 1; // reset distance since updating that part of pose (x,y,theta)
 			}
 		}
-		calculateTransform(odomWorldLoc_(2));	      // find transform using half the step	
+		if(newPos_(2)!=0) calculateTransform(odomWorldLoc_(2));	      // find transform using half the step	
 		if(navStack.size()>0)  updateDriving_ = true; // adjust heading if driving 
 	}
 	//if(debug) cout<<"odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";	
@@ -442,14 +441,16 @@ void Robot::calculateOdom(){
 
 void Robot::pubTransformContinual(int rate){
 	while(1){
-		tf::Transform tfTrans_;
-		//tfTrans_.setOrigin(tf::Vector3(experimental_(0), experimental_(1), 0)); // x,y,0 cm shift, could be problematic...
-		tfTrans_.setOrigin(tf::Vector3(odomWorldLoc_(0), odomWorldLoc_(1), 0)); // x,y,0 cm shift, could be problematic...
+		tf::Transform trans;
+		//trans.setOrigin(tf::Vector3(experimental_(0), experimental_(1), 0)); // x,y,0 cm shift, could be problematic...
+		trans.setOrigin(tf::Vector3(odomWorldLoc_(0), odomWorldLoc_(1), 0)); // x,y,0 cm shift, could be problematic...
 		tf::Quaternion q;
 		//q.setRPY(0,0,experimental_(2)); // radian shift
 		q.setRPY(0,0,odomWorldLoc_(2)); // radian shift
-		tfTrans_.setRotation(q);
-		br_.sendTransform(tf::StampedTransform(tfTrans_, ros::Time::now(), GLOBALFRAME, ROBOTFRAME));
+		trans.setRotation(q);
+		tfTrans_ = tf::StampedTransform(trans, ros::Time::now(), GLOBALFRAME, ROBOTFRAME);
+		//br_.sendTransform(tf::StampedTransform(trans, ros::Time::now(), GLOBALFRAME, ROBOTFRAME));
+		br_.sendTransform(tfTrans_);
 		msleep(1/(float) rate * 1000.0);
 	}
 }
@@ -615,7 +616,7 @@ void Robot::setSerialArms(){
 void Robot::setNav(Nav* nv){ nav_ = nv; }
 Vector3f Robot::getOdomWorldLoc(){return odomWorldLoc_;};
 Ref<Vector3f> Robot::getTravelDist(){ return travelDist_;}
-tf::Transform Robot::getTransform(){ return tfTrans_;}
+tf::StampedTransform Robot::getTransform(){ return tfTrans_;}
 
 void Robot::setExperimental(Vector3f pose){experimental_ = pose;}
 
