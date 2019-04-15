@@ -54,10 +54,10 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	//tf::StampedTransform oldTrans; // save values immediately if going to be used (computing all this will take time
 	ros::Time scanStamp = scan->header.stamp;
 	Vector3f currentPos = rob_->getOdomWorldLoc(); // this is an undefined ref for some reason...
-	time_t start;
+	time_t start,finish;
 	time(&start);
 
-	if(tickCount_++%LidarUpdateRate==0  && ! (prevOdom_(0) == -100 && prevOdom_(1) == -100)){ // if not the first run (default odom loc) 
+	if(/*tickCount_++%LidarUpdateRate==0  &&*/ ! (prevOdom_(0) == -100 && prevOdom_(1) == -100)){ // if not the first run (default odom loc) 
 		// if the angle has changed less than 5deg between the two positions
 		if(abs(prevOdom_(2) - currentPos(2))*180/PI < 2.0) linearMove = true;
 		//if(linearMove) oldTrans = rob_->getTransform(); // save current copy
@@ -80,8 +80,6 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 
 	}*/
 	if(0 && startCount_++ < 10){ // classify the room multiple times before determining which room the 'bot is in 
-		time_t start, finish;
-		time(&start);
 		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
 		findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
 		findFurniture();   // determines what is furniture from smallJump_ 
@@ -111,20 +109,22 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		}
 	}*/
 	else if(linearMove){ // normal scan update
-		cout<<"\nlinear movement! Going to process data!\n";
-		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame) shifted!!!
+		//cout<<"\nlinear movement! Going to process data!\n";
+		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
 		findJumps(false);  // don't look for big jumps, just furniture
 		findFurniture();   // determines what is furniture from smallJump_ 
-		nav_->makeFurnMarks(furns_); // publishfurniture in rviz
+		nav_->makeFurnMarks(furns_); // publish furniture in rviz
 		findLines(false); // pub segments off, might want leave this off (too much processing)
 		nav_->makeLineMarks(lines_, true, true);
 
 		// TODO - conditions for a good scan to update position
 		if( getMaxRSquare() > 0.85 ){
-			cout<<"got good lines, asking Nav to update position\n";
+			cout<<"linear move with good lines, asking Nav to update position\n";
 			// travel distance cannot be saved at scan start because it must be pass by ref
-			//nav_->updatePositionAndMap(lines_, currentPos, oldTrans, rob_->getTravelDist());
+			// nav_->updatePositionAndMap(lines_, currentPos, oldTrans, rob_->getTravelDist());
 			nav_->updatePositionAndMap(lines_, currentPos, start, rob_->getTravelDist());
+			time(&finish);
+			cout<<"ran all lidar processing and scan updating in: "<<difftime(start, finish)*1001<<" ms\n";
 		}
 		else{
 			updatePosition = false;

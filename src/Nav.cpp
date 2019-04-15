@@ -41,10 +41,6 @@ void Nav::setOdomLoc(Vector3f od){
 	odomWorldLocCpy_ = od;
 }
 
-void setListener(boost::shared_ptr<tf::TransformListener> tfList){
-
-}
-
 void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t &start, Ref<Vector3f> travelDist){
 	// GIVEN - there is at least one line with R^2 > 0.85, R^2 values have been made
 	
@@ -122,7 +118,7 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t &start, Re
 	if(travelDist(0) > 5 || travelDist(1) > 5){
 		line* alignTo;
 		bool gotline = false;
-		for(int i=0; i<lns.size(); i++){ // lines are already sorted by closest so grab first good one
+		for(int i=0; i<lns.size(); i++){ // lines are already sorted by closest, so grab first good one
 			alignTo = &lns[i];
 			if(abs(alignTo->getSlope()) < 4 && alignTo->findDist(0,0) < 36){
 				cout<<"using line at angle "<<alignTo->getCenterTheta()<<" for near wall alignment";
@@ -132,14 +128,14 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t &start, Re
 		}
 		// need to know 2 things, robot orientation (NESW) and if the line is on the left or right of the bot
 		if(gotline){ 
-			bool onRight = alignTo->getCenterY() > 0; // if the line in the lidar frame's center val is neg it's on right
-			float dir = pos(2)*180/PI;
-			while(dir<0) dir+=360.0; // make it positive ranging from 0-360
-			float from90 = fmod(dir,90.0); // how far the robot isfrom the 4 possible 90deg directions 
-			if(from90 < 5){ // if robot is within 8deg of NESW
+			bool onRight = alignTo->getCenterY() < 0; // if the line in the lidar frame's center val is neg it's on right
+			float dir = pos(2)*180/PI; // deg
+			while(dir<0) dir+=360.0;   // make it positive ranging from 0-360
+			float from90 = fmod(dir,90.0); // how far the robot is from the 4 possible 90deg directions 
+			if(from90 < 5){ // if robot is within 5deg of NESW
 				int ENSW = ((int)round(dir/90.0))%4; // range 0 - 3 for ENWS respectively
-				if(ENSW%2==0){//setting xvalue (vert wall)
-					if((onRight && ENSW==1) || (!onRight && ENSW==3)){// add to x wall
+				if(ENSW==1 || ENSW==3){//setting xvalue (vert wall)
+					if((onRight && ENSW==3) || (!onRight && ENSW==1)){// bot is to right of vert wall (add to x val)
 						float wallX= findWallValue(1, pos, false); 
 						xUpdate = wallX != 0 ? pos(0) + wallX : 0;
 					}
@@ -149,12 +145,12 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t &start, Re
 					}
 				}
 				else{//setting y values so horiz wall
-					if((onRight && ENSW==2) || (!onRight && ENSW==0)){// add to y wall
+					if((onRight && ENSW==0) || (!onRight && ENSW==2)){// bot is above horix wall (add to y wall)
 						float wallY = findWallValue(3, pos, true); 
 						yUpdate = wallY != 0 ? pos(0) + wallY : 0;
 					}
 					else{ // subtract from y wall
-						float wallY= findWallValue(5, pos, true); 
+						float wallY = findWallValue(5, pos, true); 
 						yUpdate = wallY != 0 ? pos(0) - wallY : 0;
 					}
 				}
@@ -163,11 +159,8 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t &start, Re
 	}
 	if(ab(xUpdate - pos(0))<15) updatedPos(0) = xUpdate; // make sure it's nothing crazy
 	if(ab(yUpdate - pos(1))<15) updatedPos(1) = yUpdate;
-	time_t finish;
-	time(&finish);
-	cout<<"ran all lidar processing and scan updating in: "<<difftime(start, finish)*1000<<" ms\n";
-	if(updatedPos(0) + updatedPos(1) + updatedPos(2) !=0){ // send update
-		rob_->setExperimental(updatedPos); // just for changing frame to see if working
+	if(updatedPos(0) + updatedPos(1) + updatedPos(2) !=0){ // if x,y, or theta was changed send update
+		rob_->setExperimental(updatedPos);   // just for changing frame to see if working
 		//rob_->updatePosition(updatedPos);  // actually changes robot pos
 	}
 }
@@ -178,16 +171,16 @@ float Nav::findWallValue(int PNXY, Vector3f pos, bool horiz){
 	usedForUpdate_.resize(0);
 	
 	for(EndPoint mapPt : mapPoints_){
-		if(PNXY==1){ // adding to X, line is to left globally
+		if(PNXY==1){ // adding to X, line is to left of bot globally
 			if(mapPt.getX() > pos(0)){ continue; }
 		}
-		else if (PNXY==2){ // subbing from x, line is to right globally
+		else if (PNXY==2){ // subbing from x, line is to right of bot globally
 			if(mapPt.getX() < pos(0)){ continue; }
 		}
-		else if (PNXY==3){ // adding to Y, line is below globally
+		else if (PNXY==3){ // adding to Y, line is below bot globally
 			if(mapPt.getY() > pos(1)){ continue; }
 		}
-		else if (PNXY==4){ // subbing from y, line is above globally
+		else if (PNXY==4){ // subbing from y, line is above bot globally
 			if(mapPt.getY() < pos(1)){ continue; }
 		}
 
@@ -208,7 +201,7 @@ float Nav::findWallValue(int PNXY, Vector3f pos, bool horiz){
 				float dist = center.distBetween(pos(0), pos(1)); // dist between robot and center of line in map
 				if(dist<minDist){
 					globalWallVal = horiz ? mapPt.getY() : mapPt.getX();
-					usedForUpdate_.push_back(mapPt.getID());
+					usedForUpdate_.push_back(mapPt.getID()); // just for markers to be highlighted in rviz
 					usedForUpdate_.push_back(neigh.getID());
 				}
 			}
