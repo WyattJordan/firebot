@@ -49,14 +49,14 @@ void Lidar::input(){
 }
 
 void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
+	if(executing_) return; // if the last laserscan is still being processed
+	executing_ = true;
 	bool linearMove = false;
 	bool updatePosition = false;
 	//tf::StampedTransform oldTrans; // save values immediately if going to be used (computing all this will take time
 	ros::Time scanStamp = scan->header.stamp;
 	Vector3f currentPos = rob_->getOdomWorldLoc(); // this is an undefined ref for some reason...
-	time_t start,finish;
-	time(&start);
-
+	auto t1 = stc::steady_clock::now(); // measure length of time remaining
 	if(/*tickCount_++%LidarUpdateRate==0  &&*/ ! (prevOdom_(0) == -100 && prevOdom_(1) == -100)){ // if not the first run (default odom loc) 
 		// if the angle has changed less than 5deg between the two positions
 		if(abs(prevOdom_(2) - currentPos(2))*180/PI < 2.0) linearMove = true;
@@ -119,12 +119,13 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 
 		// TODO - conditions for a good scan to update position
 		if( getMaxRSquare() > 0.85 ){
-			cout<<"linear move with good lines, asking Nav to update position\n";
 			// travel distance cannot be saved at scan start because it must be pass by ref
 			// nav_->updatePositionAndMap(lines_, currentPos, oldTrans, rob_->getTravelDist());
-			nav_->updatePositionAndMap(lines_, currentPos, start, rob_->getTravelDist());
-			time(&finish);
-			cout<<"ran all lidar processing and scan updating in: "<<difftime(start, finish)*1001<<" ms\n";
+			bool updated = nav_->updatePositionAndMap(lines_, currentPos, rob_->getTravelDist());
+			if(updated) {
+				auto end = stc::steady_clock::now();
+				rob_->outputTime(t1, end);
+			}
 		}
 		else{
 			updatePosition = false;
@@ -132,6 +133,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	}
 
 	prevOdom_ = currentPos;//*/
+	executing_ = false;
 }
 
 bool Lidar::checkLocalize(){ // checks some conditions for a good scan to initially localize on
@@ -678,6 +680,7 @@ void Lidar::defaults(){
 	startCount_ = 0;
 	localRoom_ = -1;
 	started_ = false;
+	executing_ = false;
 	startRooms_.resize(0);
 	tickCount_ = 0;
 }

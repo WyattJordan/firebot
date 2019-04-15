@@ -3,6 +3,7 @@
  */
 #include "Nav.h"
 void Nav::defaults(){
+	cout<<std::setprecision(2)<<std::fixed;
 	smallRoomConf_ = bigRoomConf_ = false;
 	pubMap_ = pubWays_ = pubRob_ = false;
 	vector<int> none;
@@ -41,10 +42,10 @@ void Nav::setOdomLoc(Vector3f od){
 	odomWorldLocCpy_ = od;
 }
 
-void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t &start, Ref<Vector3f> travelDist){
+bool Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDist){
 	// GIVEN - there is at least one line with R^2 > 0.85, R^2 values have been made
 	
-	// sort by closest for distance calculations
+	// sort by closest for distance calculations TODO is this working???
 	std::sort(lns.begin(),lns.end(),[](line a, line b) -> bool {return a.findDist(0,0) < b.findDist(0,0);});
 
 	Vector3f updatedPos; 
@@ -115,13 +116,14 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t &start, Re
 	// Distance from this global line is used to update x or y accordingly
 	float xUpdate = 0;
 	float yUpdate = 0;
+	float wallVal = 0;
+	float dist2wall = 0;
 	if(travelDist(0) > 5 || travelDist(1) > 5){
 		line* alignTo;
 		bool gotline = false;
 		for(int i=0; i<lns.size(); i++){ // lines are already sorted by closest, so grab first good one
 			alignTo = &lns[i];
 			if(abs(alignTo->getSlope()) < 4 && alignTo->findDist(0,0) < 36){
-				cout<<"using line at angle "<<alignTo->getCenterTheta()<<" for near wall alignment";
 				gotline = true;
 				break;
 			}
@@ -134,24 +136,27 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t &start, Re
 			float from90 = fmod(dir,90.0); // how far the robot is from the 4 possible 90deg directions 
 			if(from90 < 5){ // if robot is within 5deg of NESW
 				int ENSW = ((int)round(dir/90.0))%4; // range 0 - 3 for ENWS respectively
+				dist2wall = alignTo->findDist(0,0);  // find distance to the wall in the lidar frame
+				cout<<"using line at angle "<<alignTo->getCenterTheta()<<
+					" with from90: "<<from90<<" and ENSW: "<<ENSW<<"\n";
 				if(ENSW==1 || ENSW==3){//setting xvalue (vert wall)
 					if((onRight && ENSW==3) || (!onRight && ENSW==1)){// bot is to right of vert wall (add to x val)
-						float wallX= findWallValue(1, pos, false); 
-						xUpdate = wallX != 0 ? pos(0) + wallX : 0;
+						wallVal = findWallValue(1, pos, false); 
+						xUpdate = wallVal != 0 ? wallVal + dist2wall  : 0;
 					}
 					else{ // subtract from x wall
-						float wallX= findWallValue(2, pos, false); 
-						xUpdate = wallX != 0 ? pos(0) - wallX : 0;
+						wallVal = findWallValue(2, pos, false); 
+						xUpdate = wallVal != 0 ? wallVal + dist2wall : 0;
 					}
 				}
 				else{//setting y values so horiz wall
 					if((onRight && ENSW==0) || (!onRight && ENSW==2)){// bot is above horix wall (add to y wall)
-						float wallY = findWallValue(3, pos, true); 
-						yUpdate = wallY != 0 ? pos(0) + wallY : 0;
+						wallVal = findWallValue(3, pos, true); 
+						yUpdate = wallVal != 0 ? wallVal + dist2wall: 0;
 					}
 					else{ // subtract from y wall
-						float wallY = findWallValue(5, pos, true); 
-						yUpdate = wallY != 0 ? pos(0) - wallY : 0;
+						wallVal = findWallValue(5, pos, true); 
+						yUpdate = wallVal != 0 ? wallVal - dist2wall: 0;
 					}
 				}
 			}
@@ -160,15 +165,21 @@ void Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, time_t &start, Re
 	if(ab(xUpdate - pos(0))<15) updatedPos(0) = xUpdate; // make sure it's nothing crazy
 	if(ab(yUpdate - pos(1))<15) updatedPos(1) = yUpdate;
 	if(updatedPos(0) + updatedPos(1) + updatedPos(2) !=0){ // if x,y, or theta was changed send update
+		if(xUpdate!=0 || yUpdate !=0) cout<<"got an update with wallVall: "<<wallVal<<" dist2wall: "<<dist2wall<<" and vals: "<<xUpdate<<" , "<<yUpdate
+			<<" with pos: "<<pos(0)<<","<<pos(1)<<"\n";
+		float xDiff = updatedPos(0) == 0 ? -1 : abs(xUpdate - pos(0));
+		float yDiff = updatedPos(1) == 0 ? -1 : abs(yUpdate - pos(1));
+		cout<<"updating position in (x,y) by ("<<xDiff<<","<<yDiff<<")\n";
 		rob_->setExperimental(updatedPos);   // just for changing frame to see if working
-		//rob_->updatePosition(updatedPos);  // actually changes robot pos
+		rob_->updatePosition (updatedPos);    // actually changes robot pos
+		return true;
 	}
+	return false;
 }
 float Nav::findWallValue(int PNXY, Vector3f pos, bool horiz){
 	float minDist = LARGENUM;
 	float globalWallVal = 0;
 
-	usedForUpdate_.resize(0);
 	
 	for(EndPoint mapPt : mapPoints_){
 		if(PNXY==1){ // adding to X, line is to left of bot globally
@@ -201,6 +212,7 @@ float Nav::findWallValue(int PNXY, Vector3f pos, bool horiz){
 				float dist = center.distBetween(pos(0), pos(1)); // dist between robot and center of line in map
 				if(dist<minDist){
 					globalWallVal = horiz ? mapPt.getY() : mapPt.getX();
+					usedForUpdate_.resize(0);
 					usedForUpdate_.push_back(mapPt.getID()); // just for markers to be highlighted in rviz
 					usedForUpdate_.push_back(neigh.getID());
 				}
@@ -265,6 +277,7 @@ void Nav::publishLoop(){
 		if(pubWays_ || pubMap_ || pubRob_){
 			//cout<<"published ways/map/robot\n";
 			if(pubMap_){
+				makeMapMarks("map_NS");
 				markerPub_->publish(wayMarks_);
 				pubWays_ = false;
 			}
@@ -613,7 +626,9 @@ void Nav::populateMarks(string which, string NS,
 	// add vertical arrows at pt locations
 	for(int i=0; i<pts->size(); i++){
 		int id = (*pts)[i].getID();
-		bool markSpecial = map && std::find(usedForUpdate_.begin(), usedForUpdate_.end(), id) != usedForUpdate_.end();
+		//bool markSpecial = map && std::find(usedForUpdate_.begin(), usedForUpdate_.end(), id) != usedForUpdate_.end();
+		bool markSpecial = false;
+		for( int used : usedForUpdate_) if(map && used == id) markSpecial = true;
 		marks.markers[i].header.frame_id = GLOBALFRAME;
 		marks.markers[i].ns = NS; 
 		marks.markers[i].id = i; //pts[i].getID();

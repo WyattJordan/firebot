@@ -31,7 +31,6 @@ int main(int argc, char **argv){
 	nav.setSmallRoomUpper(false);
 	nav.setBigRoomUpper(true);
 	cout<<"made nav object and linked to rob\n";
-	cout<<"neighs to waypt 4 in main are: ";
 	
 	// Create and link lidar class
 	Lidar lid(&rob, &nav);
@@ -41,6 +40,7 @@ int main(int argc, char **argv){
 	std::thread mainLogic, driveLoop, publishNavLoop, pubTrans, protoThread;
 	// loop for publishing markers in rviz and to transform them appropriately, only for visualization
 	publishNavLoop = std::thread(boost::bind(&Nav::publishLoop, &nav));	
+	//publishNavLoop = std::thread(boost::bind(&Nav::publishLoopContinual, &nav));	
 	pubTrans = std::thread(boost::bind(&Robot::pubTransformContinual, &rob, 10)); // at 10 Hz
 
 	// loop for controlling motors w/ PID and odometry math

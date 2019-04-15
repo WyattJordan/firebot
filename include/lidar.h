@@ -11,6 +11,7 @@
 #include "definitions.h"
 #include <Eigen/Core>
 #include <iostream>
+#include <iomanip>
 #include <cmath>
 #include <vector>
 #include <utility>
@@ -54,6 +55,7 @@ class Lidar{
 		Vector3f prevOdom_;
 		Nav* nav_;
 		Robot* rob_;
+		bool executing_; // to stop callback from running again if it's already running
 		int startCount_, localRoom_;
 	        vector<int> startRooms_, outliers_;
 		bool started_, keypress_;

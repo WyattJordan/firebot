@@ -33,8 +33,8 @@ void Robot::mainLogic(){
 	bool built = true;
 	for(int i=0; i<3; i++) built = buildNavStack(fromCenterAroundR1BackToCenter, true);
 	cout<<"built nav stack = "<<built<<"\n";
-	pt2pt_ = true;
 
+	pt2pt_ = true;
 	executeNavStack();
 }
 
@@ -431,6 +431,7 @@ void Robot::calculateOdom(){
 		travelDist_ += v; // keeps track of dist traveled between updates in x,y,theta (Nav resets w/ pass by ref)
 	}
 	else{ // set variables for updating the position
+		cout<<"Robot is integrating position update into drive loop...\n";
 		for(int i=0; i<3; i++){ 
 			if(newPos_(i) != 0){ // some positions may not get updated (default to 0)
 			       	odomWorldLoc_(i) = newPos_(i);

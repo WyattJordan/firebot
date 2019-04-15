@@ -71,6 +71,7 @@ class Robot{
 		Ref<Vector3f> getTravelDist();
 		tf::StampedTransform getTransform();
 		void setExperimental(Vector3f pose);
+		void outputTime(clk::time_point t1, clk::time_point t2);
 
 	private:
 		Nav *nav_;
@@ -119,7 +120,6 @@ class Robot{
 		void power2pwm();
 
 		void periodicOutput();
-		void outputTime(clk::time_point t1, clk::time_point t2);
 
 		float prevdist_;
 		bool buildNavStack(vector<int> ids,bool append=false);

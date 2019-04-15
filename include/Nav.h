@@ -50,7 +50,7 @@ class Nav{
 
 		//void updatePositionAndMap(vector<line> lns, Vector3f pos, tf::StampedTransform trans, Ref<Vector3f> travelDist);
 		//void updatePositionAndMap(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDist);
-		void updatePositionAndMap(vector<line> lns, Vector3f pos, time_t &start, Ref<Vector3f> travelDist);
+		bool updatePositionAndMap(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDist);
 		float findWallValue(int PNXY, Vector3f pos, bool horiz);
 		void publishLoop(); // calculate marks and publish as flags are set
 		void publishLoopContinual(); // calculate marks and publish every 2 seconds
