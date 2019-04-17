@@ -13,7 +13,7 @@
 #define StartSmallTurnDist50 12 // for <70 deg turns get closer to the point (center of map has slight turns)
 #define StopDist50 13.0 // takes X cm to stop the robot when driving at 50% (found experimentally)
 #define StopDist20 3.8  // takes X cm to stop the robot when driving at 20% (found experimentally)
-#define SamePoseThreshDeg 1 // if pose is within X deg for next pt just pop from nav stack
+#define SamePoseThreshDeg 2 // if pose is within X deg for next pt just pop from nav stack
 
 #define PI2	  6.28319
 #define PI	  3.14159 
@@ -37,7 +37,8 @@
 #define PrevPointDistThresh 10  // point cannot be greater than X cm away from prev pt, stop lines from adding points that are far away (closing off doorways)
 #define MinPtsForLine 10   
 #define MergeLineDistThresh 35  // two lines must have a combination of endpoints with distance < X cm to be merged (should be less than DoorWidth
-#define MinRSquared 0.7
+#define MinRSquaredSegment 0.1  // filter out all line segments with R^2 < X
+#define MinRSquaredFinal 0.5    // all lines post merge with R^2 < X are removed
 
 // used for classifying as room 4 or 1
 #define DoorWidth 46.0 
@@ -47,5 +48,7 @@
 #define LineAngleThresh 10.0 	  	// must be within X deg to use for pose update
 #define LidarErrorEquivalentDist 30.0   // weighs the theta updates as if the lidar has the same amount of error as X cm of travel w/ encoders
 #define LidarUpdateRate 10  	  	// will update every X scans (scans occur every 0.1s)
+#define MinRForPoseUpdate 0.7
+#define MinRForLocUpdate 0.5
 
 #define MaxLidarPoseDiff 20.0 // if the Lidar pose update says more than X deg different from odom don't use it

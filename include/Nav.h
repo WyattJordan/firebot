@@ -90,6 +90,7 @@ class Nav{
 		void loadFiles(int lvl); // get data from config files
 		void initRobotMarks();   // sets type, ns, frame, color
 		void calcRobotMarks();   // sets the xyz
+		void highlightUsedMapMarks();
 
 		// make a line from the map data that is closest to what was sensed by the lidar
 		line makeClosestLine(Vector3f gPt, bool horiz);

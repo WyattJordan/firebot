@@ -46,7 +46,7 @@ bool Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, Ref<Vector3f> tra
 	// GIVEN - there is at least one line with R^2 > 0.85, R^2 values have been made
 	
 	// sort by closest for distance calculations TODO is this working???
-	std::sort(lns.begin(),lns.end(),[](line a, line b) -> bool {return a.findDist(0,0) < b.findDist(0,0);});
+	///std::sort(lns.begin(),lns.end(),[](line a, line b) -> bool {return a.findDist(0,0) < b.findDist(0,0);});
 
 	Vector3f updatedPos; 
 	updatedPos << 0,0,0; // might not update every part of the pose
@@ -55,7 +55,7 @@ bool Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, Ref<Vector3f> tra
 	
 	// Determine if the lines are horiz or vertical and save the pose that the robot should be at for each line
 	for(int i=0; i<lns.size(); i++){ 
-		if(lns[i].getRSquared() > 0.8){
+		if(lns[i].getRSquared() > MinRForPoseUpdate){ // only for pose update
 			// angle is wall angle in global frame (= angle in lidar frame + pose angle) should be close to vertical or horizontal
 			float angle = 180.0/PI * (atan(lns[i].getSlope()) + pos(2)); // range is unknown due to pos(2) from 'bot
 			angle = fmod(angle, 360.0);  
@@ -84,10 +84,10 @@ bool Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, Ref<Vector3f> tra
 	}
 
 	// Update the angle of the pose based on the poses vector just made
-	/*
-	if(travelDist(2) > 100 && poses.size()>0){ // only update the angle of the pose every 100cm or more
+	
+	float finalLidarPose = 0;
+	/*if(travelDist(2) > 50 && poses.size()>1){ // only update the angle of the pose every 100cm or more
 			float sumR = std::accumulate(R.begin(), R.end(), 0.0);
-			float finalLidarPose = 0;
 			float justAvgPose = std::accumulate(poses.begin(), poses.end(), 0.0) / (float)poses.size();
 			for(int i=0; i<poses.size(); i++){ 
 				finalLidarPose += poses[i] * R[i] / sumR;// weighted average for pose based on R^2 value of lines used
@@ -97,12 +97,14 @@ bool Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, Ref<Vector3f> tra
 			// Lidar is weighted heavier when the robot has traveled further between updates
 			float finalPose = finalLidarPose*travelDist(2)/ sumWeights + pos(2)*LidarErrorEquivalentDist/ sumWeights;
 							
-			cout<<"Lidar used "<<poses.size()<<" lines and avg pose is: "<<180.0/PI*justAvgPose<<" but weighted by R is: "<<180.0/PI*finalLidarPose<<
-				" but weighting with odom of"<<180.0/PI*pos(2)<<" got "<<180.0/PI*finalPose<< " with dist = "<<travelDist(2)<<"\n";
 			if(ab(finalLidarPose - pos(2)) < MaxLidarPoseDiff){
+				cout<<"poses used to update are: ";
+				for(float p : poses) cout<<p*180.0/PI<<"  ";
+				cout<<"\n";
+				cout<<"Avg pose is: "<<180.0/PI*justAvgPose<<" but weighted by R is: "<<180.0/PI*finalLidarPose<<
+					" but weighting with odom of"<<180.0/PI*pos(2)<<" got "<<180.0/PI*finalPose<< " with dist = "<<travelDist(2)<<"\n";
 				updatedPos(2) = finalLidarPose; // VERY IMPORTANT WHICH GETS SENT
 				travelDist(2) = 0; // reset lidar update travel dist 
-				cout<<"used the pose to update!!!";
 			}
 			else{
 				cout<<"lidar estimate too different from current pose!!! did not use \n";
@@ -118,29 +120,51 @@ bool Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, Ref<Vector3f> tra
 	float yUpdate = 0;
 	float wallVal = 0;
 	float dist2wall = 0;
+
 	if(travelDist(0) > 5 || travelDist(1) > 5){
+		float dir = pos(2)*180/PI; // deg
+		while(dir<0) dir+=360.0;   // make it positive ranging from 0-360
+		float from90 = fmod(dir,90.0); // how far the robot is from the 4 possible 90deg directions 
+		int ENWS = ((int)round(dir/90.0))%4; // range 0 - 3 for ENWS respectively
 		line* alignTo;
-		bool gotline = false;
-		for(int i=0; i<lns.size(); i++){ // lines are already sorted by closest, so grab first good one
-			alignTo = &lns[i];
-			if(abs(alignTo->getSlope()) < 4 && alignTo->findDist(0,0) < 36){
-				gotline = true;
-				break;
+	        line* useThis;
+		if(from90 < 5){ // if robot is within 5deg of NESW
+			bool gotline = false;
+			float minDist = LARGENUM;
+			cout<<"entering loop for picking line to align with\n";
+			for(int i=0; i<lns.size(); i++){ // lines are already sorted by closest, so grab first good one
+				alignTo = &lns[i];
+				//if(alignTo->getCenterRadius() > 80) continue; // if the lines start to be further than a limit away don't update
+				bool slopeCond = abs(alignTo->getSlope()) < 0.3;
+				bool lineModelCond = alignTo->findDist(0,0) < 36;
+				float x = (alignTo->getEndPtX1() + alignTo->getEndPtX2()) / 2.0; //get average center pt of line 
+				float y = (alignTo->getEndPtY1() + alignTo->getEndPtY2()) / 2.0; 
+				float raddist = pow(x*x + y*y,0.5);
+				bool lineDistCond = raddist < 80;
+				bool closer = raddist< minDist;
+				if( slopeCond && lineModelCond  && lineDistCond && closer){
+					minDist = raddist;
+					useThis = alignTo;
+					gotline = true;
+					cout<<"ACCEPTED "<<i<<" based on slope: "<<abs(alignTo->getSlope())<<" lineModelDist: "<<alignTo->findDist(0,0)<<
+					" dist: "<<raddist<<
+					" while at angle: "<<fmod(alignTo->getCenterTheta()*180.0/PI,360)<<"\n";
+					//break;
+				}
+				else{
+					cout<<"rejected "<<i<<" based on slope: "<<abs(alignTo->getSlope())<<" lineModelDist: "<<alignTo->findDist(0,0)<<
+					" dist: "<<raddist<<
+					" while at angle: "<<fmod(alignTo->getCenterTheta()*180.0/PI,360)<<"\n";
+				}
 			}
-		}
-		// need to know 2 things, robot orientation (NESW) and if the line is on the left or right of the bot
-		if(gotline){ 
-			bool onRight = alignTo->getCenterY() < 0; // if the line in the lidar frame's center val is neg it's on right
-			float dir = pos(2)*180/PI; // deg
-			while(dir<0) dir+=360.0;   // make it positive ranging from 0-360
-			float from90 = fmod(dir,90.0); // how far the robot is from the 4 possible 90deg directions 
-			if(from90 < 5){ // if robot is within 5deg of NESW
-				int ENSW = ((int)round(dir/90.0))%4; // range 0 - 3 for ENWS respectively
+			// need to know 2 things, robot orientation (NESW) and if the line is on the left or right of the bot
+			if(alignTo != useThis) {alignTo = useThis; cout<<"THIS SHOULD NOT BE HAPPENING!!!\n";}
+			if(gotline){ 
+				bool onRight = alignTo->getCenterY() < 0; // if the line in the lidar frame's center val is neg it's on right
 				dist2wall = alignTo->findDist(0,0);  // find distance to the wall in the lidar frame
-				cout<<"using line at angle "<<alignTo->getCenterTheta()<<
-					" with from90: "<<from90<<" and ENSW: "<<ENSW<<"\n";
-				if(ENSW==1 || ENSW==3){//setting xvalue (vert wall)
-					if((onRight && ENSW==3) || (!onRight && ENSW==1)){// bot is to right of vert wall (add to x val)
+				//cout<<"using line at angle "<<alignTo->getCenterTheta()<<" with from90: "<<from90<<" and ENWS: "<<ENWS<<"\n";
+				if(ENWS==1 || ENWS==3){//setting xvalue (vert wall)
+					if((onRight && ENWS==3) || (!onRight && ENWS==1)){// bot is to right of vert wall (add to x val)
 						wallVal = findWallValue(1, pos, false); 
 						xUpdate = wallVal != 0 ? wallVal + dist2wall  : 0;
 					}
@@ -150,7 +174,7 @@ bool Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, Ref<Vector3f> tra
 					}
 				}
 				else{//setting y values so horiz wall
-					if((onRight && ENSW==0) || (!onRight && ENSW==2)){// bot is above horix wall (add to y wall)
+					if((onRight && ENWS==0) || (!onRight && ENWS==2)){// bot is above horix wall (add to y wall)
 						wallVal = findWallValue(3, pos, true); 
 						yUpdate = wallVal != 0 ? wallVal + dist2wall: 0;
 					}
@@ -162,15 +186,16 @@ bool Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, Ref<Vector3f> tra
 			}
 		}
 	}
+
 	if(ab(xUpdate - pos(0))<15) updatedPos(0) = xUpdate; // make sure it's nothing crazy
 	if(ab(yUpdate - pos(1))<15) updatedPos(1) = yUpdate;
 	if(updatedPos(0) + updatedPos(1) + updatedPos(2) !=0){ // if x,y, or theta was changed send update
+		float xDiff = updatedPos(0) == 0 ? 0 : abs(xUpdate - pos(0));
+		float yDiff = updatedPos(1) == 0 ? 0 : abs(yUpdate - pos(1));
+		float pDiff = updatedPos(2) == 0 ? 0 : abs(finalLidarPose - pos(2))*180.0/PI;
 		if(xUpdate!=0 || yUpdate !=0) cout<<"got an update with wallVall: "<<wallVal<<" dist2wall: "<<dist2wall<<" and vals: "<<xUpdate<<" , "<<yUpdate
-			<<" with pos: "<<pos(0)<<","<<pos(1)<<"\n";
-		float xDiff = updatedPos(0) == 0 ? -1 : abs(xUpdate - pos(0));
-		float yDiff = updatedPos(1) == 0 ? -1 : abs(yUpdate - pos(1));
-		cout<<"updating position in (x,y) by ("<<xDiff<<","<<yDiff<<")\n";
-		rob_->setExperimental(updatedPos);   // just for changing frame to see if working
+			<<" with pos: "<<pos(0)<<","<<pos(1)<<" updating diff is ("<<xDiff<<","<<yDiff<<","<<pDiff<<"\n";
+		//rob_->setExperimental(updatedPos);    // just for changing frame to see if working
 		rob_->updatePosition (updatedPos);    // actually changes robot pos
 		return true;
 	}
@@ -215,11 +240,13 @@ float Nav::findWallValue(int PNXY, Vector3f pos, bool horiz){
 					usedForUpdate_.resize(0);
 					usedForUpdate_.push_back(mapPt.getID()); // just for markers to be highlighted in rviz
 					usedForUpdate_.push_back(neigh.getID());
+					highlightUsedMapMarks(); // change colors of IDs used
 				}
 			}
 	
 		}// loop thru neighs of this map pt
 	} // loop thru map pts
+	if(usedForUpdate_.size()>0) cout<<"using wall with marks ids: "<<usedForUpdate_[0]<< " , "<<usedForUpdate_[1]<<"\n ";
 	return globalWallVal;
 }
 
@@ -277,7 +304,6 @@ void Nav::publishLoop(){
 		if(pubWays_ || pubMap_ || pubRob_){
 			//cout<<"published ways/map/robot\n";
 			if(pubMap_){
-				makeMapMarks("map_NS");
 				markerPub_->publish(wayMarks_);
 				pubWays_ = false;
 			}
@@ -303,7 +329,6 @@ void Nav::publishLoopContinual(){
 		sleep(1);
 	}
 }
-
 
 // Sets the door configuration for the small room, if up == true the 
 // door is on the higher side (larger y coordinate) 
@@ -537,11 +562,11 @@ void Nav::makeLineMarks(vector<line> lines, bool merged, bool addIDs){
 		tmp.markers[0].color.b = 1.0;
 	}
 
-	/*for(int i=0; i<lineMarks_.markers.size(); i++){
+	for(int i=0; i<lineMarks_.markers.size(); i++){
 		lineMarks_.markers[i].action = visualization_msgs::Marker::DELETE;
 	}
 	if(lineMarks_.markers.size()!=0) markerPub_->publish(lineMarks_);// delete all old ones	
-	*/
+	//*/
 	
 	//cout<<"pubbing line marks of size "<<lines.size()<<"\n";
 	lineMarks_ = tmp;
@@ -614,6 +639,17 @@ void Nav::makeFurnMarks(vector<EndPoint> furns){
 	//cout<<"size of furn array is: "<<furnMarks_.markers.size()<<"\n";
 }
 
+void Nav::highlightUsedMapMarks(){
+	for(int i=0; i<mapMarks_.markers.size(); i++){
+		bool markSpecial = std::find(usedForUpdate_.begin(), usedForUpdate_.end(), mapMarks_.markers[i].id) != usedForUpdate_.end();
+		if(mapMarks_.markers[i].id < 200){ // if it's a marker not a line or text
+			mapMarks_.markers[i].color.r = markSpecial ? 0.0 : cmapMark_.r;	
+			mapMarks_.markers[i].color.g = markSpecial ? 1.0 : cmapMark_.g;
+			mapMarks_.markers[i].color.b = markSpecial ? 0.0 : cmapMark_.b;	
+		}
+	}
+}
+
 // populate MarkerArray members (run by the makeMapMarks() and makeWayMarks()) 
 void Nav::populateMarks(string which, string NS,
 	   	visualization_msgs::MarkerArray &marks, color lncol, color markcol){
@@ -631,7 +667,7 @@ void Nav::populateMarks(string which, string NS,
 		for( int used : usedForUpdate_) if(map && used == id) markSpecial = true;
 		marks.markers[i].header.frame_id = GLOBALFRAME;
 		marks.markers[i].ns = NS; 
-		marks.markers[i].id = i; //pts[i].getID();
+		marks.markers[i].id = id; //pts[i].getID();
 		marks.markers[i].type = visualization_msgs::Marker::ARROW;
 		marks.markers[i].action = visualization_msgs::Marker::ADD;
 		
@@ -654,14 +690,14 @@ void Nav::populateMarks(string which, string NS,
 		// show text ID above marker with id += 1000
 		int idx = i+pts->size();
 		marks.markers[idx].header.frame_id = GLOBALFRAME;
-		marks.markers[idx].id = i+1000;
+		marks.markers[idx].id = id+1000;
 		marks.markers[idx].ns = NS;
 		marks.markers[idx].text = std::to_string((*pts)[i].getID());
 		marks.markers[idx].type = visualization_msgs::Marker::TEXT_VIEW_FACING;
 		marks.markers[idx].action = visualization_msgs::Marker::ADD;
-		marks.markers[idx].scale.x = 3;
-		marks.markers[idx].scale.y = 3;
-		marks.markers[idx].scale.z = 8.0; // text height	
+		marks.markers[idx].scale.x = 1.5;
+		marks.markers[idx].scale.y = 1.5;
+		marks.markers[idx].scale.z = 5.0; // text height	
 		marks.markers[idx].pose.position.x = (*pts)[i].getX();
 		marks.markers[idx].pose.position.y = (*pts)[i].getY();
 		marks.markers[idx].pose.position.z = 15;

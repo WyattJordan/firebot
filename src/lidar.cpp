@@ -63,7 +63,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		//if(linearMove) oldTrans = rob_->getTransform(); // save current copy
 	}//*/
 
-	/*if(keypress_){
+	if(0 && keypress_){
 		cout<<"\n";
 		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
 		findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
@@ -72,13 +72,12 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		findLines(true); // pub segments on
 		nav_->makeLineMarks(lines_, true, true);
 
-
 		cleanBigJumps();   // removes furniture jumps and any jumps counted twice 
 		//startRooms_.push_back(classifyRoomFromJumps()); // used to determine room for starting location, will run findLines
 		cout<<"\ndone this scan\n\n";
 		keypress_ = false;
 
-	}*/
+	}
 	if(0 && startCount_++ < 10){ // classify the room multiple times before determining which room the 'bot is in 
 		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
 		findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
@@ -109,22 +108,32 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		}
 	}*/
 	else if(linearMove){ // normal scan update
+			/*processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
+		findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
+		findFurniture();   // determines what is furniture from smallJump_ 
+		nav_->makeFurnMarks(furns_); // publishfurniture in rviz
+		findLines(true); // pub segments on
+		nav_->makeLineMarks(lines_, true, true);
+
+		cleanBigJumps();   // removes furniture jumps and any jumps counted twice 
+		*/
+		
 		//cout<<"\nlinear movement! Going to process data!\n";
 		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
-		findJumps(false);  // don't look for big jumps, just furniture
+		findJumps(true);  // don't look for big jumps, just furniture
 		findFurniture();   // determines what is furniture from smallJump_ 
 		nav_->makeFurnMarks(furns_); // publish furniture in rviz
-		findLines(false); // pub segments off, might want leave this off (too much processing)
+		findLines(true); // pub segments off, might want leave this off (too much processing)
 		nav_->makeLineMarks(lines_, true, true);
 
 		// TODO - conditions for a good scan to update position
-		if( getMaxRSquare() > 0.85 ){
+		if( getMaxRSquare() > 0.65 ){
 			// travel distance cannot be saved at scan start because it must be pass by ref
 			// nav_->updatePositionAndMap(lines_, currentPos, oldTrans, rob_->getTravelDist());
 			bool updated = nav_->updatePositionAndMap(lines_, currentPos, rob_->getTravelDist());
 			if(updated) {
 				auto end = stc::steady_clock::now();
-				rob_->outputTime(t1, end);
+				//rob_->outputTime(t1, end);
 			}
 		}
 		else{
@@ -514,7 +523,7 @@ void Lidar::findLines(bool pubSegmets){
 
 	//cout<<lines_.size()<<" raw lines R^2 are: \n";
 	for(int lm=0; lm<lines_.size(); lm++){
-		if(lines_[lm].makeRSquared() > 0.1){
+		if(lines_[lm].makeRSquared() > MinRSquaredSegment){
 	//		cout<<lines_[lm].makeRSquared()<<", ";
 		}
 		else{
@@ -538,22 +547,14 @@ void Lidar::findLines(bool pubSegmets){
 	// Make RSquared values and delete any bad lines that managed to stay in there
 	//cout<<lines_.size()<<" merged lines R^2 vals are: \n";
 	for(int lm=0; lm<lines_.size(); lm++){
-		if(lines_[lm].makeRSquared() > 0.7){
-			//cout<<lines_[lm].makeRSquared()<<", ";
+		if(lines_[lm].makeRSquared() > MinRSquaredFinal){
+			//cout<<lines_[lm].getRSquared()<<", ";
 		}
 		else{
 			lines_.erase(lines_.begin() + lm);
 			lm --;
 		}
 	}
-	// TODO delete lines w/ R^2 values under 0.7
-/*	for(int lm=0; lm<lines_.size(); lm++){
-		cout<<lines_[lm].makeRSquared()<<", ";
-		if(lines_[lm].getRSquared() < MinRSquared){ 
-			lines_.erase(lines_.begin() + lm);
-			lm--;
-		}
-	}*/
 	/*cout<<"num after merging lines: "<<lines_.size()<<" with sizes: ";
 	for(int i=0; i<lines_.size(); i++){
 		cout<<lines_[i].numPts()<<", ";

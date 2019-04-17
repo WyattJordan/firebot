@@ -139,6 +139,7 @@ bool Robot::buildNavStack(vector<int> ids, bool append){
 // default mode faces first point then runs at 0.5 speed with rounding of corners
 void Robot::executeNavStack(){ // runs in parallel to driveLoop, called from mainLogic
 	// TODO - update pose to next point when LIDAR updates position
+	unsigned int count = 0; // used for periodic output
 	while(navStack.size()>0){
 		float dist = distToNextPoint(); // distance from next waypoint
 		int pts = navStack.size();
@@ -164,24 +165,33 @@ void Robot::executeNavStack(){ // runs in parallel to driveLoop, called from mai
 			speed_ = 0; // for some reason this wasn't 0... only other place it gets set is ramp
 			ramp_ = false; // ramp is running for some reason here....
 			float error = fmod(ab(odomWorldLoc_(2)*180.0/PI - setPose_), 360.0);
+			error = error > 180 ? 360 - error : error; 
 			if(error < SamePoseThreshDeg /*|| ab(adj_) < 0.1*/){ // PID has finished turning, no more adj needed
 				//cout<<"done facing first\n";
 				facingFirst_ = false;
 				float s = dist < MinDistFor50 || pt2pt_ ? 0.2 : 0.5; // if it's very close use 20%
 				setRamp(s, 0.5); // start driving to next point, take half second to accelerate
 			}
+			else if(count++%10000000 == 0){
+				cout<<"still in face first with error: "<<error<<"\n";
+			}
 		}
 
 		else if(navStack.size() == 1 || pt2pt_){ // slowing down as approaching final point
 			if( (ab(ab(speed_) - 0.5) < 0.05 && dist < StopDist50) ||
 			    (ab(ab(speed_) - 0.2) < 0.05 && dist < StopDist20) ||
-			    dist>prevdist_+1){
+			    dist>prevdist_+1){ // stop if reached stopping distance or now overshooting the way pt by 1 cm
 				setRamp(0, 0.5);
 				msleep(500);
 				cout<<"Popping marker "<<navStack.front().getID()<<" because arrived at loc\n";
 				if(dist>prevdist_+1)cout<<"dist: "<<dist<<" prevdist_: "<<prevdist_<<"\n";
 				navStack.pop_front();
 				firstNav_ = true; // this is either the last point or a pt2pt nav so reset 
+			}
+			else if(updateDriving_){
+				cout<<"POSITION UPDATED AND POSE RECALCULATED!!!\n";
+				setPose_ = getPoseToPoint(navStack.front()); 
+				updateDriving_ = false;
 			}
 		}
 
@@ -224,7 +234,7 @@ void Robot::executeNavStack(){ // runs in parallel to driveLoop, called from mai
 			}//*/
 		}
 		
-		if(pts < navStack.size()){ prevdist_ = 99999;} // a marker was popped so reset dist
+		if(pts < navStack.size()){ prevdist_ = 99999; travelDist_(2) -= 10;} // a marker was popped so reset dist
 		else {prevdist_ = dist;}
 	}// while loop
 }
@@ -431,7 +441,6 @@ void Robot::calculateOdom(){
 		travelDist_ += v; // keeps track of dist traveled between updates in x,y,theta (Nav resets w/ pass by ref)
 	}
 	else{ // set variables for updating the position
-		cout<<"Robot is integrating position update into drive loop...\n";
 		for(int i=0; i<3; i++){ 
 			if(newPos_(i) != 0){ // some positions may not get updated (default to 0)
 			       	odomWorldLoc_(i) = newPos_(i);
