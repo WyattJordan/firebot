@@ -51,7 +51,8 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 
 	line* alignTo;
 	bool foundLine = false;
-	for(int idx=0; idx<lns.size(); idx++){
+	int idx = 0;
+	for(idx; idx<lns.size(); idx++){
 			alignTo = &lns[idx];
 			bool slopeCond = abs(alignTo->getSlope()) < 0.3;  // it's running parallel to 'bot
 			bool lineModelCond = alignTo->findDist(0,0) < 36; // within reasonable hallway distance from model
@@ -68,16 +69,21 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 
 	bool onRight = alignTo->getCenterY() < 0; // if the line in the lidar frame's center val is neg it's on right
 	float dist2wall = alignTo->findDist(0,0); // find distance to the wall in the lidar frame
-	cout<<"got a good line, centerY is: "<<alignTo->getCenterY()<<" dist2wall is: "<<dist2wall<<"\n";
+	cout<<"got a good line idx: "<<idx<<", with slope: "<<alignTo->getSlope()<<", centerX is: " <<alignTo->getCenterX()<<
+		", centerY is: "<<alignTo->getCenterY() <<", dist2wall is: "<<dist2wall<<"\n";
+	cout<<"the line is at angle: "<<alignTo->getClosestAngle()<<" has length: "<<
+		alignTo->getLength()<<" and R^2 of "<<alignTo->getRSquared()<<"\n";
 	float wallVal = 0;
 	float xUpdate, yUpdate;
 	if(ENWS==1 || ENWS==3){//setting xvalue (vert wall)
 		yUpdate = 0;
 		if((onRight && ENWS==3) || (!onRight && ENWS==1)){// bot is to right of vert wall (add to x val)
+			cout<<"here1\n";
 			wallVal = findWallValue(1, pos, false); 
 			xUpdate = wallVal != 0 ? wallVal + dist2wall : 0;
 		}
 		else{ // subtract from x wall
+			cout<<"here2\n";
 			wallVal = findWallValue(2, pos, false); 
 			xUpdate = wallVal != 0 ? wallVal + dist2wall : 0;
 		}
@@ -85,16 +91,21 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 	else{//setting y values so horiz wall
 		xUpdate = 0;
 		if((onRight && ENWS==0) || (!onRight && ENWS==2)){// bot is above horix wall (add to y wall)
+			cout<<"here3\n";
 			wallVal = findWallValue(3, pos, true); 
 			yUpdate = wallVal != 0 ? wallVal + dist2wall : 0;
 		}
 		else{ // subtract from y wall
+			cout<<"here4\n";
 			wallVal = findWallValue(4, pos, true); 
 			yUpdate = wallVal != 0 ? wallVal - dist2wall : 0;
 		}
 	}
-	cout<<"got a wall to update that is at angle: "<<alignTo->getCenterTheta()*180/PI
-		<<" with length: "<<alignTo->getLength()<<" and R^2 "<<alignTo->getRSquared()<<"\n";
+	makeLineMarks(lns, true, true);
+	if(usedForUpdate_.size()>0){cout<<"got a wall with ids: "<<usedForUpdate_[0]<<", "<<usedForUpdate_[1]<<"\n";}
+	else{cout<<" did not get a global wall.....\n";}
+	usleep(500 * 1000);
+		
 	return true;
 
 
@@ -284,16 +295,23 @@ float Nav::findWallValue(int PNXY, Vector3f pos, bool horiz){
 			bool ghoriz = abs(mapPt.getX() - neigh.getX()) > abs(mapPt.getY() - neigh.getY());
 			if((ghoriz && horiz) || (!ghoriz && !horiz)){
 				EndPoint center;
+				float x,y;
 				if(horiz){ 
-					EndPoint tmp((mapPt.getX() + neigh.getX())/2.0, mapPt.getY()); 
-					center = tmp;
+					x = (mapPt.getX() + neigh.getX())/2.0;
+					y = mapPt.getY();
+					//EndPoint tmp((mapPt.getX() + neigh.getX())/2.0, mapPt.getY()); 
+					//center = tmp;
 				}
 				else{
-					EndPoint tmp(mapPt.getX(), (mapPt.getY() + neigh.getY())/2.0); 
-					center = tmp;
+					x = mapPt.getX();
+					y = (mapPt.getY() + neigh.getY())/2.0;
+					//EndPoint tmp(mapPt.getX(), (mapPt.getY() + neigh.getY())/2.0); 
+					//center = tmp;
 				}
-				float dist = center.distBetween(pos(0), pos(1)); // dist between robot and center of line in map
+				//float dist = center.distBetween(pos(0), pos(1)); // dist between robot and center of line in map
+				float dist = pow(pow(x-pos(0),2)+pow(y-pos(1),2),0.5);
 				if(dist<minDist){
+					minDist = dist;
 					globalWallVal = horiz ? mapPt.getY() : mapPt.getX();
 					usedForUpdate_.resize(0);
 					usedForUpdate_.push_back(mapPt.getID()); // just for markers to be highlighted in rviz
@@ -304,7 +322,6 @@ float Nav::findWallValue(int PNXY, Vector3f pos, bool horiz){
 	
 		}// loop thru neighs of this map pt
 	} // loop thru map pts
-	if(usedForUpdate_.size()>0) cout<<"using wall with marks ids: "<<usedForUpdate_[0]<< " , "<<usedForUpdate_[1]<<"\n ";
 	return globalWallVal;
 }
 

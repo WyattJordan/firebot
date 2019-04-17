@@ -2,6 +2,8 @@
 // Constants for various settings throughout the program
 // Comments say "X is ..." where X is whatever the value it is defined as is 
 
+#define LARGENUM 99999999
+
 // physical constants of the 'bot for odometry (see Robot::calculateOdom())
 #define WheelDist 13.15 // width is 28.8cm outer, 24cm inner, x is half the average of these two (roughly)
 #define WheelRad  6.2   // diameter is 12.4, radius is 6.2cm

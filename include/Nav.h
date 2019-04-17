@@ -28,7 +28,6 @@ using std::cout;
 using std::string;
 using namespace Eigen;
 
-#define LARGENUM 99999999
 
 class Robot; // forward declaration since both include eachother
 

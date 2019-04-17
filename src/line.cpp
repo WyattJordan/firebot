@@ -13,7 +13,7 @@ line::line(){
         intercept = 0;
         EndPoint end1;
         EndPoint end2;
-		EndPoint center;
+	EndPoint center;
         lineDist = 0;
         isLine = false;
         length = 0;
@@ -250,11 +250,25 @@ float line::getCenterX(){ return center.getX(); }
 float line::getCenterY(){ return center.getY(); }
 
 float line::getClosestRadius(){
-	float min = 999999;
+	float min = LARGENUM;
 	for(int i=0; i<x.size(); i++){
 		if(ptDist(x[i],y[i],0,0) < min){
 			min = ptDist(x[i],y[i],0,0);
 		}
 	}
 	return min;
+}
+float line::getClosestAngle(){
+	float min = LARGENUM;
+	int idx = -1;
+	for(int i=0; i<x.size(); i++){
+		if(ptDist(x[i],y[i],0,0) < min){
+			idx = i;
+			min = ptDist(x[i],y[i],0,0);
+		}
+	}
+	if(idx == -1) return -1.0;
+	float angle = fmod(atan(y[idx]/x[idx])*180/PI, 360);
+	if(angle<0) angle+=360;
+	return angle;
 }

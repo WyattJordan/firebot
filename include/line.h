@@ -2,6 +2,7 @@
 #define LINE_INCLUDE
 
 #include "Endpoint.h"
+#include "definitions.h"
 #include <iostream>
 #include <cmath>
 #include <vector>
@@ -53,6 +54,7 @@ public:
 		float getCenterTheta();
 		float getCenterRadius();
 		float getClosestRadius();
+		float getClosestAngle();
 		float makeRSquared();
 		float getRSquared();
 		//void setAsHoriz(bool b);

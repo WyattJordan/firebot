@@ -124,7 +124,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		findFurniture();   // determines what is furniture from smallJump_ 
 		nav_->makeFurnMarks(furns_); // publish furniture in rviz
 		findLines(true); // pub segments off, might want leave this off (too much processing)
-		nav_->makeLineMarks(lines_, true, true);
+		//nav_->makeLineMarks(lines_, true, true);
 
 		// TODO - conditions for a good scan to update position
 		if( getMaxRSquare() > 0.65 ){
@@ -533,7 +533,7 @@ void Lidar::findLines(bool pubSegmets){
 	}
 
 	// Merging line models
-	if(pubSegmets) nav_->makeLineMarks(lines_, false, true); // publish unmerged lines in rviz
+	//if(pubSegmets) nav_->makeLineMarks(lines_, false, true); // publish unmerged lines in rviz
 
 	for(int lm=0; lm<lines_.size(); lm++){
 		int nextIdx = (lm+1)%lines_.size();
