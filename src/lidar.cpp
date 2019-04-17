@@ -129,11 +129,11 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		// TODO - conditions for a good scan to update position
 		if( getMaxRSquare() > 0.65 ){
 			// travel distance cannot be saved at scan start because it must be pass by ref
-			// nav_->updatePositionAndMap(lines_, currentPos, oldTrans, rob_->getTravelDist());
-			bool updated = nav_->updatePositionAndMap(lines_, currentPos, rob_->getTravelDist());
+			// nav_->updatePosition(lines_, currentPos, oldTrans, rob_->getTravelDist());
+			bool updated = nav_->updatePosition(lines_, currentPos, rob_->getTravelDist());
 			if(updated) {
 				auto end = stc::steady_clock::now();
-				//rob_->outputTime(t1, end);
+				rob_->outputTime(t1, end);
 			}
 		}
 		else{
@@ -555,6 +555,8 @@ void Lidar::findLines(bool pubSegmets){
 			lm --;
 		}
 	}
+	// sort lines by closest to robot
+	std::sort(lines_.begin(),lines_.end(),[](line a, line b) -> bool {return a.getClosestRadius() < b.getClosestRadius();});
 	/*cout<<"num after merging lines: "<<lines_.size()<<" with sizes: ";
 	for(int i=0; i<lines_.size(); i++){
 		cout<<lines_[i].numPts()<<", ";

@@ -57,7 +57,7 @@ class Lidar{
 		Robot* rob_;
 		bool executing_; // to stop callback from running again if it's already running
 		int startCount_, localRoom_;
-	        vector<int> startRooms_, outliers_;
+		vector<int> startRooms_, outliers_;
 		bool started_, keypress_;
 		unsigned int tickCount_;
 

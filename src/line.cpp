@@ -13,7 +13,7 @@ line::line(){
         intercept = 0;
         EndPoint end1;
         EndPoint end2;
-	EndPoint center;
+		EndPoint center;
         lineDist = 0;
         isLine = false;
         length = 0;
@@ -205,18 +205,18 @@ bool line::canMerge(line a){
 
 float line::radDist(int i){
 	float rad;
-        rad = pow(x[i]*x[i] + y[i]*y[i], 0.5);
-        return rad;
+	rad = pow(x[i]*x[i] + y[i]*y[i], 0.5);
+	return rad;
 }
 
 void line::addPointEnd(float xVal, float yVal) {
-        x.push_back(xVal);
-        y.push_back(yVal);
+	x.push_back(xVal);
+	y.push_back(yVal);
 };
 
 void line::addPointStart(float xVal, float yVal) {
-        x.insert(x.begin(), xVal);
-        y.insert(y.begin(), yVal);
+	x.insert(x.begin(), xVal);
+	y.insert(y.begin(), yVal);
 };
 
 

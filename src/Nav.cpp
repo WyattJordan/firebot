@@ -42,18 +42,71 @@ void Nav::setOdomLoc(Vector3f od){
 	odomWorldLocCpy_ = od;
 }
 
-bool Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDist){
-	// GIVEN - there is at least one line with R^2 > 0.85, R^2 values have been made
-	
-	// sort by closest for distance calculations TODO is this working???
-	///std::sort(lns.begin(),lns.end(),[](line a, line b) -> bool {return a.findDist(0,0) < b.findDist(0,0);});
+bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDist){
+	float dir = pos(2)*180/PI; // global angle in deg
+	while(dir<0) dir+=360.0;   // make it positive ranging from 0-360
+	float from90 = fmod(dir,90.0); // how far the robot is from the 4 possible 90deg directions 
+	if(from90 > 5 || lns.size() < 1) return false;   // don't update if not facing a 90deg increment or no lines
+	int ENWS = ((int)round(dir/90.0))%4; // range 0 - 3 for ENWS respectively
 
+	line* alignTo;
+	bool foundLine = false;
+	for(int idx=0; idx<lns.size(); idx++){
+			alignTo = &lns[idx];
+			bool slopeCond = abs(alignTo->getSlope()) < 0.3;  // it's running parallel to 'bot
+			bool lineModelCond = alignTo->findDist(0,0) < 36; // within reasonable hallway distance from model
+			float x = (alignTo->getEndPtX1() + alignTo->getEndPtX2()) / 2.0; //get average center pt of line 
+			float y = (alignTo->getEndPtY1() + alignTo->getEndPtY2()) / 2.0; 
+			float raddist = pow(x*x + y*y,0.5);
+			bool lineDistCond = raddist < 80;
+			if(slopeCond && lineModelCond && lineDistCond){
+				foundLine = true;
+				break;
+			}
+	}
+	if(!foundLine) return false;
+
+	bool onRight = alignTo->getCenterY() < 0; // if the line in the lidar frame's center val is neg it's on right
+	float dist2wall = alignTo->findDist(0,0); // find distance to the wall in the lidar frame
+	cout<<"got a good line, centerY is: "<<alignTo->getCenterY()<<" dist2wall is: "<<dist2wall<<"\n";
+	float wallVal = 0;
+	float xUpdate, yUpdate;
+	if(ENWS==1 || ENWS==3){//setting xvalue (vert wall)
+		yUpdate = 0;
+		if((onRight && ENWS==3) || (!onRight && ENWS==1)){// bot is to right of vert wall (add to x val)
+			wallVal = findWallValue(1, pos, false); 
+			xUpdate = wallVal != 0 ? wallVal + dist2wall : 0;
+		}
+		else{ // subtract from x wall
+			wallVal = findWallValue(2, pos, false); 
+			xUpdate = wallVal != 0 ? wallVal + dist2wall : 0;
+		}
+	}
+	else{//setting y values so horiz wall
+		xUpdate = 0;
+		if((onRight && ENWS==0) || (!onRight && ENWS==2)){// bot is above horix wall (add to y wall)
+			wallVal = findWallValue(3, pos, true); 
+			yUpdate = wallVal != 0 ? wallVal + dist2wall : 0;
+		}
+		else{ // subtract from y wall
+			wallVal = findWallValue(4, pos, true); 
+			yUpdate = wallVal != 0 ? wallVal - dist2wall : 0;
+		}
+	}
+	cout<<"got a wall to update that is at angle: "<<alignTo->getCenterTheta()*180/PI
+		<<" with length: "<<alignTo->getLength()<<" and R^2 "<<alignTo->getRSquared()<<"\n";
+	return true;
+
+
+
+	////////////////////////////////////////////////////////////////////////////////////////////////
+	// Determine if the lines are horiz or vertical and save the pose that the robot should be at for each line
+	/*
 	Vector3f updatedPos; 
 	updatedPos << 0,0,0; // might not update every part of the pose
 	vector<float> poses, R; // in radians and unitless respectively
 	vector<int> lineIdxs; // 0 means not good enough, 1 is horiz, 2 is vert
 	
-	// Determine if the lines are horiz or vertical and save the pose that the robot should be at for each line
 	for(int i=0; i<lns.size(); i++){ 
 		if(lns[i].getRSquared() > MinRForPoseUpdate){ // only for pose update
 			// angle is wall angle in global frame (= angle in lidar frame + pose angle) should be close to vertical or horizontal
@@ -82,11 +135,11 @@ bool Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, Ref<Vector3f> tra
 			lineIdxs.push_back(0);
 		}
 	}
+	*/
 
-	// Update the angle of the pose based on the poses vector just made
-	
-	float finalLidarPose = 0;
-	/*if(travelDist(2) > 50 && poses.size()>1){ // only update the angle of the pose every 100cm or more
+	///////////////////////// Update the angle of the pose based on the poses vector just made
+	/*float finalLidarPose = 0;
+	if(travelDist(2) > 50 && poses.size()>1){ // only update the angle of the pose every 100cm or more
 			float sumR = std::accumulate(R.begin(), R.end(), 0.0);
 			float justAvgPose = std::accumulate(poses.begin(), poses.end(), 0.0) / (float)poses.size();
 			for(int i=0; i<poses.size(); i++){ 
@@ -116,18 +169,21 @@ bool Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, Ref<Vector3f> tra
 	// Determines if the robot is facing NESW and if the line is on the right or left side
 	// From this info the global line is found based on closest to current robot pos
 	// Distance from this global line is used to update x or y accordingly
-	float xUpdate = 0;
+/*	float xUpdate = 0;
 	float yUpdate = 0;
 	float wallVal = 0;
 	float dist2wall = 0;
+	*/
 
+	////////////////   update the x or y position based on nearest wall
+	/*
 	if(travelDist(0) > 5 || travelDist(1) > 5){
 		float dir = pos(2)*180/PI; // deg
 		while(dir<0) dir+=360.0;   // make it positive ranging from 0-360
 		float from90 = fmod(dir,90.0); // how far the robot is from the 4 possible 90deg directions 
 		int ENWS = ((int)round(dir/90.0))%4; // range 0 - 3 for ENWS respectively
 		line* alignTo;
-	        line* useThis;
+		line* useThis;
 		if(from90 < 5){ // if robot is within 5deg of NESW
 			bool gotline = false;
 			float minDist = LARGENUM;
@@ -179,7 +235,7 @@ bool Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, Ref<Vector3f> tra
 						yUpdate = wallVal != 0 ? wallVal + dist2wall: 0;
 					}
 					else{ // subtract from y wall
-						wallVal = findWallValue(5, pos, true); 
+						wallVal = findWallValue(4, pos, true); 
 						yUpdate = wallVal != 0 ? wallVal - dist2wall: 0;
 					}
 				}
@@ -200,11 +256,13 @@ bool Nav::updatePositionAndMap(vector<line> lns, Vector3f pos, Ref<Vector3f> tra
 		return true;
 	}
 	return false;
+*/
 }
+
+// gets the closest wall in the map model that is on the correct side of the robot and the correct angle (vert/horiz)
 float Nav::findWallValue(int PNXY, Vector3f pos, bool horiz){
 	float minDist = LARGENUM;
 	float globalWallVal = 0;
-
 	
 	for(EndPoint mapPt : mapPoints_){
 		if(PNXY==1){ // adding to X, line is to left of bot globally
