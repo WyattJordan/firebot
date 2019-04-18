@@ -45,10 +45,10 @@ void Nav::setOdomLoc(Vector3f od){
 bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDist){
 	float dir = pos(2)*180/PI; // global angle in deg
 	while(dir<0) dir+=360.0;   // make it positive ranging from 0-360
-	float from90 = fmod(dir,90.0); // how far the robot is from the 4 possible 90deg directions 
-	cout<<"travel dist = "<<travelDist(2)<<"\n";
+	float from90 = fmin(fmod(dir,90.0), 90 - fmod(dir,90.0)) ; // how far the robot is from the 4 possible 90deg directions 
+//	cout<<"travel dist = "<<travelDist(2)<<", from90 = "<<from90<<"\n";
 	// conditions to not update on:
-	if(travelDist(2) < 5 || from90 > 5 || lns.size() < 1) return false;   // don't update if not facing a 90deg increment or no lines
+	if(travelDist(2) < 5 || from90 > 10  || lns.size() < 1) return false;   // don't update if not facing a 90deg increment or no lines
 	
 //	if(from90 < 5 || lns.size() < 1) return false;   // don't update if not facing a 90deg increment or no lines
 	int ENWS = ((int)round(dir/90.0))%4; // range 0 - 3 for ENWS respectively
@@ -57,17 +57,17 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 	bool foundLine = false;
 	int idx = 0;
 	for(idx; idx<lns.size(); idx++){
-			alignTo = &lns[idx];
-			bool slopeCond = abs(alignTo->getSlope()) < 0.3;  // it's running parallel to 'bot
-			bool lineModelCond = alignTo->findDist(0,0) < 36; // within reasonable hallway distance from model
-			float x = (alignTo->getEndPtX1() + alignTo->getEndPtX2()) / 2.0; //get average center pt of line 
-			float y = (alignTo->getEndPtY1() + alignTo->getEndPtY2()) / 2.0; 
-			float raddist = pow(x*x + y*y,0.5);
-			bool lineDistCond = raddist < 80;
-			if(slopeCond && lineModelCond && lineDistCond){
-				foundLine = true;
-				break;
-			}
+		alignTo = &lns[idx];
+		bool slopeCond = abs(alignTo->getSlope()) < 0.3;  // it's running parallel to 'bot
+		bool lineModelCond = alignTo->findDist(0,0) < 36; // within reasonable hallway distance from model
+		float x = (alignTo->getEndPtX1() + alignTo->getEndPtX2()) / 2.0; //get average center pt of line 
+		float y = (alignTo->getEndPtY1() + alignTo->getEndPtY2()) / 2.0; 
+		float raddist = pow(x*x + y*y,0.5);
+		bool lineDistCond = raddist < 80;
+		if(slopeCond && lineModelCond && lineDistCond){
+			foundLine = true;
+			break;
+		}
 	}
 	if(!foundLine) return false;
 
@@ -110,6 +110,7 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 		}
 	}
 	//makeLineMarks(lns, true, true);
+	cout<<"travel dist = "<<travelDist(2)<<", from90 = "<<from90<<"\n";
 	if(usedForUpdate_.size()>0){cout<<"got a wall with ids: "<<usedForUpdate_[0]<<", "<<usedForUpdate_[1]<<"\n";}
 	else{cout<<" did not get a global wall.....\n";}
 	//usleep(500 * 1000);
@@ -118,7 +119,9 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 	Vector3f updatedPos; 
 	updatedPos << 0,0,0;
 	if(ab(xUpdate - pos(0))<20 && xUpdate != 0) updatedPos(0) = xUpdate; // make sure it's nothing crazy (within 20cm)
+	else cout<<"xUpdate OUT OF RANGE\n";
 	if(ab(yUpdate - pos(1))<20 && yUpdate != 0) updatedPos(1) = yUpdate;
+	else cout<<"yUpdate OUT OF RANGE\n";
 	//if(ab(tUpdate - pos(2))<30*PI/180.0) updatedPos(2) = tUpdate; // within 30deg
 
 	float xDiff = updatedPos(0) == 0 ? 0 : abs(xUpdate - pos(0));
