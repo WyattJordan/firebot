@@ -52,7 +52,6 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	if(executing_) return; // if the last laserscan is still being processed
 	executing_ = true;
 	bool linearMove = false;
-	bool updatePosition = false;
 	//tf::StampedTransform oldTrans; // save values immediately if going to be used (computing all this will take time
 	ros::Time scanStamp = scan->header.stamp;
 	Vector3f currentPos = rob_->getOdomWorldLoc(); // this is an undefined ref for some reason...
@@ -124,21 +123,13 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		findFurniture();   // determines what is furniture from smallJump_ 
 		nav_->makeFurnMarks(furns_); // publish furniture in rviz
 		findLines(true); // pub segments off, might want leave this off (too much processing)
-		//nav_->makeLineMarks(lines_, true, true);
+		nav_->makeLineMarks(lines_, true, true);
 
-		// TODO - conditions for a good scan to update position
-		if( getMaxRSquare() > 0.65 ){
-			// travel distance cannot be saved at scan start because it must be pass by ref
-			// nav_->updatePosition(lines_, currentPos, oldTrans, rob_->getTravelDist());
-			bool updated = nav_->updatePosition(lines_, currentPos, rob_->getTravelDist());
-			if(updated) {
-				auto end = stc::steady_clock::now();
-				rob_->outputTime(t1, end);
-			}
+		bool updated = nav_->updatePosition(lines_, currentPos, rob_->getTravelDist());
+		if(updated) {
+			auto end = stc::steady_clock::now();
+			rob_->outputTime(t1, end);
 		}
-		else{
-			updatePosition = false;
-		}//*/
 	}
 
 	prevOdom_ = currentPos;//*/

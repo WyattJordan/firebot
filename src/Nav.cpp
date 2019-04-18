@@ -46,7 +46,11 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 	float dir = pos(2)*180/PI; // global angle in deg
 	while(dir<0) dir+=360.0;   // make it positive ranging from 0-360
 	float from90 = fmod(dir,90.0); // how far the robot is from the 4 possible 90deg directions 
-	if(from90 > 5 || lns.size() < 1) return false;   // don't update if not facing a 90deg increment or no lines
+	cout<<"travel dist = "<<travelDist(2)<<"\n";
+	// conditions to not update on:
+	if(travelDist(2) < 5 || from90 > 5 || lns.size() < 1) return false;   // don't update if not facing a 90deg increment or no lines
+	
+//	if(from90 < 5 || lns.size() < 1) return false;   // don't update if not facing a 90deg increment or no lines
 	int ENWS = ((int)round(dir/90.0))%4; // range 0 - 3 for ENWS respectively
 
 	line* alignTo;
@@ -69,12 +73,16 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 
 	bool onRight = alignTo->getCenterY() < 0; // if the line in the lidar frame's center val is neg it's on right
 	float dist2wall = alignTo->findDist(0,0); // find distance to the wall in the lidar frame
-	cout<<"got a good line idx: "<<idx<<", with slope: "<<alignTo->getSlope()<<", centerX is: " <<alignTo->getCenterX()<<
-		", centerY is: "<<alignTo->getCenterY() <<", dist2wall is: "<<dist2wall<<"\n";
-	cout<<"the line is at angle: "<<alignTo->getClosestAngle()<<" has length: "<<
-		alignTo->getLength()<<" and R^2 of "<<alignTo->getRSquared()<<"\n";
+	//cout<<"got a good line idx: "<<idx<<", with slope: "<<alignTo->getSlope()<<", centerX is: " <<alignTo->getCenterX()<<
+	//	", centerY is: "<<alignTo->getCenterY() <<", dist2wall is: "<<dist2wall<<"\n";
+	//cout<<"the line is at angle: "<<alignTo->getClosestAngle()<<" has length: "<<
+	//	alignTo->getLength()<<" and R^2 of "<<alignTo->getRSquared()<<"\n";
 	float wallVal = 0;
 	float xUpdate, yUpdate;
+
+	float slopeAngle = atan(alignTo->getSlope()) ;
+	float tUpdate = pos(2) - slopeAngle; // slope should be close to 0 (horiz line in lidar frame no matter what)
+
 	if(ENWS==1 || ENWS==3){//setting xvalue (vert wall)
 		yUpdate = 0;
 		if((onRight && ENWS==3) || (!onRight && ENWS==1)){// bot is to right of vert wall (add to x val)
@@ -101,17 +109,34 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 			yUpdate = wallVal != 0 ? wallVal - dist2wall : 0;
 		}
 	}
-	makeLineMarks(lns, true, true);
+	//makeLineMarks(lns, true, true);
 	if(usedForUpdate_.size()>0){cout<<"got a wall with ids: "<<usedForUpdate_[0]<<", "<<usedForUpdate_[1]<<"\n";}
 	else{cout<<" did not get a global wall.....\n";}
-	usleep(500 * 1000);
+	//usleep(500 * 1000);
+	
 		
-	return true;
+	Vector3f updatedPos; 
+	updatedPos << 0,0,0;
+	if(ab(xUpdate - pos(0))<20 && xUpdate != 0) updatedPos(0) = xUpdate; // make sure it's nothing crazy (within 20cm)
+	if(ab(yUpdate - pos(1))<20 && yUpdate != 0) updatedPos(1) = yUpdate;
+	//if(ab(tUpdate - pos(2))<30*PI/180.0) updatedPos(2) = tUpdate; // within 30deg
 
+	float xDiff = updatedPos(0) == 0 ? 0 : abs(xUpdate - pos(0));
+	float yDiff = updatedPos(1) == 0 ? 0 : abs(yUpdate - pos(1));
+	float pDiff = updatedPos(2) == 0 ? 0 : abs(tUpdate - pos(2))*180.0/PI;
+	if(updatedPos(0) + updatedPos(1) + updatedPos(2) !=0){ // if x,y, or theta was changed send update
+		if(xUpdate!=0 || yUpdate !=0) cout<<"got an update with wallVal: "<<wallVal<<" dist2wall: "<<dist2wall<<" and vals: "<<xUpdate<<" , "<<yUpdate
+			<<" with pos: "<<pos(0)<<","<<pos(1)<<" updating diff is ("<<xDiff<<","<<yDiff<<","<<pDiff<<"\n";
+		//rob_->setExperimental(updatedPos);    // just for changing frame to see if working
+		rob_->updatePosition(updatedPos);    // actually changes robot pos
+		return true;
+	}
+	return false;
 
 
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	// Determine if the lines are horiz or vertical and save the pose that the robot should be at for each line
+	
 	/*
 	Vector3f updatedPos; 
 	updatedPos << 0,0,0; // might not update every part of the pose

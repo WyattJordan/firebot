@@ -234,7 +234,7 @@ void Robot::executeNavStack(){ // runs in parallel to driveLoop, called from mai
 			}//*/
 		}
 		
-		if(pts < navStack.size()){ prevdist_ = 99999; travelDist_(2) -= 10;} // a marker was popped so reset dist
+		if(pts < navStack.size()){ prevdist_ = 99999; travelDist_(2) -= 5;} // a marker was popped so reset dist
 		else {prevdist_ = dist;}
 	}// while loop
 }
@@ -440,7 +440,7 @@ void Robot::calculateOdom(){
 		Vector3f v(x,x,x);
 		travelDist_ += v; // keeps track of dist traveled between updates in x,y,theta (Nav resets w/ pass by ref)
 	}
-	else{ // set variables for updating the position
+	else{ // set variables for updating the position, only gets sent when there is new data from Nav
 		for(int i=0; i<3; i++){ 
 			if(newPos_(i) != 0){ // some positions may not get updated (default to 0)
 			       	odomWorldLoc_(i) = newPos_(i);
@@ -448,6 +448,7 @@ void Robot::calculateOdom(){
 		}
 		if(newPos_(2)!=0) calculateTransform(odomWorldLoc_(2));
 		if(navStack.size()>0)  updateDriving_ = true; // adjust heading if driving 
+		travelDist_(2) = 0;
 		updateSavedPos_ = false;
 	}
 	//if(debug) cout<<"odomWorldLoc_ = \n"<<odomWorldLoc_<<"\n";	
