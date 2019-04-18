@@ -26,10 +26,18 @@ void Robot::mainLogic(){
 	//EndPoint go1(80+WheelDist, 89.5, -1, tmp); // to go from line crosses on stem basement
 	vector<int> toCenterFromStart{2,3,4,18};
 	vector<int> fromCenterToR3{6,7,8};
+	vector<int> fromR3ToCenter{8,7,6,18};
 	vector<int> fromCenterAroundR4BackToCenter{9,10,14,15,13,5,18};
+	vector<int> fromCenterAroundR4ToR4{9,10,14,15,13,12};
 	vector<int> fromCenterAroundR1BackToCenter{5,13,15,16,19,4,18};
+	vector<int> fromR4ToR1ToCenter{13,15,16,19,4,18};
 
 	buildNavStack(toCenterFromStart);
+	buildNavStack(fromCenterToR3, true);
+	buildNavStack(fromR3ToCenter, true);
+	buildNavStack(fromCenterAroundR4ToR4, true);
+	buildNavStack(fromR4ToR1ToCenter, true);
+
 	bool built = true;
 	for(int i=0; i<3; i++) built = buildNavStack(fromCenterAroundR1BackToCenter, true);
 	cout<<"built nav stack = "<<built<<"\n";
@@ -124,6 +132,7 @@ bool Robot::buildNavStack(vector<int> ids, bool append){
 		EndPoint ep = nav_->getWayPoint(id);
 		if(ep.getX() == -1 && ep.getY() == -1) {
 			navStack.resize(0);
+			cout<<"TRIED TO ADD NONEXISTENT ENDPOINT TO NAVSTACK!\n";
 			return false;
 		}
 		navStack.push_back(nav_->getWayPoint(id));
@@ -172,7 +181,7 @@ void Robot::executeNavStack(){ // runs in parallel to driveLoop, called from mai
 				float s = dist < MinDistFor50 || pt2pt_ ? 0.2 : 0.5; // if it's very close use 20%
 				setRamp(s, 0.5); // start driving to next point, take half second to accelerate
 			}
-			else if(count++%10000000 == 0){
+			else if(count++%10000000 == 0){ // has gotten stuck here in the past, this output indicates if it's hanging here
 				cout<<"still in face first with error: "<<error<<"\n";
 			}
 		}
@@ -211,27 +220,27 @@ void Robot::executeNavStack(){ // runs in parallel to driveLoop, called from mai
 				// if approaching waypoint at an angle and arriving close to it turnDiff could be low but pose needs to change
 				setPose_ = getPoseToPoint(navStack.front());
 			}
+			else if(dist < StartBigTurnDist50 && turnDiff > 70){ // if large turn start early
+				setPose_ = poseAfterTurn;	
+				cout<<"Popping marker "<<navStack.front().getID()<<" and turning to "<<setPose_<<" because BIG turning\n";
+				navStack.pop_front();
+			}
+			else if(dist < StartSmallTurnDist50){
+				setPose_ = poseAfterTurn;	
+				cout<<"Popping marker "<<navStack.front().getID()<<" and turning to "<<setPose_<<" because SMALL turning\n";
+				navStack.pop_front();
+			}
+			/*else if(dist>prevdist_+2){
+				setPose_ = poseAfterTurn;	
+				cout<<"Popping marker "<<navStack.front().getID()<<" and turning to "<<setPose_<<" because MISSED it\n";
+				navStack.pop_front();
+			}*/
 			else if(updateDriving_){
 				cout<<"POSITION UPDATED AND POSE RECALCULATED!!!\n";
 				// recalculate in case updates between poseToNextPoint being made and this line
 				setPose_ = getPoseToPoint(navStack.front()); 
 				updateDriving_ = false;
 			}
-			else if(dist < StartBigTurnDist50 && turnDiff > 70){ // if large turn start early
-				setPose_ = poseAfterTurn;	
-				cout<<"BIG turning to pose: "<<poseAfterTurn<<". Popping marker "<<navStack.front().getID()<<"\n";
-				navStack.pop_front();
-			}
-			else if(dist < StartSmallTurnDist50){
-				setPose_ = poseAfterTurn;	
-				cout<<"Popping marker "<<navStack.front().getID()<<" because SMALL turning\n";
-				navStack.pop_front();
-			}
-			else if(dist>prevdist_+1){
-				setPose_ = poseAfterTurn;	
-				cout<<"Popping marker "<<navStack.front().getID()<<" because MISSED it\n";
-				navStack.pop_front();
-			}//*/
 		}
 		
 		if(pts < navStack.size()){ prevdist_ = 99999; travelDist_(2) -= 5;} // a marker was popped so reset dist

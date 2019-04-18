@@ -50,7 +50,6 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 	// conditions to not update on:
 	if(travelDist(2) < 5 || from90 > 10  || lns.size() < 1) return false;   // don't update if not facing a 90deg increment or no lines
 	
-//	if(from90 < 5 || lns.size() < 1) return false;   // don't update if not facing a 90deg increment or no lines
 	int ENWS = ((int)round(dir/90.0))%4; // range 0 - 3 for ENWS respectively
 
 	line* alignTo;
@@ -86,12 +85,12 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 	if(ENWS==1 || ENWS==3){//setting xvalue (vert wall)
 		yUpdate = 0;
 		if((onRight && ENWS==3) || (!onRight && ENWS==1)){// bot is to right of vert wall (add to x val)
-			cout<<"here1\n";
+			//cout<<"here1\n";
 			wallVal = findWallValue(1, pos, false); 
 			xUpdate = wallVal != 0 ? wallVal + dist2wall : 0;
 		}
 		else{ // subtract from x wall
-			cout<<"here2\n";
+			//cout<<"here2\n";
 			wallVal = findWallValue(2, pos, false); 
 			xUpdate = wallVal != 0 ? wallVal + dist2wall : 0;
 		}
@@ -99,30 +98,28 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 	else{//setting y values so horiz wall
 		xUpdate = 0;
 		if((onRight && ENWS==0) || (!onRight && ENWS==2)){// bot is above horix wall (add to y wall)
-			cout<<"here3\n";
+			//cout<<"here3\n";
 			wallVal = findWallValue(3, pos, true); 
 			yUpdate = wallVal != 0 ? wallVal + dist2wall : 0;
 		}
 		else{ // subtract from y wall
-			cout<<"here4\n";
+			//cout<<"here4\n";
 			wallVal = findWallValue(4, pos, true); 
 			yUpdate = wallVal != 0 ? wallVal - dist2wall : 0;
 		}
 	}
-	//makeLineMarks(lns, true, true);
 	cout<<"travel dist = "<<travelDist(2)<<", from90 = "<<from90<<"\n";
 	if(usedForUpdate_.size()>0){cout<<"got a wall with ids: "<<usedForUpdate_[0]<<", "<<usedForUpdate_[1]<<"\n";}
 	else{cout<<" did not get a global wall.....\n";}
-	//usleep(500 * 1000);
 	
 		
 	Vector3f updatedPos; 
 	updatedPos << 0,0,0;
 	if(ab(xUpdate - pos(0))<20 && xUpdate != 0) updatedPos(0) = xUpdate; // make sure it's nothing crazy (within 20cm)
-	else cout<<"xUpdate OUT OF RANGE\n";
+	else if(xUpdate !=0) cout<<"xUpdate OUT OF RANGE\n";
 	if(ab(yUpdate - pos(1))<20 && yUpdate != 0) updatedPos(1) = yUpdate;
-	else cout<<"yUpdate OUT OF RANGE\n";
-	//if(ab(tUpdate - pos(2))<30*PI/180.0) updatedPos(2) = tUpdate; // within 30deg
+	else if(yUpdate!=0) cout<<"yUpdate OUT OF RANGE\n";
+	if(ab(tUpdate - pos(2))<30*PI/180.0) updatedPos(2) = tUpdate; //*0.5 + pos(2)*0.5; // within 30deg, weight even with odom
 
 	float xDiff = updatedPos(0) == 0 ? 0 : abs(xUpdate - pos(0));
 	float yDiff = updatedPos(1) == 0 ? 0 : abs(yUpdate - pos(1));
@@ -135,167 +132,6 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 		return true;
 	}
 	return false;
-
-
-	////////////////////////////////////////////////////////////////////////////////////////////////
-	// Determine if the lines are horiz or vertical and save the pose that the robot should be at for each line
-	
-	/*
-	Vector3f updatedPos; 
-	updatedPos << 0,0,0; // might not update every part of the pose
-	vector<float> poses, R; // in radians and unitless respectively
-	vector<int> lineIdxs; // 0 means not good enough, 1 is horiz, 2 is vert
-	
-	for(int i=0; i<lns.size(); i++){ 
-		if(lns[i].getRSquared() > MinRForPoseUpdate){ // only for pose update
-			// angle is wall angle in global frame (= angle in lidar frame + pose angle) should be close to vertical or horizontal
-			float angle = 180.0/PI * (atan(lns[i].getSlope()) + pos(2)); // range is unknown due to pos(2) from 'bot
-			angle = fmod(angle, 360.0);  
-			angle = angle < 0 ? angle + 360.0 : angle; // range is now 0 to 360
-
-			// check if the global angle is closer to vertical or horizontal within a limit
-			if( ab(90.0-angle) < LineAngleThresh || ab(270.0-angle) < LineAngleThresh){ // use as vertical line
-				float error = ab(90.0-angle) < ab(270.0-angle) ? (90.0-angle) : (270.0-angle);
-				poses.push_back(pos(2) - PI/180.0*error); // subtract the error from the thought position to get the actual
-				R.push_back(lns[i].getRSquared());
-				lineIdxs.push_back(2); // save as vertical line
-			}
-			else if( ab(angle) < LineAngleThresh || ab(180.0-angle) < LineAngleThresh){ // use as horizontal line
-				float error = ab(angle) < ab(180.0-angle)      ?     angle    : (180.0-angle);
-				poses.push_back(pos(2) - PI/180.0*error);
-				R.push_back(lns[i].getRSquared());
-				lineIdxs.push_back(1); // horizontal line
-			}
-			else{ // not close enough to vert or horiz don't use
-				lineIdxs.push_back(-1);
-			}
-		}
-		else{ // R^2 is less than 0.8, don't use
-			lineIdxs.push_back(0);
-		}
-	}
-	*/
-
-	///////////////////////// Update the angle of the pose based on the poses vector just made
-	/*float finalLidarPose = 0;
-	if(travelDist(2) > 50 && poses.size()>1){ // only update the angle of the pose every 100cm or more
-			float sumR = std::accumulate(R.begin(), R.end(), 0.0);
-			float justAvgPose = std::accumulate(poses.begin(), poses.end(), 0.0) / (float)poses.size();
-			for(int i=0; i<poses.size(); i++){ 
-				finalLidarPose += poses[i] * R[i] / sumR;// weighted average for pose based on R^2 value of lines used
-			}
-
-			float sumWeights = LidarErrorEquivalentDist + travelDist(2);
-			// Lidar is weighted heavier when the robot has traveled further between updates
-			float finalPose = finalLidarPose*travelDist(2)/ sumWeights + pos(2)*LidarErrorEquivalentDist/ sumWeights;
-							
-			if(ab(finalLidarPose - pos(2)) < MaxLidarPoseDiff){
-				cout<<"poses used to update are: ";
-				for(float p : poses) cout<<p*180.0/PI<<"  ";
-				cout<<"\n";
-				cout<<"Avg pose is: "<<180.0/PI*justAvgPose<<" but weighted by R is: "<<180.0/PI*finalLidarPose<<
-					" but weighting with odom of"<<180.0/PI*pos(2)<<" got "<<180.0/PI*finalPose<< " with dist = "<<travelDist(2)<<"\n";
-				updatedPos(2) = finalLidarPose; // VERY IMPORTANT WHICH GETS SENT
-				travelDist(2) = 0; // reset lidar update travel dist 
-			}
-			else{
-				cout<<"lidar estimate too different from current pose!!! did not use \n";
-			}
-	}//*/
-
-	// Location updates: 
-	// Finds the closest line to the robot within 36cm and roughly horizontal (|slope| < 4) 
-	// Determines if the robot is facing NESW and if the line is on the right or left side
-	// From this info the global line is found based on closest to current robot pos
-	// Distance from this global line is used to update x or y accordingly
-/*	float xUpdate = 0;
-	float yUpdate = 0;
-	float wallVal = 0;
-	float dist2wall = 0;
-	*/
-
-	////////////////   update the x or y position based on nearest wall
-	/*
-	if(travelDist(0) > 5 || travelDist(1) > 5){
-		float dir = pos(2)*180/PI; // deg
-		while(dir<0) dir+=360.0;   // make it positive ranging from 0-360
-		float from90 = fmod(dir,90.0); // how far the robot is from the 4 possible 90deg directions 
-		int ENWS = ((int)round(dir/90.0))%4; // range 0 - 3 for ENWS respectively
-		line* alignTo;
-		line* useThis;
-		if(from90 < 5){ // if robot is within 5deg of NESW
-			bool gotline = false;
-			float minDist = LARGENUM;
-			cout<<"entering loop for picking line to align with\n";
-			for(int i=0; i<lns.size(); i++){ // lines are already sorted by closest, so grab first good one
-				alignTo = &lns[i];
-				//if(alignTo->getCenterRadius() > 80) continue; // if the lines start to be further than a limit away don't update
-				bool slopeCond = abs(alignTo->getSlope()) < 0.3;
-				bool lineModelCond = alignTo->findDist(0,0) < 36;
-				float x = (alignTo->getEndPtX1() + alignTo->getEndPtX2()) / 2.0; //get average center pt of line 
-				float y = (alignTo->getEndPtY1() + alignTo->getEndPtY2()) / 2.0; 
-				float raddist = pow(x*x + y*y,0.5);
-				bool lineDistCond = raddist < 80;
-				bool closer = raddist< minDist;
-				if( slopeCond && lineModelCond  && lineDistCond && closer){
-					minDist = raddist;
-					useThis = alignTo;
-					gotline = true;
-					cout<<"ACCEPTED "<<i<<" based on slope: "<<abs(alignTo->getSlope())<<" lineModelDist: "<<alignTo->findDist(0,0)<<
-					" dist: "<<raddist<<
-					" while at angle: "<<fmod(alignTo->getCenterTheta()*180.0/PI,360)<<"\n";
-					//break;
-				}
-				else{
-					cout<<"rejected "<<i<<" based on slope: "<<abs(alignTo->getSlope())<<" lineModelDist: "<<alignTo->findDist(0,0)<<
-					" dist: "<<raddist<<
-					" while at angle: "<<fmod(alignTo->getCenterTheta()*180.0/PI,360)<<"\n";
-				}
-			}
-			// need to know 2 things, robot orientation (NESW) and if the line is on the left or right of the bot
-			if(alignTo != useThis) {alignTo = useThis; cout<<"THIS SHOULD NOT BE HAPPENING!!!\n";}
-			if(gotline){ 
-				bool onRight = alignTo->getCenterY() < 0; // if the line in the lidar frame's center val is neg it's on right
-				dist2wall = alignTo->findDist(0,0);  // find distance to the wall in the lidar frame
-				//cout<<"using line at angle "<<alignTo->getCenterTheta()<<" with from90: "<<from90<<" and ENWS: "<<ENWS<<"\n";
-				if(ENWS==1 || ENWS==3){//setting xvalue (vert wall)
-					if((onRight && ENWS==3) || (!onRight && ENWS==1)){// bot is to right of vert wall (add to x val)
-						wallVal = findWallValue(1, pos, false); 
-						xUpdate = wallVal != 0 ? wallVal + dist2wall  : 0;
-					}
-					else{ // subtract from x wall
-						wallVal = findWallValue(2, pos, false); 
-						xUpdate = wallVal != 0 ? wallVal + dist2wall : 0;
-					}
-				}
-				else{//setting y values so horiz wall
-					if((onRight && ENWS==0) || (!onRight && ENWS==2)){// bot is above horix wall (add to y wall)
-						wallVal = findWallValue(3, pos, true); 
-						yUpdate = wallVal != 0 ? wallVal + dist2wall: 0;
-					}
-					else{ // subtract from y wall
-						wallVal = findWallValue(4, pos, true); 
-						yUpdate = wallVal != 0 ? wallVal - dist2wall: 0;
-					}
-				}
-			}
-		}
-	}
-
-	if(ab(xUpdate - pos(0))<15) updatedPos(0) = xUpdate; // make sure it's nothing crazy
-	if(ab(yUpdate - pos(1))<15) updatedPos(1) = yUpdate;
-	if(updatedPos(0) + updatedPos(1) + updatedPos(2) !=0){ // if x,y, or theta was changed send update
-		float xDiff = updatedPos(0) == 0 ? 0 : abs(xUpdate - pos(0));
-		float yDiff = updatedPos(1) == 0 ? 0 : abs(yUpdate - pos(1));
-		float pDiff = updatedPos(2) == 0 ? 0 : abs(finalLidarPose - pos(2))*180.0/PI;
-		if(xUpdate!=0 || yUpdate !=0) cout<<"got an update with wallVall: "<<wallVal<<" dist2wall: "<<dist2wall<<" and vals: "<<xUpdate<<" , "<<yUpdate
-			<<" with pos: "<<pos(0)<<","<<pos(1)<<" updating diff is ("<<xDiff<<","<<yDiff<<","<<pDiff<<"\n";
-		//rob_->setExperimental(updatedPos);    // just for changing frame to see if working
-		rob_->updatePosition (updatedPos);    // actually changes robot pos
-		return true;
-	}
-	return false;
-*/
 }
 
 // gets the closest wall in the map model that is on the correct side of the robot and the correct angle (vert/horiz)
