@@ -70,7 +70,7 @@ class Robot{
 		void updatePosition(Vector3f newPos);
 		void setNav(Nav* nv);
 		void setLidar(Lidar* lid);
-		void transformEndPoint(EndPoint &ep);
+		EndPoint transformEndPoint(EndPoint ep);
 		Vector3f getOdomWorldLoc();
 		Ref<Vector3f> getTravelDist();
 		tf::StampedTransform getTransform();

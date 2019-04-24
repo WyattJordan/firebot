@@ -22,6 +22,7 @@
 #define RAD2DEG(x) ((x)*180./M_PI)
 #define POLAR2XCART(r, t) ((r)*cos((t)*M_PI/180.)) //get the x component when given a distance and angle in degrees
 #define POLAR2YCART(r, t) ((r)*sin((t)*M_PI/180.)) //get the y component when given a distance and angle in degrees
+#define XYTORADIUS(x, y) (pow(x*x + y*y, 2))
 
 
 using namespace std;
@@ -58,7 +59,7 @@ class Lidar{
 		Nav* nav_;
 		Robot* rob_;
 		bool executing_; // to stop callback from running again if it's already running
-		bool checkCandle_;
+		bool checkCandle_, pauseUpdates_;
 		int startCount_, localRoom_;
 		vector<int> startRooms_, outliers_;
 		vector<EndPoint> candleLocs_;

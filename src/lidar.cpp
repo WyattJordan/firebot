@@ -45,6 +45,7 @@ void Lidar::input(){
 	while(1){
 		cin.get();
 		keypress_ = true;
+		cout<<"key pressed...\n";
 	}
 }
 
@@ -62,18 +63,16 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		//if(linearMove) oldTrans = rob_->getTransform(); // save current copy
 	}//*/
 
-	if(keypress_ || checkCandle_){
-		cout<<"\n";
+	if(/*keypress_ ||*/ checkCandle_){
+		//cout<<"gathering candle data...\n";
 		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
 		findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
 		findFurnitureAndCandle();   // determines what is furniture from smallJump_ 
 		nav_->makeFurnMarks(furns_); // publishfurniture in rviz
 		findLines(true); // pub segments on
 		nav_->makeLineMarks(lines_, true, true);
-
 		cleanBigJumps();   // removes furniture jumps and any jumps counted twice 
 		//startRooms_.push_back(classifyRoomFromJumps()); // used to determine room for starting location, will run findLines
-		cout<<"\ndone this scan\n\n";
 		keypress_ = false;
 
 	}
@@ -107,7 +106,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		}
 	}*/
 	// this is what runs most of the time while driving for updates
-	else if(linearMove){ // normal scan update
+	/*else if(linearMove && !pauseUpdates_){ // normal scan update
 		//cout<<"\nlinear movement! Going to process data!\n";
 		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
 		findJumps(true);  // don't look for big jumps, just furniture
@@ -260,10 +259,26 @@ int Lidar::classifyRoomFromJumps(){
 int Lidar::findCandle(){
 	candleLocs_.resize(0);
 	checkCandle_ = true; // start appending to que
-	while(candleLocs_.size()<20){usleep(1000*200); }	
+	pauseUpdates_ = true;
 	int numGood = 0;
 	float avgX = 0;
 	float avgY = 0;
+	while(candleLocs_.size()<20){
+		for(int i=0; i<candleLocs_.size(); i++){
+			if(candleLocs_[i].getX() != -1 && candleLocs_[i].getY() != -1){
+				avgX += candleLocs_[i].getX();
+				avgY += candleLocs_[i].getY();
+				numGood++;
+			}
+		}
+		usleep(1000*800);
+		cout<<"num good is: "<<numGood<<" out of total: "<<candleLocs_.size()<<"\n";
+		numGood = 0;
+       	}	
+	checkCandle_ = false;
+	numGood = 0;
+	avgX = 0;
+	avgY = 0;
 	for(int i=0; i<candleLocs_.size(); i++){
 		if(candleLocs_[i].getX() != -1 && candleLocs_[i].getY() != -1){
 			avgX += candleLocs_[i].getX();
@@ -275,6 +290,7 @@ int Lidar::findCandle(){
 	   cout<<"less than 5 detections, no candle...\n";
    	   return -1; // candle not found
 	}
+
 	avgX /= (float) numGood;
 	avgY /= (float) numGood;
 
@@ -292,6 +308,7 @@ void Lidar::findFurnitureAndCandle(){
 	for(int q=0; q<smallJump_.size(); q++) {cout<<"j:"<<smallJump_[q]<<" at "<<degrees_[smallJump_[q]]<<"--"<<getCloserJumpRadius(smallJump_[q])<<"  ";}
 	cout<<"\n";//*/
 
+	bool gotCandle = false;
 	furnJumpsConfirmed_.resize(0);
 	for(int j=0; j<smallJump_.size(); j++){
 
@@ -305,7 +322,7 @@ void Lidar::findFurnitureAndCandle(){
 		float width = pt2PtDist(xVal_[pt1], yVal_[pt1], xVal_[pt2], yVal_[pt2]); 
 		if(!(abs(FurnWidth - width) < FurnWidthTolerance)){ // if the distance between the points is larger than furniture size
 			// check if it could be a candle
-			if(0 && checkCandle_){
+			if(checkCandle_){
 			       if(abs(CandleWidth - width) < CandleWidthTolerance){
 					cout<<"found a candle at angles: "<<degrees_[pt1]<<" and "<<degrees_[pt2]<<" with dists: "<<
 						rad_[pt1]<<" and "<<rad_[pt2]<<"\n";	
@@ -314,11 +331,8 @@ void Lidar::findFurnitureAndCandle(){
 					cout<<"with coords: ("<<x<<","<<y<<")\n";
 					EndPoint candle = EndPoint(x,y);
 					candleLocs_.push_back(candle);
+					gotCandle = true;
 				}
-			       else{
-				       candleLocs_.push_back(nav_->getBadPoint());
-
-			       }
 			}
 			//cout<<"deleted jump "<<smallJump_[j]<<" due to width constraint width = "<<width<<"\n";
 			continue; // skips the rest of the code in this iteration
@@ -369,6 +383,9 @@ void Lidar::findFurnitureAndCandle(){
 		}
 	}
 
+	if(!gotCandle){
+	       candleLocs_.push_back(nav_->getBadPoint());
+       }
 
 	// save_here = furnJumpsConfirmed_; // if you want to save the furn jumps use this line, don't overwrite smallJump_ tho
 	/*cout<<jump_.size()<<" Big jumps at angles: ";
@@ -708,6 +725,7 @@ void Lidar::defaults(){
 	started_ = false;
 	executing_ = false;
 	checkCandle_ = false;
+	pauseUpdates_ = false;
 	startRooms_.resize(0);
 	tickCount_ = 0;
 }

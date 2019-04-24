@@ -27,8 +27,8 @@ void Robot::mainLogic(){
 	vector<int> fromCenterAroundR1BackToCenter{5,13,15,16,19,4,18};
 	vector<int> fromR4ToR1ToCenter{13,15,16,19,4,18};
 
-	buildNavStack(toCenterFromStart);
-	buildNavStack(fromCenterToR3, true);
+//	buildNavStack(toCenterFromStart);
+//	buildNavStack(fromCenterToR3, true);
 
 	/*buildNavStack(fromCenterToR3AndBack, true);
 	buildNavStack(fromCenterAroundR4ToR4, true);
@@ -38,6 +38,8 @@ void Robot::mainLogic(){
 	buildNavStack(fromCenterToR3AndBack, true);
 	*/
 
+	vector<int> toFirst{2};
+	buildNavStack(toFirst);
 	pt2pt_ = true;
 	executeNavStack();
 	int waypt = lid_->findCandle();
@@ -420,17 +422,17 @@ void Robot::periodicOutput(){
 
 }
 
-void Robot::transformEndPoint(EndPoint &ep){
+EndPoint Robot::transformEndPoint(EndPoint ep){
 	// multiply by inverse of rotation matrix
 	Vector2f pt;
 	pt << ep.getX(), ep.getY();
-	Matrix2f backRot = rob2world_.topLeftCorner(2,2).inverse();
-	pt = backRot*pt;
+	pt = rob2world_.topLeftCorner(2,2)*pt;
 
 	// add translation of bot
 	pt(0) = pt(0) + odomWorldLoc_(0);
 	pt(1) = pt(1) + odomWorldLoc_(1);
 	ep.setCart(pt(0),pt(1));
+	return ep;
 }
 
 void Robot::updatePosition(Vector3f newPos){

@@ -46,11 +46,27 @@ int Nav::foundCandle(float x, float y){
 	// find candle in global frame and publish
 	EndPoint c = EndPoint(x,y);
 	cout<<"candle before transform has x,y: "<<x<<","<<y<<"\n";
-	rob_->transformEndPoint(c);
+	EndPoint cGlob = rob_->transformEndPoint(c);
 	cout<<"candle after transform has x,y: "<<c.getX()<<","<<c.getY()<<"\n";
-	makeCandleMark(c);
+	makeCandleMark(cGlob);
 
 	// find waypt in front of candle in global frame
+	// 1. get polar coords, subtract robot width from radius
+	// 2. find new x,y coords in robot frame
+	// 3. transform to global frame
+	// 4. construct new waypoint
+	int id = 0;
+	for(EndPoint& ep : wayPoints_){ 
+		if(std::max(id,ep.getID()) == ep.getID() || id == ep.getID())
+				id = ep.getID()+1;
+	}
+	float newR = XYTORADIUS(x,y) - MINDIST; // right in front of candle
+	float t = c.findAngle();
+	vector<int> neigh;
+	neigh.push_back(getNearestWayID());
+	EndPoint newWay(POLAR2XCART(newR, t), POLAR2YCART(newR, t), id, neigh);
+	makeWayMarks();// rebuild way pts for rviz
+
 
 	// add waypt to waypoints list
 	
@@ -333,6 +349,21 @@ void Nav::setBigRoomUpper(bool up){
 		removePoint(19,wayPoints_);
 	}	
 	makeMapMarks("bigRoom_map");
+}
+
+int getNearestWayID(){// doesn't edit class variable
+	vector<EndPoint> pts = wayPoints_; 
+	Vector3f loc = rob_->getOdomWorldLoc();
+	for(EndPoint &ep : pts){
+		ep.calcPolar(loc(0), loc(1)); // calculate all polars
+	}
+
+std::sort(pts.begin(), pts.end(), 
+			[](const EndPoint& lhs, const EndPoint &rhs){
+			return	lhs.getCalculatedR() < rhs.getCalculatedR();	
+		}); // sort by points closest to robot
+
+	return pts[0].getID();
 }
 
 // Determines which map points are visible to the robot given 
