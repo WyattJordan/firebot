@@ -51,6 +51,7 @@ int Nav::foundCandle(float x, float y){
 	makeCandleMark(cGlob);
 
 	// find waypt in front of candle in global frame
+	// 0. find next available ID for waypt
 	// 1. get polar coords, subtract robot width from radius
 	// 2. find new x,y coords in robot frame
 	// 3. transform to global frame
@@ -63,15 +64,13 @@ int Nav::foundCandle(float x, float y){
 	float newR = XYTORADIUS(x,y) - MINDIST; // right in front of candle
 	float t = c.findAngle();
 	vector<int> neigh;
-	neigh.push_back(getNearestWayID());
+	neigh.push_back(getNearestWayID()); // link to other waypts
 	EndPoint newWay(POLAR2XCART(newR, t), POLAR2YCART(newR, t), id, neigh);
-	makeWayMarks();// rebuild way pts for rviz
+	wayPoints_.push_back(newWay);
+	makeWayMarks("ways_NS");// rebuild way pts for rviz
 
-
-	// add waypt to waypoints list
-	
 	// return ID of new waypoint back to robot
-	return 1;
+	return id;
 }
 
 bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDist){
@@ -351,7 +350,7 @@ void Nav::setBigRoomUpper(bool up){
 	makeMapMarks("bigRoom_map");
 }
 
-int getNearestWayID(){// doesn't edit class variable
+int Nav::getNearestWayID(){// doesn't edit class variable
 	vector<EndPoint> pts = wayPoints_; 
 	Vector3f loc = rob_->getOdomWorldLoc();
 	for(EndPoint &ep : pts){
