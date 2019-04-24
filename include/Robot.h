@@ -6,6 +6,7 @@
 #pragma once
 #include "ros/ros.h"
 #include "Nav.h"
+#include "lidar.h"
 #include "pid.h"
 #include "Endpoint.h"
 #include "definitions.h"
@@ -20,6 +21,7 @@
 #include <wiringPiI2C.h>
 
 #include <Eigen/Core>
+#include <Eigen/LU> // for inverse
 #include <chrono>
 #include <deque>
 
@@ -67,7 +69,8 @@ class Robot{
 		void pubTransformContinual(int rate); // rate in HZ
 		void updatePosition(Vector3f newPos);
 		void setNav(Nav* nv);
-		void transformEndPoint(EndPoint ep&);
+		void setLidar(Lidar* lid);
+		void transformEndPoint(EndPoint &ep);
 		Vector3f getOdomWorldLoc();
 		Ref<Vector3f> getTravelDist();
 		tf::StampedTransform getTransform();
@@ -76,6 +79,7 @@ class Robot{
 
 	private:
 		Nav *nav_;
+		Lidar *lid_;
 		PID posePID_;
 		
 		float fudge_, setPose_, adj_;

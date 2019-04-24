@@ -35,6 +35,7 @@ int main(int argc, char **argv){
 	// Create and link lidar class
 	Lidar lid(&rob, &nav);
 	ros::Subscriber sub = n.subscribe<sensor_msgs::LaserScan>("/scan", 1000, &Lidar::scanCallback, &lid);
+	rob.setLidar(&lid);
 
 	// Spin off threads
 	std::thread mainLogic, driveLoop, publishNavLoop, pubTrans, protoThread;

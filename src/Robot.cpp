@@ -11,18 +11,12 @@ void Robot::mainLogic(){
 	//odomWorldLoc_   << 123,WheelDist,PI2/4; // start at center of back wall
 	eStop_ = false;
 	speed_ = 0;
-	
 	cout<<"started PID while stopped speed = "<<speed_<<"\n";
-
 	//testDistToStop();
 	//odomWorldLoc_   << 0,0,90.0*PI/180.0; // starting at corner of STEM lines on floor 
 	odomWorldLoc_   << 15+2, 34.5, 0; // start at back left w/ steel block
 	experimental_ = odomWorldLoc_;
 	runPID_ = true;
-/*	setPose_ = 5; // for testing PID to see min gains needed for certain accuracies
-	sleep(2);
-	cout<<"error is: "<<setPose_ - odomWorldLoc_(2)*180.0/PI<<"\n";
-*/
 	//EndPoint go1(80+WheelDist, 89.5, -1, tmp); // to go from line crosses on stem basement
 	vector<int> toCenterFromStart{2,3,4,18};
 	vector<int> fromCenterToR3{6,7,8};
@@ -34,15 +28,19 @@ void Robot::mainLogic(){
 	vector<int> fromR4ToR1ToCenter{13,15,16,19,4,18};
 
 	buildNavStack(toCenterFromStart);
-	buildNavStack(fromCenterToR3AndBack, true);
+	buildNavStack(fromCenterToR3, true);
+
+	/*buildNavStack(fromCenterToR3AndBack, true);
 	buildNavStack(fromCenterAroundR4ToR4, true);
 	buildNavStack(fromR4ToR1ToCenter,true);
 	buildNavStack(fromCenterToR3AndBack, true);
 	buildNavStack(fromCenterAroundR4BackToCenter,true);
 	buildNavStack(fromCenterToR3AndBack, true);
+	*/
 
 	pt2pt_ = true;
 	executeNavStack();
+	int waypt = lid_->findCandle();
 }
 
 void Robot::pinThread(){
@@ -422,8 +420,17 @@ void Robot::periodicOutput(){
 
 }
 
-void Robot::transformEndPoint(EndPoint ep&){
+void Robot::transformEndPoint(EndPoint &ep){
+	// multiply by inverse of rotation matrix
+	Vector2f pt;
+	pt << ep.getX(), ep.getY();
+	Matrix2f backRot = rob2world_.topLeftCorner(2,2).inverse();
+	pt = backRot*pt;
 
+	// add translation of bot
+	pt(0) = pt(0) + odomWorldLoc_(0);
+	pt(1) = pt(1) + odomWorldLoc_(1);
+	ep.setCart(pt(0),pt(1));
 }
 
 void Robot::updatePosition(Vector3f newPos){
@@ -639,6 +646,7 @@ void Robot::setSerialArms(){
 
 ////////////////// SIMPLE FUNCTIONS ////////////////////////////////
 void Robot::setNav(Nav* nv){ nav_ = nv; }
+void Robot::setLidar(Lidar* lid){ lid_ = lid; }
 Vector3f Robot::getOdomWorldLoc(){return odomWorldLoc_;};
 Ref<Vector3f> Robot::getTravelDist(){ return travelDist_;}
 tf::StampedTransform Robot::getTransform(){ return tfTrans_;}

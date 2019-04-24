@@ -43,9 +43,19 @@ void Nav::setOdomLoc(Vector3f od){
 }
 
 int Nav::foundCandle(float x, float y){
+	// find candle in global frame and publish
 	EndPoint c = EndPoint(x,y);
+	cout<<"candle before transform has x,y: "<<x<<","<<y<<"\n";
 	rob_->transformEndPoint(c);
+	cout<<"candle after transform has x,y: "<<c.getX()<<","<<c.getY()<<"\n";
+	makeCandleMark(c);
 
+	// find waypt in front of candle in global frame
+
+	// add waypt to waypoints list
+	
+	// return ID of new waypoint back to robot
+	return 1;
 }
 
 bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDist){
@@ -545,6 +555,37 @@ void Nav::publishGlobalLineCenter(Vector3f gPt){
 	globPtMarks_.markers.push_back(tmp);
 	markerPub_->publish(globPtMarks_);
 }
+
+void Nav::makeCandleMark(EndPoint ep){
+	//cout<<"making furn marks from endpoint vec with size "<<furns.size()<<"\n";
+	visualization_msgs::MarkerArray tmp;
+	tmp.markers.resize(1);
+
+	tmp.markers[0].header.frame_id = GLOBALFRAME;
+	tmp.markers[0].ns = "candle"; 
+	tmp.markers[0].id = 1; 
+	tmp.markers[0].type = visualization_msgs::Marker::CYLINDER;
+	tmp.markers[0].action = visualization_msgs::Marker::ADD;
+	tmp.markers[0].scale.x = CandleWidth; 
+	tmp.markers[0].scale.y = CandleWidth;
+	tmp.markers[0].scale.z = 10;
+
+	tmp.markers[0].pose.position.x = ep.getX();
+	tmp.markers[0].pose.position.y = ep.getY();
+	tmp.markers[0].pose.position.z = 0;
+	tmp.markers[0].pose.orientation.x = 0;
+	tmp.markers[0].pose.orientation.y = 0;
+	tmp.markers[0].pose.orientation.z = 10.0/2.0; // half of scale.z for cylinder height
+	tmp.markers[0].pose.orientation.w = 1;
+
+	tmp.markers[0].color.a = 1.0;	
+	tmp.markers[0].color.r = 1.0;
+	tmp.markers[0].color.g = 246.0/255.0; // yellow
+	tmp.markers[0].color.b = 5.0/255.0;
+
+	markerPub_->publish(tmp);
+}
+
 
 void Nav::makeFurnMarks(vector<EndPoint> furns){
 	//cout<<"making furn marks from endpoint vec with size "<<furns.size()<<"\n";

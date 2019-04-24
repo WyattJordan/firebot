@@ -4,12 +4,12 @@
 #include "ros/ros.h"
 #include <tf/transform_broadcaster.h>
 #include "sensor_msgs/LaserScan.h"
+#include <Eigen/Core>
 #include "Robot.h"
 #include "Nav.h"
 #include "line.h"
 #include "Endpoint.h"
 #include "definitions.h"
-#include <Eigen/Core>
 #include <iostream>
 #include <iomanip>
 #include <cmath>
@@ -25,6 +25,7 @@
 
 
 using namespace std;
+using namespace Eigen;
 class Robot;
 class Nav;
 

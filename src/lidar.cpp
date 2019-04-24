@@ -62,7 +62,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		//if(linearMove) oldTrans = rob_->getTransform(); // save current copy
 	}//*/
 
-	if(0 && keypress_ || checkCandle_){
+	if(keypress_ || checkCandle_){
 		cout<<"\n";
 		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
 		findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
@@ -77,7 +77,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		keypress_ = false;
 
 	}
-	if(0 && startCount_++ < 10){ // classify the room multiple times before determining which room the 'bot is in 
+	else if(0 && startCount_++ < 10){ // classify the room multiple times before determining which room the 'bot is in 
 		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
 		findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
 		findFurnitureAndCandle();   // determines what is furniture from smallJump_ 
@@ -91,7 +91,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 			cout<<"found mode to be "<<localRoom_<<"\n";
 		}
 	}
-	if(0 && !started_ && localRoom_ != -1){ 
+	else if(0 && !started_ && localRoom_ != -1){ 
 		cout<<"localizing to room "<<localRoom_<<"\n";
 		started_ = checkLocalize();
 		cout<<"done initial localize sequence\n";
@@ -223,6 +223,7 @@ int Lidar::classifyRoomFromJumps(){
 		
 	if(jump_.size()==0){
 		cout<<"no big jumps found!!!\n";
+		return 0;
 	}
 	else if(jump_.size()==1){// either room2 or room3, pick which based on size of max jump
 		float max = 0; 
@@ -265,21 +266,20 @@ int Lidar::findCandle(){
 	float avgY = 0;
 	for(int i=0; i<candleLocs_.size(); i++){
 		if(candleLocs_[i].getX() != -1 && candleLocs_[i].getY() != -1){
-			avgX = candleLocs_[i].getX();
-			avgY = candleLocs_[i].getY();
+			avgX += candleLocs_[i].getX();
+			avgY += candleLocs_[i].getY();
 			numGood++;
 		}
 	}
-	if(numGood < 5) return -1; // candle not found
+	if(numGood < 5){
+	   cout<<"less than 5 detections, no candle...\n";
+   	   return -1; // candle not found
+	}
 	avgX /= (float) numGood;
 	avgY /= (float) numGood;
 
+	// let Nav make the candle in rviz and the ID to return back to Robot
 	return nav_->foundCandle(avgX,avgY);
-
-	// if the candle is found make a new waypoint and return its ID
-	
-
-
 }
 
 // Furniture will have ~13cm difference between endpoints (within FurnWidthTolerance)

@@ -61,6 +61,7 @@ class Nav{
 		void makeWayMarks(string NS);
 		void makeFurnMarks(vector<EndPoint> furns);
 		void makeLineMarks(vector<line> lines, bool merged, bool addIDs=false);
+		void makeCandleMark(EndPoint ep);
 		void publishGlobalLineCenter(Vector3f gPt);
 		void publishMapAndWays();
 
