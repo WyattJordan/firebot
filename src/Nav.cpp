@@ -42,6 +42,12 @@ void Nav::setOdomLoc(Vector3f od){
 	odomWorldLocCpy_ = od;
 }
 
+int Nav::foundCandle(float x, float y){
+	EndPoint c = EndPoint(x,y);
+	rob_->transformEndPoint(c);
+
+}
+
 bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDist){
 	float dir = pos(2)*180/PI; // global angle in deg
 	while(dir<0) dir+=360.0;   // make it positive ranging from 0-360
@@ -866,6 +872,8 @@ EndPoint& Nav::getPoint(int id, vector<EndPoint> &pts){
 	}
 	return badPt_ ;
 }
+
+EndPoint& Nav::getBadPoint(){ return badPt_;}
 
 // remove a point with a given ID
 bool Nav::removePoint(int id, vector<EndPoint> &pts){

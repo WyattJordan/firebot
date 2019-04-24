@@ -67,6 +67,7 @@ class Robot{
 		void pubTransformContinual(int rate); // rate in HZ
 		void updatePosition(Vector3f newPos);
 		void setNav(Nav* nv);
+		void transformEndPoint(EndPoint ep&);
 		Vector3f getOdomWorldLoc();
 		Ref<Vector3f> getTravelDist();
 		tf::StampedTransform getTransform();

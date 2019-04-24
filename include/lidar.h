@@ -39,6 +39,7 @@ class Lidar{
 		Lidar(Robot *robRef, Nav *navRef);
 		void setNav(Nav *nav);
 		void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan);
+		int findCandle();
 		void input();
 		void findJumps(bool findBig); // finds either big jumps and furniture jumps or only furn jumps
 		int classifyRoomFromJumps();
@@ -56,8 +57,10 @@ class Lidar{
 		Nav* nav_;
 		Robot* rob_;
 		bool executing_; // to stop callback from running again if it's already running
+		bool checkCandle_;
 		int startCount_, localRoom_;
 		vector<int> startRooms_, outliers_;
+		vector<EndPoint> candleLocs_;
 		bool started_, keypress_;
 		unsigned int tickCount_;
 
@@ -89,7 +92,7 @@ class Lidar{
 		// Determine average of points before and after center using offset number of points
 		void getAveragePrePost(float &pre, float &post, int center, int offset,bool degug=false);
 		// Build furn_ based on furnJump_
-		void findFurniture();
+		void findFurnitureAndCandle();
 
 		// A value in jump_ or smallJump_ is the first index of 2 indices in the data vectors that
 		// make up a jump, these functions get various info about those two points

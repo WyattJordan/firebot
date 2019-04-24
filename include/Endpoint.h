@@ -54,4 +54,3 @@ class EndPoint{
 		float findRad() const;
 		void clear();
 };
-

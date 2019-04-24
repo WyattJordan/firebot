@@ -43,6 +43,8 @@ class Nav{
 		Nav(int lvl, ros::Publisher *pub, Robot* rob); // read map and way from file given level
 		Nav(int lvl, ros::Publisher *pub); // read map and way from file given level
 
+		int foundCandle(float x, float y);
+
 		void setOdomLoc(Vector3f od);	 // rob obj sends data over
 		void setSmallRoomUpper(bool up); // reconfigure the rooms
 		void setBigRoomUpper(bool up);   // "

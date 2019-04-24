@@ -422,6 +422,10 @@ void Robot::periodicOutput(){
 
 }
 
+void Robot::transformEndPoint(EndPoint ep&){
+
+}
+
 void Robot::updatePosition(Vector3f newPos){
 	updateSavedPos_ = true;
 	newPos_ = newPos; // saves new var so it can be integrated at in calculateOdom (don't just hard change it)
@@ -432,7 +436,6 @@ void Robot::calculateOdom(){
 	bool debug = 0;//debugDrive_;
 	float lRad = (PI2 * (float) lEnc_ ) / (1470.0); // 1470.0 enc counts / rotation??
 	float rRad = (PI2 * (float) rEnc_ ) / (1470.0); 
-	if(debug) cout<<"lRad = "<<lRad<<" rRad = "<<rRad<<"\n";
 
 	float x = WheelRad / 2.0 * (lRad + rRad);
 	float y = 0;
@@ -441,7 +444,6 @@ void Robot::calculateOdom(){
 
 	if(!updateSavedPos_){ 
 		float theta = odomWorldLoc_(2) + robotstep_(2)/2.0; // this is in radians!
-		if(debug) cout<<"using theta = "<<theta<<" for rob2world_\n";
 		calculateTransform(theta);	      // find transform using half the step	
 		worldstep_ = rob2world_*robotstep_; 
 		odomWorldLoc_ += worldstep_;
