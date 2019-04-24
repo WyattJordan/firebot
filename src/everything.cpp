@@ -44,7 +44,7 @@ int main(int argc, char **argv){
 	pubTrans = std::thread(boost::bind(&Robot::pubTransformContinual, &rob, 10)); // at 10 Hz
 
 	// loop for controlling motors w/ PID and odometry math
-	driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
+	//driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
 
 	// loop for talking to odroid board
 	//protoThread = std::thread(boost::bind(&Robot::pinThread, &rob));	
@@ -56,7 +56,7 @@ int main(int argc, char **argv){
 		//sleep(1);
 	}
 	cout<<"\nGO!\n";
-	mainLogic = std::thread(boost::bind(&Robot::mainLogic, &rob));
+	mainLogic = std::thread(boost::bind(&Robot::mainLogic, &rob));//*/
 
 	ros::spin();
 	return 0;

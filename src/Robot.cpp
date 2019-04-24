@@ -27,20 +27,19 @@ void Robot::mainLogic(){
 	vector<int> toCenterFromStart{2,3,4,18};
 	vector<int> fromCenterToR3{6,7,8};
 	vector<int> fromR3ToCenter{8,7,6,18};
+	vector<int> fromCenterToR3AndBack{6,7,8,7,6,18};
 	vector<int> fromCenterAroundR4BackToCenter{9,10,14,15,13,5,18};
 	vector<int> fromCenterAroundR4ToR4{9,10,14,15,13,12};
 	vector<int> fromCenterAroundR1BackToCenter{5,13,15,16,19,4,18};
 	vector<int> fromR4ToR1ToCenter{13,15,16,19,4,18};
 
 	buildNavStack(toCenterFromStart);
-	buildNavStack(fromCenterToR3, true);
-	buildNavStack(fromR3ToCenter, true);
+	buildNavStack(fromCenterToR3AndBack, true);
 	buildNavStack(fromCenterAroundR4ToR4, true);
-	buildNavStack(fromR4ToR1ToCenter, true);
-
-	bool built = true;
-	for(int i=0; i<3; i++) built = buildNavStack(fromCenterAroundR1BackToCenter, true);
-	cout<<"built nav stack = "<<built<<"\n";
+	buildNavStack(fromR4ToR1ToCenter,true);
+	buildNavStack(fromCenterToR3AndBack, true);
+	buildNavStack(fromCenterAroundR4BackToCenter,true);
+	buildNavStack(fromCenterToR3AndBack, true);
 
 	pt2pt_ = true;
 	executeNavStack();
@@ -189,7 +188,7 @@ void Robot::executeNavStack(){ // runs in parallel to driveLoop, called from mai
 		else if(navStack.size() == 1 || pt2pt_){ // slowing down as approaching final point
 			if( (ab(ab(speed_) - 0.5) < 0.05 && dist < StopDist50) ||
 			    (ab(ab(speed_) - 0.2) < 0.05 && dist < StopDist20) ||
-			    dist>prevdist_+1){ // stop if reached stopping distance or now overshooting the way pt by 1 cm
+			    (dist>prevdist_+1 && dist<10.0)){ // stop if reached stopping distance or now overshooting the way pt by 1 cm
 				setRamp(0, 0.5);
 				msleep(500);
 				cout<<"Popping marker "<<navStack.front().getID()<<" because arrived at loc\n";

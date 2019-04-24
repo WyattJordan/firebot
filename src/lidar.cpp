@@ -62,7 +62,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		//if(linearMove) oldTrans = rob_->getTransform(); // save current copy
 	}//*/
 
-	if(0 && keypress_){
+	if(keypress_){
 		cout<<"\n";
 		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
 		findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
@@ -106,17 +106,8 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 			cout<<"\n\n\n\n\n";
 		}
 	}*/
-	else if(linearMove){ // normal scan update
-			/*processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
-		findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
-		findFurniture();   // determines what is furniture from smallJump_ 
-		nav_->makeFurnMarks(furns_); // publishfurniture in rviz
-		findLines(true); // pub segments on
-		nav_->makeLineMarks(lines_, true, true);
-
-		cleanBigJumps();   // removes furniture jumps and any jumps counted twice 
-		*/
-		
+	// this is what runs most of the time while driving for updates
+	/*else if(linearMove){ // normal scan update
 		//cout<<"\nlinear movement! Going to process data!\n";
 		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
 		findJumps(true);  // don't look for big jumps, just furniture
@@ -130,7 +121,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 			auto end = stc::steady_clock::now();
 			rob_->outputTime(t1, end);
 		}
-	}
+	}*/
 
 	prevOdom_ = currentPos;//*/
 	executing_ = false;
@@ -288,6 +279,14 @@ void Lidar::findFurniture(){
 		// check the width tolerance of the two points
 		float width = pt2PtDist(xVal_[pt1], yVal_[pt1], xVal_[pt2], yVal_[pt2]); 
 		if(!(abs(FurnWidth - width) < FurnWidthTolerance)){ // if the distance between the points is larger than furniture size
+			// check if it could be a candle
+			if(abs(CandleWidth - width) < CandleWidthTolerance){
+				cout<<"found a candle at angles: "<<degrees_[pt1]<<" and "<<degrees_[pt2]<<" with dists: "<<
+					rad_[pt1]<<" and "<<rad_[pt2]<<"\n";	
+				float x = (xVal_[pt1] + xVal_[pt2])/2.0;
+				float y = (yVal_[pt1] + yVal_[pt2])/2.0;
+				cout<<"with coords: ("<<x<<","<<y<<")\n";
+			}
 			//cout<<"deleted jump "<<smallJump_[j]<<" due to width constraint width = "<<width<<"\n";
 			continue; // skips the rest of the code in this iteration
 		}	
