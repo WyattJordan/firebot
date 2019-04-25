@@ -2,6 +2,8 @@
  *
  */
 #include "Nav.h"
+#include "Robot.h"
+#include "lidar.h"
 void Nav::defaults(){
 	cout<<std::setprecision(2)<<std::fixed;
 	smallRoomConf_ = bigRoomConf_ = false;
@@ -35,8 +37,9 @@ Nav::Nav(int lvl, ros::Publisher* pub, Robot* rob){
 	rob_ = rob;
 	cout<<"going to load files with rob\n";
 	loadFiles(lvl);	
-	cout<<"going to init marks with rob\n";
+	cout<<"going to init marks with rob...";
 	initRobotMarks();
+	cout<<"done\n";
 }
 void Nav::setOdomLoc(Vector3f od){
 	odomWorldLocCpy_ = od;
@@ -61,11 +64,15 @@ int Nav::foundCandle(float x, float y){
 		if(std::max(id,ep.getID()) == ep.getID() || id == ep.getID())
 				id = ep.getID()+1;
 	}
-	float newR = XYTORADIUS(x,y) - MINDIST; // right in front of candle
+	float newR = XYTORADIUS(x,y) - MINDIST - 4; // right in front of candle but can still see it w/ lidar
 	float t = c.findAngle();
 	vector<int> neigh;
 	neigh.push_back(getNearestWayID()); // link to other waypts
-	EndPoint newWay(POLAR2XCART(newR, t), POLAR2YCART(newR, t), id, neigh);
+	float xway = POLAR2XCART(newR, t);
+	float yway =  POLAR2YCART(newR, t);
+	EndPoint wayGlob = rob_->transformEndPoint(EndPoint(xway,yway));
+	cout<<"waypt to candle has x,y: "<<xway<<","<<yway<<" gotten from r,t: "<<newR<<","<<t<<"\n";
+	EndPoint newWay(wayGlob.getX(), wayGlob.getY(), id, neigh);
 	wayPoints_.push_back(newWay);
 	makeWayMarks("ways_NS");// rebuild way pts for rviz
 
@@ -796,7 +803,7 @@ vector<int> Nav::findPath(int start, int end, vector<EndPoint> &pts){
 		done = true;
 
 		// debugging output code, leave here for when it inevitable breaks
-		/*
+		
 		for(int k=0; k<9; k++){
 			for(int i=0; i<=last; i++){
 				if(k==0){
@@ -971,6 +978,9 @@ void Nav::makeMapMarks(string NS){
 void Nav::makeWayMarks(string NS){
 	populateMarks("way", NS, wayMarks_, cwayLine_, cwayMark_); }
 
+vector<int> Nav::findWay(int start, int end){
+	return findPath(start,end,wayPoints_);
+}
 void Nav::outputWays(){ outputGraph(wayPoints_);	}
 void Nav::outputMap(){  outputGraph(mapPoints_);	}
 

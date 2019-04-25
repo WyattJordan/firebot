@@ -1,4 +1,6 @@
 #include "lidar.h"
+#include "Robot.h" // these two classes were forward declared
+#include "Nav.h"
 void Lidar::processData(const sensor_msgs::LaserScan::ConstPtr& scan){
 	int num = scan->scan_time / scan->time_increment;
 	degrees_.resize(0);
@@ -45,6 +47,7 @@ void Lidar::input(){
 	while(1){
 		cin.get();
 		keypress_ = true;
+		findCandle();
 		cout<<"key pressed...\n";
 	}
 }
@@ -63,21 +66,21 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		//if(linearMove) oldTrans = rob_->getTransform(); // save current copy
 	}//*/
 
-	if(/*keypress_ ||*/ checkCandle_){
+	processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
+
+	if(keypress_ || checkCandle_){
 		//cout<<"gathering candle data...\n";
-		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
-		findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
+		findJumps(false);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
 		findFurnitureAndCandle();   // determines what is furniture from smallJump_ 
 		nav_->makeFurnMarks(furns_); // publishfurniture in rviz
 		findLines(true); // pub segments on
 		nav_->makeLineMarks(lines_, true, true);
-		cleanBigJumps();   // removes furniture jumps and any jumps counted twice 
+		//cleanBigJumps();   // removes furniture jumps and any jumps counted twice 
 		//startRooms_.push_back(classifyRoomFromJumps()); // used to determine room for starting location, will run findLines
 		keypress_ = false;
 
 	}
 	else if(0 && startCount_++ < 10){ // classify the room multiple times before determining which room the 'bot is in 
-		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
 		findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
 		findFurnitureAndCandle();   // determines what is furniture from smallJump_ 
 		nav_->makeFurnMarks(furns_); // publishfurniture in rviz
@@ -106,9 +109,8 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		}
 	}*/
 	// this is what runs most of the time while driving for updates
-	/*else if(linearMove && !pauseUpdates_){ // normal scan update
+	else if(linearMove && !pauseUpdates_){ // normal scan update
 		//cout<<"\nlinear movement! Going to process data!\n";
-		processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
 		findJumps(true);  // don't look for big jumps, just furniture
 		findFurnitureAndCandle();   // determines what is furniture from smallJump_ 
 		nav_->makeFurnMarks(furns_); // publish furniture in rviz
@@ -263,7 +265,7 @@ int Lidar::findCandle(){
 	int numGood = 0;
 	float avgX = 0;
 	float avgY = 0;
-	while(candleLocs_.size()<20){
+	while(candleLocs_.size()<50){
 		for(int i=0; i<candleLocs_.size(); i++){
 			if(candleLocs_[i].getX() != -1 && candleLocs_[i].getY() != -1){
 				avgX += candleLocs_[i].getX();
@@ -286,8 +288,9 @@ int Lidar::findCandle(){
 			numGood++;
 		}
 	}
-	if(numGood < 5){
-	   cout<<"less than 5 detections, no candle...\n";
+	pauseUpdates_ = false;
+	if(numGood < 3){
+	   cout<<"less than 3 detections, no candle...\n";
    	   return -1; // candle not found
 	}
 
@@ -320,15 +323,16 @@ void Lidar::findFurnitureAndCandle(){
 		int middle = (pt1 + step/2) % rad_.size();
 		// check the width tolerance of the two points
 		float width = pt2PtDist(xVal_[pt1], yVal_[pt1], xVal_[pt2], yVal_[pt2]); 
+		//cout<<"width for jumps at angles: "<<degrees_[pt1]<<" and "<<degrees_[pt2]<<" is "<<width<<"\n";
 		if(!(abs(FurnWidth - width) < FurnWidthTolerance)){ // if the distance between the points is larger than furniture size
 			// check if it could be a candle
 			if(checkCandle_){
 			       if(abs(CandleWidth - width) < CandleWidthTolerance){
-					cout<<"found a candle at angles: "<<degrees_[pt1]<<" and "<<degrees_[pt2]<<" with dists: "<<
-						rad_[pt1]<<" and "<<rad_[pt2]<<"\n";	
 					float x = (xVal_[pt1] + xVal_[pt2])/2.0;
 					float y = (yVal_[pt1] + yVal_[pt2])/2.0;
-					cout<<"with coords: ("<<x<<","<<y<<")\n";
+					cout<<"found a candle at angles: "<<degrees_[pt1]<<" and "<<degrees_[pt2]<<" with dists: "<<
+						rad_[pt1]<<" and "<<rad_[pt2];	
+					cout<<"  with coords: ("<<x<<","<<y<<")\n";
 					EndPoint candle = EndPoint(x,y);
 					candleLocs_.push_back(candle);
 					gotCandle = true;

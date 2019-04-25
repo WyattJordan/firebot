@@ -5,8 +5,6 @@
 #include <tf/transform_broadcaster.h>
 #include "sensor_msgs/LaserScan.h"
 #include <Eigen/Core>
-#include "Robot.h"
-#include "Nav.h"
 #include "line.h"
 #include "Endpoint.h"
 #include "definitions.h"
@@ -22,7 +20,7 @@
 #define RAD2DEG(x) ((x)*180./M_PI)
 #define POLAR2XCART(r, t) ((r)*cos((t)*M_PI/180.)) //get the x component when given a distance and angle in degrees
 #define POLAR2YCART(r, t) ((r)*sin((t)*M_PI/180.)) //get the y component when given a distance and angle in degrees
-#define XYTORADIUS(x, y) (pow(x*x + y*y, 2))
+#define XYTORADIUS(x, y) (pow(x*x + y*y, 0.5))
 
 
 using namespace std;

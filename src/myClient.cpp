@@ -28,10 +28,11 @@ int main(int argc, char **argv)
 	Lidar lid;
 	lid.setNav(&nav);
 
+	ros::Subscriber sub = n.subscribe<sensor_msgs::LaserScan>("/scan", 1000, &Lidar::scanCallback, &lid);
+	cout<<"started Subscriber\n";
+
 	input = std::thread(boost::bind(&Lidar::input, &lid));	
 	cout<<"started input\n";
-
-	ros::Subscriber sub = n.subscribe<sensor_msgs::LaserScan>("/scan", 1000, &Lidar::scanCallback, &lid);
 
 	ros::spin();
 

@@ -9,7 +9,6 @@
 #include <visualization_msgs/MarkerArray.h>
 //#include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
-#include "Robot.h"
 #include "Endpoint.h"
 #include "line.h"
 #include "Endpoint.h"
@@ -30,6 +29,7 @@ using namespace Eigen;
 
 
 class Robot; // forward declaration since both include eachother
+class Lidar;
 
 struct color{
 	float r,g,b;
@@ -64,6 +64,7 @@ class Nav{
 		void makeCandleMark(EndPoint ep);
 		void publishGlobalLineCenter(Vector3f gPt);
 		void publishMapAndWays();
+		vector<int> findWay(int start, int end);
 
 		bool removePoint(int id, vector<EndPoint> &pts);
 		float getDistance(EndPoint &ep1, EndPoint &ep2);

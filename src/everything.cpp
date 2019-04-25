@@ -38,7 +38,7 @@ int main(int argc, char **argv){
 	rob.setLidar(&lid);
 
 	// Spin off threads
-	std::thread mainLogic, driveLoop, publishNavLoop, pubTrans, protoThread;
+	std::thread mainLogic, driveLoop, publishNavLoop, pubTrans, protoThread, input;
 	// loop for publishing markers in rviz and to transform them appropriately, only for visualization
 	publishNavLoop = std::thread(boost::bind(&Nav::publishLoop, &nav));	
 	//publishNavLoop = std::thread(boost::bind(&Nav::publishLoopContinual, &nav));	
@@ -49,6 +49,8 @@ int main(int argc, char **argv){
 
 	// loop for talking to odroid board
 	//protoThread = std::thread(boost::bind(&Robot::pinThread, &rob));	
+	// loop for testing via keypress
+	input = std::thread(boost::bind(&Lidar::input, &lid));
 		
 	// Countdown with delay before starting mainLogic loop
 	for(int i=0; i<3; i++){

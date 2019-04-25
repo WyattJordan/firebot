@@ -33,7 +33,7 @@
 #define FurnWidth 13.0    // expected furniture width (X cm)
 #define FurnWidthTolerance 5.0 // distance between furn endpoints should be FurnWidth +/- X, this just filters out large differences in jumps
 #define CandleWidth 2.5    // expected furniture width (X cm)
-#define CandleWidthTolerance 2.0 // distance between furn endpoints should be FurnWidth +/- X, this just filters out large differences in jumps
+#define CandleWidthTolerance 1.5 // distance between furn endpoints should be FurnWidth +/- X, this just filters out large differences in jumps
 #define FurnDistTolerance 2.0  // point between furn endpoints must have at least X smaller polar radius than the average of the endpoints
 
 // used for building lines

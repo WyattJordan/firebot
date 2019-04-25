@@ -29,17 +29,11 @@ void Robot::mainLogic(){
 
 	for(int r=0; r<3; r++){ // don't check starting room
 		if(rooms[r] != initial){
+			cout<<"making path from "<<start<<" to "<<rooms[r]<<"\n":
 			vector<int> path = nav_->findWay(start, rooms[r]);
-
-			cout<<"making path from "<<start<<" to "<<rooms[r]<<"\n";
-			for(int i=0; i<path.size(); i++){
-				cout<<path[i]<<"  ";
-			}
-			cout<<"\n";
-
 			buildNavStack(path);
 			start = executeNavStack(); // go to room (waits on this line till arrived)
-			//if(searchNDestroy()) break;
+			if(searchNDestroy()) break;
 		}
 	}
 
@@ -268,7 +262,7 @@ int Robot::executeNavStack(){ // runs in parallel to driveLoop, called from main
 
 				navStack.pop_front();
 				firstNav_ = true; // this is either the last point or a pt2pt nav so reset 
-				if(navStack.size() == 0) return lastpt;
+				if(navStack.size() == 1) return lastpt;
 			}
 			else if(updateDriving_){
 				cout<<"POSITION UPDATED AND POSE RECALCULATED!!!\n";

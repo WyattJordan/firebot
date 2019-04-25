@@ -6,7 +6,6 @@
 #pragma once
 #include "ros/ros.h"
 #include "Nav.h"
-#include "lidar.h"
 #include "pid.h"
 #include "Endpoint.h"
 #include "definitions.h"
@@ -53,8 +52,7 @@ using namespace Eigen;
 class Nav; // forward declaration since both include eachother
 class Lidar;
 
-static void pabort(const char *s)
-{
+static void pabort(const char *s){
 	perror(s);
 	abort();
 }
@@ -121,6 +119,8 @@ class Robot{
 		void setSerialArms();
 		void setRamp(float s, float t);
 		void rampUpSpeed();
+		void sprayNpray(int num);
+		bool searchNDestroy();
 		void speed2power(float adj);
 		void power2pwm();
 
@@ -128,7 +128,8 @@ class Robot{
 
 		float prevdist_;
 		bool buildNavStack(vector<int> ids,bool append=false);
-		void executeNavStack();
+		bool insertToNavStack(int id);
+		int executeNavStack();
 		float getPoseToPoint(EndPoint pt, EndPoint* pt2 = NULL);
 		float distToNextPoint();
 
