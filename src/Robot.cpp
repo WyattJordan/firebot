@@ -23,11 +23,13 @@ void Robot::mainLogic(){
 	odomWorldLoc_   << 15+2, 34.5, 0; // start at back left w/ steel block
 	int start = 2; // nearest waypt at beginning
 	int initial = start;
-	vector<int> rooms{19,2,8,12}; // R1 - R4 waypts (for predetermined map)
+	//vector<int> rooms{19,2,8,12}; // R1 - R4 waypts (for predetermined map)
+	//vector<int> rooms{2,8,12,19}; // R1 - R4 waypts (for predetermined map)
+	vector<int> rooms{2,8,12,17}; // R1 - R4 waypts (for predetermined map)
 	int Center = 18;
 	pt2pt_ = true;
 
-	for(int r=0; r<3; r++){ // don't check starting room
+	for(int r=0; r<4; r++){ // don't check starting room
 		if(rooms[r] != initial){
 			vector<int> path = nav_->findWay(start, rooms[r]);
 
@@ -39,9 +41,14 @@ void Robot::mainLogic(){
 
 			buildNavStack(path);
 			start = executeNavStack(); // go to room (waits on this line till arrived)
-			//if(searchNDestroy()) break;
+			if(searchNDestroy()){
+			       cout<<"mission completed exiting room nav\n";
+		       	       break;
+			}
 		}
 	}
+
+	cout<<" DONE CHECKING ALL ROOMS, DONE MAIN LOGIC\n";
 
 	//buildNavStack(fromCenterToR3, true);
 
@@ -56,7 +63,6 @@ void Robot::mainLogic(){
 //	vector<int> toFirst{2};
 //	buildNavStack(toFirst);
 	
-	
 }
 
 bool Robot::searchNDestroy(){
@@ -64,7 +70,7 @@ bool Robot::searchNDestroy(){
 	if(waypt == -1){
 	        setPose_+=40;
 		sleep(2); // wait to stop
-		waypt = lid_->findCandle();
+		waypt = lid_->findCandle(); // run again at offset in case hidden by struts
 	}
 	if(waypt != -1){
 		vector<int> toCandle{waypt};
@@ -78,7 +84,7 @@ bool Robot::searchNDestroy(){
 }
 void Robot::sprayNpray(int num){
 	// TODO - turn on spray
-	float degreeSwing = 15;
+	float degreeSwing = 20;
 	float centerPose = odomWorldLoc_(2)*180./PI;
 	speed_ = 0;
 	speed2power(0); // make sure it's stopped
@@ -107,6 +113,7 @@ void Robot::sprayNpray(int num){
 void Robot::pinThread(){
 	bool sw1, sw2, sw3;
 	bool sw = false;
+	cout<<"starting pin thread\n";
 	while(1){
 		/*sw1 = digitalRead(sw1Pin);
 		sw2 = digitalRead(sw2Pin);
@@ -117,13 +124,17 @@ void Robot::pinThread(){
 		digitalWrite(blueLEDPin, sw ? HIGH : LOW);
 		digitalWrite(redLEDPin,  sw ? HIGH : LOW);
 		digitalWrite(greenLEDPin,sw ? HIGH : LOW);
+		digitalWrite(sprayPin,sw ? HIGH : LOW);
+		//digitalWrite(sprayPin,HIGH);
+		cout<<"pins are: "<<sw<<"\n";
+
 		sw = !sw;
 
 		//cout<<"sw1 = "<<sw1<<" sw2 = "<<sw2<<" sw3 = "<<sw3<<"\n";
-		int ir1 = analogRead(IR1Pin);
-		int ir2 = analogRead(IR2Pin);
-		cout<<"ir1 = "<<ir1<<" ir2 = "<<ir2<<" sw = "<<sw<<"\n";
-		usleep(1000*400);
+		//int ir1 = analogRead(IR1Pin);
+		//int ir2 = analogRead(IR2Pin);
+		//cout<<"ir1 = "<<ir1<<" ir2 = "<<ir2<<" sw = "<<sw<<"\n";
+		usleep(1000*3000);
 	}
 }
 
@@ -168,6 +179,7 @@ Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constru
 	pinMode(blueLEDPin, OUTPUT);
 	pinMode(redLEDPin, OUTPUT);
 	pinMode(greenLEDPin, OUTPUT);
+	pinMode(sprayPin, OUTPUT);
 
 	pinMode(sw1Pin, INPUT);
 	pinMode(sw2Pin, INPUT);

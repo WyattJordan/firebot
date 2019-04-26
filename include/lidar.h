@@ -40,6 +40,7 @@ class Lidar{
 		void setNav(Nav *nav);
 		void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan);
 		int findCandle();
+		void locateCandle();
 		void input();
 		void findJumps(bool findBig); // finds either big jumps and furniture jumps or only furn jumps
 		int classifyRoomFromJumps();
@@ -92,7 +93,7 @@ class Lidar{
 		// Determine average of points before and after center using offset number of points
 		void getAveragePrePost(float &pre, float &post, int center, int offset,bool degug=false);
 		// Build furn_ based on furnJump_
-		void findFurnitureAndCandle();
+		void findFurniture();
 
 		// A value in jump_ or smallJump_ is the first index of 2 indices in the data vectors that
 		// make up a jump, these functions get various info about those two points

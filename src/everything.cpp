@@ -29,7 +29,7 @@ int main(int argc, char **argv){
 	nav.makeWayMarks("ways_ns");
 //	nav.outputMap();
 	nav.setSmallRoomUpper(false);
-	nav.setBigRoomUpper(true);
+	nav.setBigRoomUpper(false);
 	cout<<"made nav object and linked to rob\n";
 	
 	// Create and link lidar class

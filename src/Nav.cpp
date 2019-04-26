@@ -64,7 +64,7 @@ int Nav::foundCandle(float x, float y){
 		if(std::max(id,ep.getID()) == ep.getID() || id == ep.getID())
 				id = ep.getID()+1;
 	}
-	float newR = XYTORADIUS(x,y) - MINDIST - 4; // right in front of candle but can still see it w/ lidar
+	float newR = XYTORADIUS(x,y) - MINDIST - 6; // right in front of candle but can still see it w/ lidar
 	float t = c.findAngle();
 	vector<int> neigh;
 	neigh.push_back(getNearestWayID()); // link to other waypts
@@ -153,8 +153,8 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 		
 	Vector3f updatedPos; 
 	updatedPos << 0,0,0;
-	float weight = 1;
-	float pweight = 0.7;
+	float weight = 0.5;  // was 1
+	float pweight = 0.5; // was 0.7
 	if(ab(xUpdate - pos(0))<20 && xUpdate != 0) updatedPos(0) = xUpdate*weight + pos(0)*(1-weight); // make sure it's nothing crazy (within 20cm)
 	else if(xUpdate !=0) cout<<"xUpdate OUT OF RANGE\n";
 	if(ab(yUpdate - pos(1))<20 && yUpdate != 0) updatedPos(1) = yUpdate*weight + pos(1)*(1-weight);
@@ -334,6 +334,7 @@ void Nav::setSmallRoomUpper(bool up){
 		getPoint(10,wayPoints_).setNeighbors(2,9,14);
 	}
 	makeMapMarks("smallRoom_map");
+	makeWayMarks("smallRoom_ways");
 }
 
 // Sets the door configuration for the larger room, if up == true the door is
@@ -344,6 +345,7 @@ void Nav::setBigRoomUpper(bool up){
 		getPoint(16,mapPoints_).setNeighbors(1,15);
 
 		getPoint(3,wayPoints_).setNeighbors(2,2,4);
+		getPoint(16,wayPoints_).setNeighbors(2,19,15);
 		removePoint(17,wayPoints_);
 	}
 	else{
@@ -355,6 +357,7 @@ void Nav::setBigRoomUpper(bool up){
 		removePoint(19,wayPoints_);
 	}	
 	makeMapMarks("bigRoom_map");
+	makeWayMarks("bigRoom_ways");
 }
 
 int Nav::getNearestWayID(){// doesn't edit class variable

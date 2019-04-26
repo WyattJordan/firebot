@@ -71,10 +71,11 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	if(keypress_ || checkCandle_){
 		//cout<<"gathering candle data...\n";
 		findJumps(false);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
-		findFurnitureAndCandle();   // determines what is furniture from smallJump_ 
+		findFurniture();   // determines what is furniture from smallJump_ 
 		nav_->makeFurnMarks(furns_); // publishfurniture in rviz
 		findLines(true); // pub segments on
 		nav_->makeLineMarks(lines_, true, true);
+		//locateCandle();
 		//cleanBigJumps();   // removes furniture jumps and any jumps counted twice 
 		//startRooms_.push_back(classifyRoomFromJumps()); // used to determine room for starting location, will run findLines
 		keypress_ = false;
@@ -82,7 +83,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	}
 	else if(0 && startCount_++ < 10){ // classify the room multiple times before determining which room the 'bot is in 
 		findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
-		findFurnitureAndCandle();   // determines what is furniture from smallJump_ 
+		findFurniture();   // determines what is furniture from smallJump_ 
 		nav_->makeFurnMarks(furns_); // publishfurniture in rviz
 
 		cleanBigJumps();   // removes furniture jumps and any jumps counted twice 
@@ -112,7 +113,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	else if(linearMove && !pauseUpdates_){ // normal scan update
 		//cout<<"\nlinear movement! Going to process data!\n";
 		findJumps(true);  // don't look for big jumps, just furniture
-		findFurnitureAndCandle();   // determines what is furniture from smallJump_ 
+		findFurniture();   // determines what is furniture from smallJump_ 
 		nav_->makeFurnMarks(furns_); // publish furniture in rviz
 		findLines(true); // pub segments off, might want leave this off (too much processing)
 		nav_->makeLineMarks(lines_, true, true);
@@ -130,7 +131,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 
 bool Lidar::checkLocalize(){ // checks some conditions for a good scan to initially localize on
 	findJumps(true);  // need big jumps to find the location of the local pt and for close jump verification
-	findFurnitureAndCandle();   // determines what is furniture from smallJump_ 
+	findFurniture();   // determines what is furniture from smallJump_ 
 	nav_->makeFurnMarks(furns_); // publish furniture in rviz
 	findLines(true); // what really matters
 	nav_->makeLineMarks(lines_, true, true); // publish lines in rviz
@@ -258,6 +259,35 @@ int Lidar::classifyRoomFromJumps(){
 	}
 }
 
+void Lidar::locateCandle(){
+	// loop thru radii and search for a positive jump, then look for a negative jump 
+	// if a new positive comes along replace the old
+	// if a neg jump is found, find the dist between the two points, if within candle thresh, avg them and push back to candle
+	int posJumpIdx;
+	bool foundPos = false;
+	float minJump = 3.5;
+	for(int p=0; p<rad_.size()-1; p++){
+		if(rad_[p+1] - rad_[p] > minJump){
+			posJumpIdx = p;
+			foundPos = true;
+		}
+		if(foundPos && rad_[p+1] - rad_[p] < minJump){
+			int pt1 = getCloserJumpPt(posJumpIdx);
+			int pt2 = getCloserJumpPt(p);
+			float width = pt2PtDist(xVal_[pt1], yVal_[pt1], xVal_[pt2], yVal_[pt2]); 
+		       if(abs(CandleWidth - width) < CandleWidthTolerance){
+				float x = (xVal_[pt1] + xVal_[pt2])/2.0;
+				float y = (yVal_[pt1] + yVal_[pt2])/2.0;
+				cout<<"found a candle at angles: "<<degrees_[pt1]<<" and "<<degrees_[pt2]<<" with dists: "<<
+					rad_[pt1]<<" and "<<rad_[pt2];	
+				cout<<"  with coords: ("<<x<<","<<y<<")\n";
+				EndPoint candle = EndPoint(x,y);
+				candleLocs_.push_back(candle);
+		       }
+		}
+	}
+}
+
 int Lidar::findCandle(){
 	candleLocs_.resize(0);
 	checkCandle_ = true; // start appending to que
@@ -289,8 +319,8 @@ int Lidar::findCandle(){
 		}
 	}
 	pauseUpdates_ = false;
-	if(numGood < 3){
-	   cout<<"less than 3 detections, no candle...\n";
+	if(numGood < 20){ // at least 10 candle detections
+	   cout<<"less than 20 detections, no candle...\n";
    	   return -1; // candle not found
 	}
 
@@ -303,7 +333,7 @@ int Lidar::findCandle(){
 
 // Furniture will have ~13cm difference between endpoints (within FurnWidthTolerance)
 // And will have a point with a lower polar Radius between the two points (by at least FurnDepthTolerance)
-void Lidar::findFurnitureAndCandle(){
+void Lidar::findFurniture(){
 	furns_.resize(0);
 	furnIdxs_.resize(0);
 	//cout<<"starting to find furn with "<<smallJump_.size()<<" furnjumps\n";
@@ -337,7 +367,7 @@ void Lidar::findFurnitureAndCandle(){
 					candleLocs_.push_back(candle);
 					gotCandle = true;
 				}
-			}
+			}//*/
 			//cout<<"deleted jump "<<smallJump_[j]<<" due to width constraint width = "<<width<<"\n";
 			continue; // skips the rest of the code in this iteration
 		}	
@@ -447,13 +477,14 @@ void Lidar::findJumps(bool findBig){
 			// With the LIDAR getting 500pts/scan it's angle between pts is 0.0127 rad
 			// which means the dist. between pts is R*0.0127, which equals 3cm at R = 238cm
 			float avgPre, avgPost;
-			getAveragePrePost(avgPre, avgPost, i+1, 3); // do 3pt averages before and after
+			getAveragePrePost(avgPre, avgPost, i+1, 2); // do 3pt averages before and after
 			if(abs(avgPre - avgPost) > SmallJumpDist*0.75){ // filter out random bad pts
 				smallJump_.push_back(i);
 			}
 			else{
 				outliers_.push_back(i);
-			}
+			}//*/
+			smallJump_.push_back(i);
 		}
 	}
 

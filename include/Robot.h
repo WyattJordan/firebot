@@ -40,6 +40,7 @@ using namespace Eigen;
 #define clk std::chrono::steady_clock
 #define stc std::chrono
 
+#define sprayPin 26
 #define sw1Pin  4
 #define sw2Pin 21
 #define sw3Pin 23
@@ -73,6 +74,7 @@ class Robot{
 		Ref<Vector3f> getTravelDist();
 		tf::StampedTransform getTransform();
 		void setExperimental(Vector3f pose);
+		void pinThread();
 		void outputTime(clk::time_point t1, clk::time_point t2);
 
 	private:
@@ -112,7 +114,6 @@ class Robot{
 		void calculateTransform(float theta);
 		void calculateOdom();
 
-		void pinThread();
 		void openSerial();
 		void setSerialMotors();
 		bool getSerialEncoders();
