@@ -74,7 +74,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		findFurniture();   // determines what is furniture from smallJump_ 
 		nav_->makeFurnMarks(furns_); // publishfurniture in rviz
 		findLines(true); // pub segments on
-		nav_->makeLineMarks(lines_, true, true);
+		nav_->makeLineMarks(lines_, true, false); // don't add id's
 		//locateCandle();
 		//cleanBigJumps();   // removes furniture jumps and any jumps counted twice 
 		//startRooms_.push_back(classifyRoomFromJumps()); // used to determine room for starting location, will run findLines
@@ -116,12 +116,12 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 		findFurniture();   // determines what is furniture from smallJump_ 
 		nav_->makeFurnMarks(furns_); // publish furniture in rviz
 		findLines(true); // pub segments off, might want leave this off (too much processing)
-		nav_->makeLineMarks(lines_, true, true);
+		nav_->makeLineMarks(lines_, true, false);
 
 		bool updated = nav_->updatePosition(lines_, currentPos, rob_->getTravelDist());
 		if(updated) {
 			auto end = stc::steady_clock::now();
-			rob_->outputTime(t1, end);
+			//rob_->outputTime(t1, end);
 		}
 	}//*/
 

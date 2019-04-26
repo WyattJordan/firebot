@@ -146,15 +146,15 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 			yUpdate = wallVal != 0 ? wallVal - dist2wall : 0;
 		}
 	}
-	cout<<"travel dist = "<<travelDist(2)<<", from90 = "<<from90<<"\n";
-	if(usedForUpdate_.size()>0){cout<<"got a wall with ids: "<<usedForUpdate_[0]<<", "<<usedForUpdate_[1]<<"\n";}
-	else{cout<<" did not get a global wall.....\n";}
+	//cout<<"travel dist = "<<travelDist(2)<<", from90 = "<<from90<<"\n";
+	//if(usedForUpdate_.size()>0){cout<<"got a wall with ids: "<<usedForUpdate_[0]<<", "<<usedForUpdate_[1]<<"\n";}
+	//else{cout<<" did not get a global wall.....\n";}
 	
 		
 	Vector3f updatedPos; 
 	updatedPos << 0,0,0;
-	float weight = 0.5;  // was 1
-	float pweight = 0.5; // was 0.7
+	float weight = 0.3;  // was 1   then 0.5
+	float pweight = 0.3; // was 0.7 then 0.5
 	if(ab(xUpdate - pos(0))<20 && xUpdate != 0) updatedPos(0) = xUpdate*weight + pos(0)*(1-weight); // make sure it's nothing crazy (within 20cm)
 	else if(xUpdate !=0) cout<<"xUpdate OUT OF RANGE\n";
 	if(ab(yUpdate - pos(1))<20 && yUpdate != 0) updatedPos(1) = yUpdate*weight + pos(1)*(1-weight);
@@ -165,8 +165,8 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 	float yDiff = updatedPos(1) == 0 ? 0 : abs(yUpdate - pos(1));
 	float pDiff = updatedPos(2) == 0 ? 0 : abs(tUpdate - pos(2))*180.0/PI;
 	if(updatedPos(0) + updatedPos(1) + updatedPos(2) !=0){ // if x,y, or theta was changed send update
-		if(xUpdate!=0 || yUpdate !=0) cout<<"got an update with wallVal: "<<wallVal<<" dist2wall: "<<dist2wall<<" and vals: "<<xUpdate<<" , "<<yUpdate
-			<<" with pos: "<<pos(0)<<","<<pos(1)<<" updating diff is ("<<xDiff<<","<<yDiff<<","<<pDiff<<"\n";
+		//if(xUpdate!=0 || yUpdate !=0) cout<<"got an update with wallVal: "<<wallVal<<" dist2wall: "<<dist2wall<<" and vals: "<<xUpdate<<" , "<<yUpdate
+		//	<<" with pos: "<<pos(0)<<","<<pos(1)<<" updating diff is ("<<xDiff<<","<<yDiff<<","<<pDiff<<"\n";
 		//rob_->setExperimental(updatedPos);    // just for changing frame to see if working
 		rob_->updatePosition(updatedPos);    // actually changes robot pos
 		return true;
@@ -667,6 +667,18 @@ void Nav::makeFurnMarks(vector<EndPoint> furns){
 	//cout<<"size of furn array is: "<<furnMarks_.markers.size()<<"\n";
 }
 
+void Nav::highlightWays(deque<EndPoint> pts){
+	for(int i=0; i<wayPoints_.size(); i++){
+		bool markSpecial = false;
+		for(EndPoint pt : pts){
+			if(pt.getID() == wayPoints_[i].getID()) markSpecial = true;
+		}
+		wayMarks_.markers[i].color.r = markSpecial ? 0.0 : cwayMark_.r;	
+		wayMarks_.markers[i].color.g = markSpecial ? 1.0 : cwayMark_.g;
+		wayMarks_.markers[i].color.b = markSpecial ? 0.0 : cwayMark_.b;	
+	}
+}
+
 void Nav::highlightUsedMapMarks(){
 	for(int i=0; i<mapMarks_.markers.size(); i++){
 		bool markSpecial = std::find(usedForUpdate_.begin(), usedForUpdate_.end(), mapMarks_.markers[i].id) != usedForUpdate_.end();
@@ -707,16 +719,16 @@ void Nav::populateMarks(string which, string NS,
 		marks.markers[i].points[1].y = (*pts)[i].getY();
 		marks.markers[i].points[1].z = 10; // 10cm tall 
 
-		marks.markers[i].scale.x = 3; 
-		marks.markers[i].scale.y = 3;
-		marks.markers[i].scale.z = 3;
+		marks.markers[i].scale.x = 4; 
+		marks.markers[i].scale.y = 4;
+		marks.markers[i].scale.z = 4;
 		marks.markers[i].color.a = 1.0;	
 		marks.markers[i].color.r = (*pts)[i].isVisible() || markSpecial ? 0.0 : markcol.r;	
 		marks.markers[i].color.g = (*pts)[i].isVisible() || markSpecial ? 1.0 : markcol.g;
 		marks.markers[i].color.b = (*pts)[i].isVisible() || markSpecial ? 0.0 : markcol.b;	
 
 		// show text ID above marker with id += 1000
-		int idx = i+pts->size();
+		/*int idx = i+pts->size();
 		marks.markers[idx].header.frame_id = GLOBALFRAME;
 		marks.markers[idx].id = id+1000;
 		marks.markers[idx].ns = NS;
@@ -736,7 +748,7 @@ void Nav::populateMarks(string which, string NS,
 		marks.markers[idx].color.a = 1.0;  // white
 		marks.markers[idx].color.r = 1; 
 		marks.markers[idx].color.g = 1; 
-		marks.markers[idx].color.b = 1; 
+		marks.markers[idx].color.b = 1; */
 		//sleep(1); rvizMap.publish(marks); //uncomment to see point growth from closest to robot
 	}
 	//cout<<"done adding points for "<< which<<"\n";

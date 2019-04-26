@@ -40,6 +40,7 @@ void Robot::mainLogic(){
 			cout<<"\n";
 
 			buildNavStack(path);
+			nav_->highlightWays(navStack);
 			start = executeNavStack(); // go to room (waits on this line till arrived)
 			if(searchNDestroy()){
 			       cout<<"mission completed exiting room nav\n";
@@ -283,7 +284,6 @@ int Robot::executeNavStack(){ // runs in parallel to driveLoop, called from main
 				if(navStack.size() == 0) return lastpt;
 			}
 			else if(updateDriving_){
-				cout<<"POSITION UPDATED AND POSE RECALCULATED!!!\n";
 				setPose_ = getPoseToPoint(navStack.front()); 
 				updateDriving_ = false;
 			}
@@ -321,14 +321,18 @@ int Robot::executeNavStack(){ // runs in parallel to driveLoop, called from main
 				navStack.pop_front();
 			}*/
 			else if(updateDriving_){
-				cout<<"POSITION UPDATED AND POSE RECALCULATED!!!\n";
 				// recalculate in case updates between poseToNextPoint being made and this line
 				setPose_ = getPoseToPoint(navStack.front()); 
 				updateDriving_ = false;
 			}
 		}
 		
-		if(pts < navStack.size()){ prevdist_ = 99999; travelDist_(2) -= 5;} // a marker was popped so reset dist
+		if(pts > navStack.size()){ // if a waypoint was popped
+			cout<<"popped marker updating rviz\n";
+			prevdist_ = 99999; // a marker was popped so reset dist
+			travelDist_(2) -= 5;
+			nav_->highlightWays(navStack);
+		} 
 		else {prevdist_ = dist;}
 	}// while loop
 }

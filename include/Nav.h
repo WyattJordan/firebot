@@ -18,6 +18,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <deque>
 #include <time.h>
 #include <chrono>
 #include <numeric>
@@ -62,6 +63,7 @@ class Nav{
 		void makeFurnMarks(vector<EndPoint> furns);
 		void makeLineMarks(vector<line> lines, bool merged, bool addIDs=false);
 		void makeCandleMark(EndPoint ep);
+		void highlightWays(deque<EndPoint> pts);
 		void publishGlobalLineCenter(Vector3f gPt);
 		void publishMapAndWays();
 		vector<int> findWay(int start, int end);
