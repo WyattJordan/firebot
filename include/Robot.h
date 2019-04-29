@@ -121,6 +121,7 @@ class Robot{
 		void setRamp(float s, float t);
 		void rampUpSpeed();
 		void sprayNpray(int num);
+		void setSprayer(bool on);
 		bool searchNDestroy();
 		void speed2power(float adj);
 		void power2pwm();

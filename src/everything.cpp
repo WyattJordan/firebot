@@ -39,29 +39,33 @@ int main(int argc, char **argv){
 
 	// Spin off threads
 	std::thread mainLogic, driveLoop, publishNavLoop, pubTrans, protoThread, input;
-	// loop for publishing markers in rviz and to transform them appropriately, only for visualization
-	publishNavLoop = std::thread(boost::bind(&Nav::publishLoop, &nav));	
-	//publishNavLoop = std::thread(boost::bind(&Nav::publishLoopContinual, &nav));	
-	pubTrans = std::thread(boost::bind(&Robot::pubTransformContinual, &rob, 10)); // at 10 Hz
-
-	// loop for controlling motors w/ PID and odometry math
-	driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
-
-	// loop for talking to odroid board
-	//protoThread = std::thread(boost::bind(&Robot::pinThread, &rob));	
-	// loop for testing via keypress
-	input = std::thread(boost::bind(&Lidar::input, &lid));
-		
-	// Countdown with delay before starting mainLogic loop
-	for(int i=0; i<3; i++){
-		cout<<"start in "<<3-i<<"...\n";
-		usleep(1000*500); // half second
-		//sleep(1);
+	bool testProto = false;
+	if(testProto){
+		// loop for talking to odroid board
+		protoThread = std::thread(boost::bind(&Robot::pinThread, &rob));	
+		// loop for testing via keypress
+		input = std::thread(boost::bind(&Lidar::input, &lid));
 	}
-	cout<<"\nGO!\n";
-	mainLogic = std::thread(boost::bind(&Robot::mainLogic, &rob));//*/
+	else{
+		// loop for publishing markers in rviz and to transform them appropriately, only for visualization
+		publishNavLoop = std::thread(boost::bind(&Nav::publishLoop, &nav));	
+		//publishNavLoop = std::thread(boost::bind(&Nav::publishLoopContinual, &nav));	
+		pubTrans = std::thread(boost::bind(&Robot::pubTransformContinual, &rob, 10)); // at 10 Hz
 
-	ros::spin();
+		// loop for controlling motors w/ PID and odometry math
+		driveLoop = std::thread(boost::bind(&Robot::driveLoop, &rob));	
+
+		
+		// Countdown with delay before starting mainLogic loop
+		for(int i=0; i<3; i++){
+			cout<<"start in "<<3-i<<"...\n";
+			usleep(1000*500); // half second
+			//sleep(1);
+		}
+		cout<<"\nGO!\n";
+		mainLogic = std::thread(boost::bind(&Robot::mainLogic, &rob));//*/
+	}
+		ros::spin();
 	return 0;
 }
 

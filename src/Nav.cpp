@@ -64,7 +64,7 @@ int Nav::foundCandle(float x, float y){
 		if(std::max(id,ep.getID()) == ep.getID() || id == ep.getID())
 				id = ep.getID()+1;
 	}
-	float newR = XYTORADIUS(x,y) - MINDIST - 6; // right in front of candle but can still see it w/ lidar
+	float newR = XYTORADIUS(x,y) - MINDIST - 10; // right in front of candle but can still see it w/ lidar
 	float t = c.findAngle();
 	vector<int> neigh;
 	neigh.push_back(getNearestWayID()); // link to other waypts

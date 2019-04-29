@@ -50,20 +50,6 @@ void Robot::mainLogic(){
 	}
 
 	cout<<" DONE CHECKING ALL ROOMS, DONE MAIN LOGIC\n";
-
-	//buildNavStack(fromCenterToR3, true);
-
-	/*buildNavStack(fromCenterToR3AndBack, true);
-	buildNavStack(fromCenterAroundR4ToR4, true);
-	buildNavStack(fromR4ToR1ToCenter,true);
-	buildNavStack(fromCenterToR3AndBack, true);
-	buildNavStack(fromCenterAroundR4BackToCenter,true);
-	buildNavStack(fromCenterToR3AndBack, true);
-	*/
-
-//	vector<int> toFirst{2};
-//	buildNavStack(toFirst);
-	
 }
 
 bool Robot::searchNDestroy(){
@@ -94,6 +80,7 @@ void Robot::sprayNpray(int num){
 	ramp_ = false; 
 	
 	cout<<"starting sprayNpray...\n";
+	setSprayer(true);
 	for(int i=0; i<num; i++){
 		for(int k=0; k<2; k++){
 			lDrive_ =  k%2==0 ? power : -1*power; // starts turning to the right
@@ -106,6 +93,7 @@ void Robot::sprayNpray(int num){
 			}
 		}
 	}
+	setSprayer(false);
 
 	runPID_ = true;
 	usleep(1000*500); // give it a half second to reorient
@@ -125,17 +113,22 @@ void Robot::pinThread(){
 		digitalWrite(blueLEDPin, sw ? HIGH : LOW);
 		digitalWrite(redLEDPin,  sw ? HIGH : LOW);
 		digitalWrite(greenLEDPin,sw ? HIGH : LOW);
-		digitalWrite(sprayPin,sw ? HIGH : LOW);
+		digitalWrite(sprayPin, sw ? LOW : HIGH);
 		//digitalWrite(sprayPin,HIGH);
 		cout<<"pins are: "<<sw<<"\n";
 
+		if(sw){
+			usleep(1000*1000);
+		}
+		else{
+			usleep(1000*3000);
+		}
 		sw = !sw;
 
 		//cout<<"sw1 = "<<sw1<<" sw2 = "<<sw2<<" sw3 = "<<sw3<<"\n";
 		//int ir1 = analogRead(IR1Pin);
 		//int ir2 = analogRead(IR2Pin);
 		//cout<<"ir1 = "<<ir1<<" ir2 = "<<ir2<<" sw = "<<sw<<"\n";
-		usleep(1000*3000);
 	}
 }
 
@@ -181,6 +174,8 @@ Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constru
 	pinMode(redLEDPin, OUTPUT);
 	pinMode(greenLEDPin, OUTPUT);
 	pinMode(sprayPin, OUTPUT);
+	setSprayer(false);
+	cout<<"turned sprayer off\n";
 
 	pinMode(sw1Pin, INPUT);
 	pinMode(sw2Pin, INPUT);
@@ -191,6 +186,9 @@ Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constru
 	openSerial();
 } 
 
+void Robot::setSprayer(bool on){
+	digitalWrite(sprayPin, on ? LOW : HIGH); // make sure it's off
+}
 void Robot::outputTime(clk::time_point t1, clk::time_point t2){
 	cout<<"takes "<<
 	stc::duration_cast <stc::milliseconds>(t2-t1).count()<<"ms and "<<
