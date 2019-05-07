@@ -13,7 +13,7 @@ line::line(){
         intercept = 0;
         EndPoint end1;
         EndPoint end2;
-	EndPoint center;
+		EndPoint center;
         lineDist = 0;
         isLine = false;
         length = 0;
@@ -61,8 +61,7 @@ void line::buildLine() {
         intercept = yAvg - slope * xAvg;
         setEndpts(x[0], y[0], x[x.size()-1], y[y.size()-1]);
         length = ptDist(end1.getX(), end1.getY(), end2.getX(), end2.getY());
-	//center = EndPoint(xAvg, slope * xAvg + intercept);
-	center.setCart(xAvg, yAvg);
+		center.setCart(xAvg, yAvg);
         if ((length > 1)&&(length < 4)){
                 candle = true;
                 furniture = false;

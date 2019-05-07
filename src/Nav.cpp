@@ -41,6 +41,7 @@ Nav::Nav(int lvl, ros::Publisher* pub, Robot* rob){
 	initRobotMarks();
 	cout<<"done\n";
 }
+
 void Nav::setOdomLoc(Vector3f od){
 	odomWorldLocCpy_ = od;
 }
@@ -90,6 +91,7 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 	
 	int ENWS = ((int)round(dir/90.0))%4; // range 0 - 3 for ENWS respectively
 
+	// Find a line that can be used. It should be parallel to the robot's driving direction and nearby.
 	line* alignTo;
 	bool foundLine = false;
 	int idx = 0;
@@ -110,11 +112,13 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 
 	bool onRight = alignTo->getCenterY() < 0; // if the line in the lidar frame's center val is neg it's on right
 	float dist2wall = alignTo->findDist(0,0); // find distance to the wall in the lidar frame
+
 	//cout<<"got a good line idx: "<<idx<<", with slope: "<<alignTo->getSlope()<<", centerX is: " <<alignTo->getCenterX()<<
 	//	", centerY is: "<<alignTo->getCenterY() <<", dist2wall is: "<<dist2wall<<"\n";
 	//cout<<"the line is at angle: "<<alignTo->getClosestAngle()<<" has length: "<<
 	//	alignTo->getLength()<<" and R^2 of "<<alignTo->getRSquared()<<"\n";
-	float wallVal = 0;
+	
+	float wallVal = 0; // this will be the X or Y coordinate of the wall if it's a vertical or horizontal line respectively
 	float xUpdate, yUpdate;
 
 	float slopeAngle = atan(alignTo->getSlope()) ;
@@ -123,12 +127,10 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 	if(ENWS==1 || ENWS==3){//setting xvalue (vert wall)
 		yUpdate = 0;
 		if((onRight && ENWS==3) || (!onRight && ENWS==1)){// bot is to right of vert wall (add to x val)
-			//cout<<"here1\n";
 			wallVal = findWallValue(1, pos, false); 
 			xUpdate = wallVal != 0 ? wallVal + dist2wall : 0;
 		}
 		else{ // subtract from x wall
-			//cout<<"here2\n";
 			wallVal = findWallValue(2, pos, false); 
 			xUpdate = wallVal != 0 ? wallVal + dist2wall : 0;
 		}
@@ -136,12 +138,10 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 	else{//setting y values so horiz wall
 		xUpdate = 0;
 		if((onRight && ENWS==0) || (!onRight && ENWS==2)){// bot is above horix wall (add to y wall)
-			//cout<<"here3\n";
 			wallVal = findWallValue(3, pos, true); 
 			yUpdate = wallVal != 0 ? wallVal + dist2wall : 0;
 		}
 		else{ // subtract from y wall
-			//cout<<"here4\n";
 			wallVal = findWallValue(4, pos, true); 
 			yUpdate = wallVal != 0 ? wallVal - dist2wall : 0;
 		}
@@ -149,18 +149,20 @@ bool Nav::updatePosition(vector<line> lns, Vector3f pos, Ref<Vector3f> travelDis
 	//cout<<"travel dist = "<<travelDist(2)<<", from90 = "<<from90<<"\n";
 	//if(usedForUpdate_.size()>0){cout<<"got a wall with ids: "<<usedForUpdate_[0]<<", "<<usedForUpdate_[1]<<"\n";}
 	//else{cout<<" did not get a global wall.....\n";}
-	
 		
+	// Now update the position
 	Vector3f updatedPos; 
 	updatedPos << 0,0,0;
-	float weight = 0.3;  // was 1   then 0.5
-	float pweight = 0.3; // was 0.7 then 0.5
-	if(ab(xUpdate - pos(0))<20 && xUpdate != 0) updatedPos(0) = xUpdate*weight + pos(0)*(1-weight); // make sure it's nothing crazy (within 20cm)
+	float weight = 0.3;  // factor of lidar update used for X and Y
+	float pweight = 0.3; // factor of lidar update used for angle
+	// make sure it's nothing crazy (within 20cm) NOTE: this means if the error becomes > 20cm the robot will not correct itself
+	if(ab(xUpdate - pos(0))<20 && xUpdate != 0) updatedPos(0) = xUpdate*weight + pos(0)*(1-weight); 
 	else if(xUpdate !=0) cout<<"xUpdate OUT OF RANGE\n";
 	if(ab(yUpdate - pos(1))<20 && yUpdate != 0) updatedPos(1) = yUpdate*weight + pos(1)*(1-weight);
 	else if(yUpdate!=0) cout<<"yUpdate OUT OF RANGE\n";
 	if(ab(tUpdate - pos(2))<30*PI/180.0) updatedPos(2) = tUpdate*pweight + pos(2)*(1-pweight); //*0.5 + pos(2)*0.5; // within 30deg, weight even with odom
 
+	// find differences for outputs
 	float xDiff = updatedPos(0) == 0 ? 0 : abs(xUpdate - pos(0));
 	float yDiff = updatedPos(1) == 0 ? 0 : abs(yUpdate - pos(1));
 	float pDiff = updatedPos(2) == 0 ? 0 : abs(tUpdate - pos(2))*180.0/PI;
@@ -312,6 +314,7 @@ void Nav::publishLoopContinual(){
 // Sets the door configuration for the small room, if up == true the 
 // door is on the higher side (larger y coordinate) 
 void Nav::setSmallRoomUpper(bool up){
+	smallRoomConf_ = true;
 	if(up){
 		getPoint(18,mapPoints_).setNeighbors(1,12);		
 		getPoint(13,mapPoints_).setNeighbors(1,14);
@@ -340,6 +343,7 @@ void Nav::setSmallRoomUpper(bool up){
 // Sets the door configuration for the larger room, if up == true the door is
 // in the higher location (larger y coordinate)
 void Nav::setBigRoomUpper(bool up){
+	bigRoomConf_ = true;
 	if(up){
 		getPoint(17,mapPoints_).setNeighbors(1,20);
 		getPoint(16,mapPoints_).setNeighbors(1,15);
@@ -568,32 +572,6 @@ void Nav::makeLineMarks(vector<line> lines, bool merged, bool addIDs){
 	//cout<<"pubbing line marks of size "<<lines.size()<<"\n";
 	lineMarks_ = tmp;
 	markerPub_->publish(lineMarks_);
-}
-
-void Nav::publishGlobalLineCenter(Vector3f gPt){
-
-	visualization_msgs::Marker tmp;
-	tmp.header.frame_id = GLOBALFRAME;
-	tmp.ns = "glob_line_center_measured";
-	tmp.id = globPtMarks_.markers.size();
-	tmp.type = visualization_msgs::Marker::CYLINDER;
-	tmp.action = visualization_msgs::Marker::ADD;
-	tmp.scale.x = 3;
-	tmp.scale.y = 3;
-	tmp.scale.z = 15;
-	tmp.pose.position.x = gPt(0);
-	tmp.pose.position.y = gPt(1);
-	tmp.pose.position.z = 0;
-	tmp.pose.orientation.x = 0;
-	tmp.pose.orientation.y = 0;
-	tmp.pose.orientation.z = 15.0/2.0; // half of scale.z for cylinder height
-	tmp.pose.orientation.w = 1;
-	tmp.color.a = 1.0;
-	tmp.color.r = 1.0;
-	tmp.color.g = 1.0;
-	tmp.color.b = 1.0;
-	globPtMarks_.markers.push_back(tmp);
-	markerPub_->publish(globPtMarks_);
 }
 
 void Nav::makeCandleMark(EndPoint ep){

@@ -52,35 +52,34 @@ void Lidar::input(){
 	}
 }
 
+// executes everytime a lidar scan is published
 void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 	if(executing_) return; // if the last laserscan is still being processed
-	executing_ = true;
+	executing_ = true; 
 	bool linearMove = false;
-	//tf::StampedTransform oldTrans; // save values immediately if going to be used (computing all this will take time
-	ros::Time scanStamp = scan->header.stamp;
+
 	Vector3f currentPos = rob_->getOdomWorldLoc(); // this is an undefined ref for some reason...
 	auto t1 = stc::steady_clock::now(); // measure length of time remaining
 	if(/*tickCount_++%LidarUpdateRate==0  &&*/ ! (prevOdom_(0) == -100 && prevOdom_(1) == -100)){ // if not the first run (default odom loc) 
 		// if the angle has changed less than 5deg between the two positions
 		if(abs(prevOdom_(2) - currentPos(2))*180/PI < 2.0) linearMove = true;
-		//if(linearMove) oldTrans = rob_->getTransform(); // save current copy
-	}//*/
+	}
 
 	processData(scan); // populates rad_, degrees_, xVal_, yVal_ with pt data (all in Lidar frame)
 
+	// checkCandle set by Robot class, keypress for testing
 	if(keypress_ || checkCandle_){
 		//cout<<"gathering candle data...\n";
 		findJumps(false);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
-		findFurniture();   // determines what is furniture from smallJump_ 
-		nav_->makeFurnMarks(furns_); // publishfurniture in rviz
+		findFurniture();   	// determines what is furniture from smallJump_ 
+		nav_->makeFurnMarks(furns_); // publish furniture in rviz
 		findLines(true); // pub segments on
 		nav_->makeLineMarks(lines_, true, false); // don't add id's
-		//locateCandle();
-		//cleanBigJumps();   // removes furniture jumps and any jumps counted twice 
-		//startRooms_.push_back(classifyRoomFromJumps()); // used to determine room for starting location, will run findLines
+		locateCandle(); // process the data to find the candle location and add to candleLocs_ vector
 		keypress_ = false;
-
 	}
+
+	// used to determine the starting room if starting from a random location
 	else if(0 && startCount_++ < 10){ // classify the room multiple times before determining which room the 'bot is in 
 		findJumps(true);   // populates jumps_ and smallJumps_, bool determines if looking for big jumps
 		findFurniture();   // determines what is furniture from smallJump_ 
@@ -94,22 +93,14 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 			cout<<"found mode to be "<<localRoom_<<"\n";
 		}
 	}
+	// once the random room is determined, localize based off that information and the next scan
 	else if(0 && !started_ && localRoom_ != -1){ 
 		cout<<"localizing to room "<<localRoom_<<"\n";
 		started_ = checkLocalize();
 		cout<<"done initial localize sequence\n";
 	}
-	/*else if(started_){ // testing picking room code by reseting on keypress
-		nav_->makeLineMarks(lines_, true, true);
-		if(startCount_++ > 50){
-			startCount_ = 0;
-			started_ = false;
-			localRoom_ = -1;
-			startRooms_.resize(0);
-			cout<<"\n\n\n\n\n";
-		}
-	}*/
-	// this is what runs most of the time while driving for updates
+
+	// this is what runs most of the time (while driving) 
 	else if(linearMove && !pauseUpdates_){ // normal scan update
 		//cout<<"\nlinear movement! Going to process data!\n";
 		findJumps(true);  // don't look for big jumps, just furniture
@@ -123,7 +114,7 @@ void Lidar::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 			auto end = stc::steady_clock::now();
 			//rob_->outputTime(t1, end);
 		}
-	}//*/
+	}
 
 	prevOdom_ = currentPos;//*/
 	executing_ = false;
@@ -306,7 +297,7 @@ int Lidar::findCandle(){
 		usleep(1000*800);
 		cout<<"num good is: "<<numGood<<" out of total: "<<candleLocs_.size()<<"\n";
 		numGood = 0;
-       	}	
+    }	
 	checkCandle_ = false;
 	numGood = 0;
 	avgX = 0;
@@ -431,8 +422,8 @@ void Lidar::findFurniture(){
 	cout<<"\n";//*/
 }
 
+// remove furniture from big jumps
 void Lidar::cleanBigJumps(){
-	// remove furniture from big jumps
 	for(int fj : furnJumpsConfirmed_){
 		if(jump_.size()!=0 && std::find(jump_.begin(),jump_.end(),fj) != jump_.end()){ // if the fj is in jump_
 			jump_.erase(std::remove(jump_.begin(), jump_.end(), fj), jump_.end()); // erase it

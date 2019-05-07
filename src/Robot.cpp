@@ -70,7 +70,6 @@ bool Robot::searchNDestroy(){
 	return false;
 }
 void Robot::sprayNpray(int num){
-	// TODO - turn on spray
 	float degreeSwing = 20;
 	float centerPose = odomWorldLoc_(2)*180./PI;
 	speed_ = 0;
@@ -137,7 +136,7 @@ Robot::Robot() : posePID_(0,0,0,0,0,0, &debugDrive_){ // also calls pose constru
 	// defaults values
 	fudge_ = 0.949; // accounts for difference between right and left wheel
 	speed_ = 0;      // start stopped
-	runSpeed_ = 0.5; // set speed to run at for this competition
+	//runSpeed_ = 0.5; // set speed to run at for this competition
 	eStop_ = reversed_ = pt2pt_ = false;
 	updateSavedPos_ = updateDriving_ = false;
 	travelDist_ << 0,0,0;
@@ -378,17 +377,6 @@ float Robot::getPoseToPoint(EndPoint pt, EndPoint* pt2){
 	return t;
 }
 
-// This is the main thread that runs and controls the 'bot the mainLogic
-// loop simply adjusts variables that this thread is referencing.
-// Flow:
-// 	1. Get Encoder counts via arduino 
-// 	2. Determine new world location from counts or if a LIDAR update occurred
-// 	3. Check if the speed is being ramped and if so increment speed_
-// 	4. Check if a navStack is running and if so set pose accordingly
-// 	5. Run the PID and and calculate lDrive and rDrive
-// 	6. Set the motors via arduino
-// 	7. Output debug info (not every loop) includes rviz map, ways, debugDrive_
-// 	8. Wait time remaining such that this loop took 20ms (or ms_ ms)
 void Robot::driveLoop(){
 	cout<<"talking to arduino... \n";
 	delay_ = 20; // also the default in Recon.cfg, this is the us delay for waiting for enc values after pinging arduino
@@ -497,7 +485,7 @@ void Robot::periodicOutput(){
 		wayCount_ = 0;
 	}
 	if(robUpdateRate_ > 0 && robCount_ >= 1000 / (ms_ * robUpdateRate_)){
-		nav_->setOdomLoc(odomWorldLoc_);
+		nav_->setOdomLoc(odomWorldLoc_); // give Nav the location to publish
 		nav_->pubRob_ = true;
 		robCount_ = 0;
 	}
@@ -739,91 +727,3 @@ void Robot::setExperimental(Vector3f pose){experimental_ = pose;}
 
 float Robot::toRad(float deg){ return deg*PI2/360.0; }
 void Robot::msleep(int t){ usleep(1000*t); }
-
-////////////////////////////// BASIC MOVEMENT TESTS ///////////////////////////////////////
-void Robot::testDistToStop(){
-	// Testing 90deg turn distance overshoot for setting StartTurnDist50 and StartTurnDist20
-	/*
-	   odomWorldLoc_   << 0,0,0; // starting pose/position
-	   eStop_ = false;
-	   speed_ = 0;
-
-	cout<<"set = "<<setPose_<<" P - "<<kp_<<" I - "<<ki_
-	<<" D - "<<kd_<<"\n"<<"speed = "<<speed_<<"adj = "<<adj_<<"\n\n";
-	reversed_ = false;
-	setRamp(0.5, 0.5); // slowly accelerate
-	runPID_ = true;
-
-	sleep(2);
-	Vector3f tmp = odomWorldLoc_;
-	setPose_ = -90;
-	msleep(800);
-	cout<<"diff is: "<<odomWorldLoc_ - tmp<<"\n";
-	speed_ = 0; */
-
-	// Testing to find MinDistFor50, StopDist50, and StopDist20
-	// Note: MinDist includes acceleration and decelleration distances
-/*	
-	reversed_ = false;
-	setRamp(0.2, 0.5); // slowly accelerate
-	runPID_ = true;
-	cout<<"waiting to accelerate!!!!!!!!!!!!!!!!\n";
-	while(speed_ !=0.2) {
-		cout<<"speed = "<<speed_<<"\n";
-		if(speed_ == 0.2) break;
-		if(ab(speed_ - 0.2) < 0.001) break;
-	} //wait to stop
-	cout<<"done waiting to accelerate!!!!!!!!!!!!!!!!\n";
-	usleep(10);
-	cout<<"0.2 acceleration distance = \n"<<odomWorldLoc_<<"\n";
-	while(odomWorldLoc_(0) < 30) {;} //wait to stop
-	Vector3f after_acc = odomWorldLoc_;
-	setRamp(0, 0.5);
-	while(speed_ !=0) {;}
-	cout<<"stopping distance = \n"<<odomWorldLoc_-after_acc<<"\n";
-	//cout<<"total distance = \n"<<odomWorldLoc_<<"\n";*/
-}
-/*
-void Robot::moveInSquare(){
-	int count = 0;
-	setPose_ = 0;
-	runPID_ = true;
-	Vector3f temp;
-	while(1){
-		int idx = count%4;
-
-		if(idx==0 && odomWorldLoc_(0) > 150){
-			temp = odomWorldLoc_;
-			setPose_ = 90 + 360;
-			sleep(2);
-			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n"
-			<<" difference in x from turn: "<<odomWorldLoc_(0) - temp(0)<<"\n";
-			count++;
-
-		}
-		else if(idx==1 && odomWorldLoc_(1) > 150){
-			temp = odomWorldLoc_;
-			setPose_ = 180;
-			sleep(2);
-			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n"
-				<<" diff in y from turn: "<<odomWorldLoc_(1) - temp(1)<<"\n";
-			count++;
-
-		}	
-		else if(idx==2 && odomWorldLoc_(0) < 50){
-			setPose_ = 270;
-			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
-			sleep(2);
-			count++;
-
-		}	
-		else if(idx==3 && odomWorldLoc_(1) < 50){
-			setPose_ = 0;
-			cout<<"set Pose to "<<setPose_<<" idx = "<<idx<<"\n";
-			sleep(2);
-			count++;
-			//sleep(2);
-			//speed_=0;
-		}	
-	}
-}*/
