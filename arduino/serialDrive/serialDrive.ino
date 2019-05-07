@@ -1,3 +1,12 @@
+/*
+This arduino handles the motor control and encoder readings. It was also 
+going to be used to send the arm servos PWM values to a secondary
+arduino over I2C but that was never fully implemented.
+
+An example for reading the encoders is available here:
+https://wiki.dfrobot.com/12V_DC_Motor_146rpm_w_Encoder_SKU_FIT0277_
+
+*/
 #include <Arduino.h>
 #include <Wire.h>
 
