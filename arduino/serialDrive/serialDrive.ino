@@ -68,7 +68,7 @@ void setup() {
 
   Serial.begin(115200);
   while (!Serial) {;} // wait for serial port to connect
-	blinkLED(3);
+  blinkLED(3);
 
   getBuffPos = 0;
   code = 0;
@@ -93,6 +93,7 @@ int data_length[num_codes] = {0, 4, 0, 5};
 //	send the PWM values for the pins over I2C to secondary arduino
 
 void loop() {
+// If disconnected send the last saved drive values
 if(millis()-motortimestamp > 25 && !discon && setMotorsCount > 50){
 	digitalWrite(LED_BUILTIN, HIGH);
 	getBuffPos = 0;
@@ -106,20 +107,17 @@ if(millis()-disconStamp > 500){
       digitalWrite(LED_BUILTIN, LOW);
 }
 
- if(Serial.available()>0){
-    char c = Serial.read();
-    getBuff[getBuffPos++] = c;
-//	Serial.print("getBuffPos ="); Serial.println(getBuffPos);
-	// a 2-byte int code is sent before any data
-	if(getBuffPos == 2 ){
+ if(Serial.available()>0){ // if there is a byte being received
+	char c = Serial.read();
+	getBuff[getBuffPos++] = c;
+	
+	if(getBuffPos == 2 ){// a 2-byte int code is sent before any data
 	     code = (getBuff[1] << 8) | getBuff[0];
 	     if(!(abs(code) < num_codes) ) { // if a weird code is sent reset
 			code = 0;
 			getBuffPos = 0;
 		}
 	  }
-	// big problem was this being an else if, if it's get encoders
-	// there's no data to receive so it should run immediately
 	if(getBuffPos >= 2 + data_length[-1*code]){
 		if(code == 0) {;}
 		else if(code == -1) {setMotors();}
