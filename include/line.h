@@ -42,11 +42,11 @@ public:
 	// finds the distance from a point to the line
         float findDist(float xPoint, float yPoint); 
 
-        void  clearLine(); 		// erase all data
+        void  clearLine(); 	// erase all data
         void  clearPoint(int i);// erase a specific point by idx
 	float radDist(int i);	// get radius of pt by idx
-        void  printLine(); 		// prints all the points of the line to console
-        int   numPts(); 		// returns the number of points in the line
+        void  printLine(); 	// prints all the points of the line to console
+        int   numPts(); 	// returns the number of points in the line
         void  reverseLine(); 	// switches the order of the x and y vectors
 
 	// Get/Set endpoints of line
